@@ -10,6 +10,9 @@ export interface User {
   dateOfBirth?: string;
   gender?: string;
   goal?: string;
+  street?: string;
+  location?: string;
+  postalCode?: string;
 }
 
 interface AuthState {
@@ -48,6 +51,9 @@ export const registerUser = createAsyncThunk(
       height?: number;
       goal?: string;
       experience?: string;
+      street?: string;
+      location?: string;
+      postalCode?: string;
     },
     { rejectWithValue },
   ) => {

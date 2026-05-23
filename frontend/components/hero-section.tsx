@@ -129,7 +129,7 @@ export function HeroSection() {
 
           <Dialog open={registrationModalOpen} onOpenChange={handleOpenChange}>
             <DialogContent
-              className="max-h-[92vh] w-[94vw] !max-w-[1220px] overflow-y-auto bg-[#08010a] p-3 shadow-[0_24px_90px_rgba(0,0,0,0.75)] sm:!max-w-[1220px] sm:p-5 lg:w-[88vw]"
+              className="max-h-[96vh] w-[94vw] !max-w-[1220px] overflow-y-auto bg-[#08010a] p-0 shadow-[0_24px_90px_rgba(0,0,0,0.75)] sm:!max-w-[1220px] sm:p-0 lg:w-[88vw]"
               style={{
                 border: "2px solid #733EA6",
               }}

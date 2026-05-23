@@ -21,6 +21,9 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
       height,
       goal,
       experience,
+      street,
+      location,
+      postalCode,
     } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
@@ -53,6 +56,9 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         height: height ? Number(height) : null,
         goal: goal || null,
         experience: experience || null,
+        street: street || null,
+        location: location || null,
+        postalCode: postalCode || null,
       },
       select: {
         id: true,
@@ -63,6 +69,9 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         dateOfBirth: true,
         gender: true,
         goal: true,
+        street: true,
+        location: true,
+        postalCode: true,
         createdAt: true,
       },
     });
@@ -151,6 +160,9 @@ router.get(
           height: true,
           goal: true,
           experience: true,
+          street: true,
+          location: true,
+          postalCode: true,
           createdAt: true,
         },
       });

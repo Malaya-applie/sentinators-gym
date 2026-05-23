@@ -78,6 +78,9 @@ const initialForm = {
   height: "",
   goal: "",
   experience: "",
+  street: "",
+  location: "",
+  postalCode: "",
   startDate: "",
   emergencyContact: "",
   address: "",
@@ -738,9 +741,9 @@ export function StepperRegistrationForm({
   return (
     <div
       ref={formShellRef}
-      className="mx-auto w-full max-w-[1140px] text-white px-2 sm:px-4 md:px-6 lg:px-8"
+      className="mx-auto w-full max-w-[1140px] text-white flex flex-col"
     >
-      <div className="mb-2 text-center">
+      <div className="sticky top-0 z-10 bg-[#08010a] px-2 sm:px-4 md:px-6 lg:px-8 pt-4 pb-3 text-center border-b border-white/5">
         <h2 className="text-xl font-bold tracking-wide sm:text-2xl">
           Membership Registration
         </h2>
@@ -767,738 +770,780 @@ export function StepperRegistrationForm({
         </div>
       </div>
 
-      {error && (
-        <div className="mb-4 rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="mb-4 rounded-md border border-green-500/40 bg-green-950/40 px-3 py-2 text-sm text-green-200">
-          {success}
-        </div>
-      )}
-
-      {step === 0 && (
-        <div className="flex flex-col md:grid items-stretch gap-3 md:gap-4 lg:grid-cols-[minmax(280px,0.9fr)_minmax(360px,1.1fr)]">
-          {/* Hide image on small screens */}
-          <div className="hidden md:flex h-full items-stretch justify-center rounded-xl border border-white/10 bg-black/50 overflow-hidden">
-            <Image
-              src="/about-hero-image.png"
-              alt="Member profile"
-              width={503}
-              height={622}
-              className="object-cover w-full h-full rounded-sm"
-              priority
-            />
+      <div className="px-2 sm:px-4 md:px-6 lg:px-8 py-3">
+        {error && (
+          <div className="mb-4 rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+            {error}
           </div>
-          <div className="flex flex-col justify-center w-full md:w-auto">
-            <div className="space-y-2.5 w-full max-w-md mx-auto md:w-[80%] md:mx-5">
-              <Field
-                label="First Name"
-                name="firstName"
-                value={form.firstName}
-                onChange={updateForm}
-                required
+        )}
+        {success && (
+          <div className="mb-4 rounded-md border border-green-500/40 bg-green-950/40 px-3 py-2 text-sm text-green-200">
+            {success}
+          </div>
+        )}
+
+        {step === 0 && (
+          <div className="flex flex-col md:grid items-stretch gap-3 md:gap-4 lg:grid-cols-[minmax(280px,0.9fr)_minmax(360px,1.1fr)]">
+            {/* Hide image on small screens */}
+            <div className="hidden md:flex h-full items-stretch justify-center rounded-xl border border-white/10 bg-black/50 overflow-hidden">
+              <Image
+                src="/about-hero-image.png"
+                alt="Member profile"
+                width={503}
+                height={622}
+                className="object-cover w-full h-full rounded-sm"
+                priority
               />
-              <Field
-                label="Last Name"
-                name="lastName"
-                value={form.lastName}
-                onChange={updateForm}
-                required
-              />
-              <Field
-                label="Email"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={updateForm}
-                required
-              />
-              <Field
-                label="Password"
-                name="password"
-                type="password"
-                value={form.password}
-                onChange={updateForm}
-                required
-              />
-              <Field
-                label="Phone"
-                name="phone"
-                type="tel"
-                value={form.phone}
-                onChange={updateForm}
-                required
-              />
-              <div>
-                <Label className="mb-1 block text-white/70">
-                  Date of Birth
-                </Label>
-                <input
-                  name="dateOfBirth"
-                  type="date"
-                  value={form.dateOfBirth}
+            </div>
+            <div className="flex flex-col justify-center w-full md:w-auto">
+              <div className="space-y-1 w-full max-w-md mx-auto md:w-[80%] md:mx-5">
+                <Field
+                  label="First Name"
+                  name="firstName"
+                  value={form.firstName}
                   onChange={updateForm}
-                  style={{ colorScheme: "dark" }}
-                  className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  required
                 />
-              </div>
-              <div>
-                <Label className="mb-1 block text-white/70">Gender</Label>
-                <select
-                  name="gender"
-                  value={form.gender}
+                <Field
+                  label="Last Name"
+                  name="lastName"
+                  value={form.lastName}
                   onChange={updateForm}
-                  className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white appearance-none bg-[url('data:image/svg+xml,%3Csvg width='16' height='16' fill='none' stroke='white' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E')] bg-no-repeat bg-right bg-[length:1.25em_1.25em] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                >
-                  <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
+                  required
+                />
+                <Field
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={updateForm}
+                  required
+                />
+                <Field
+                  label="Password"
+                  name="password"
+                  type="password"
+                  value={form.password}
+                  onChange={updateForm}
+                  required
+                />
+                <Field
+                  label="Phone"
+                  name="phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={updateForm}
+                  required
+                />
+                <div>
+                  <Label className="mb-1 block text-white/70">
+                    Date of Birth
+                  </Label>
+                  <input
+                    name="dateOfBirth"
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={updateForm}
+                    style={{ colorScheme: "dark" }}
+                    className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-white/70">Gender</Label>
+                  <select
+                    name="gender"
+                    value={form.gender}
+                    onChange={updateForm}
+                    className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white appearance-none bg-[url('data:image/svg+xml,%3Csvg width='16' height='16' fill='none' stroke='white' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E')] bg-no-repeat bg-right bg-[length:1.25em_1.25em] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  >
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="mb-1 block text-white/70">Street</Label>
+                  <input
+                    name="street"
+                    type="text"
+                    value={form.street}
+                    onChange={updateForm}
+                    className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white appearance-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  />
+                </div>
+                <div className="mt-2">
+                  <Label className="mb-1 block text-white/70">Location</Label>
+                  <input
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={updateForm}
+                    className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white appearance-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  />
+                </div>
+                <div className="mt-2">
+                  <Label className="mb-1 block text-white/70">
+                    Postal Code
+                  </Label>
+                  <input
+                    name="postalCode"
+                    type="text"
+                    value={form.postalCode}
+                    onChange={updateForm}
+                    className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white appearance-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {step === 1 && (
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_280px] w-full items-start">
-          <div className="space-y-4 min-w-0">
-            {plansLoading ? (
-              <div className="flex items-center justify-center gap-2 py-10 text-white/60">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading plans
-              </div>
-            ) : groupedPlans.every((group) => group.items.length === 0) ? (
-              <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60">
-                No active plans are available right now.
-              </div>
-            ) : (
-              <div>
-                {/* Tab bar: Annual | Short Term | Additional */}
-                <div className="mb-3 flex flex-wrap justify-center">
-                  <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/5 p-1">
-                    {groupedPlans.map((group) => (
-                      <button
-                        key={group.key}
-                        type="button"
-                        onClick={() => setActivePlanCategory(group.key)}
-                        className={`rounded-full px-5 py-2 text-xs font-semibold transition sm:text-sm ${
-                          activePlanCategory === group.key
-                            ? "bg-red-700 text-white shadow-[0_0_18px_rgba(220,38,38,0.32)]"
-                            : "text-white/55 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
-                        {group.label}
-                        {group.key === "ADDITIONAL" &&
-                          selectedAdditionalPlanIds.length > 0 && (
-                            <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white">
-                              {selectedAdditionalPlanIds.length}
-                            </span>
-                          )}
-                      </button>
-                    ))}
-                  </div>
+        {step === 1 && (
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_280px] w-full items-start">
+            <div className="space-y-4 min-w-0">
+              {plansLoading ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-white/60">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading plans
                 </div>
-
-                <h3 className="mb-4 text-center text-base font-semibold sm:text-lg">
-                  {selectedPlanGroup?.title ?? "Select a Plan"}
-                  {activePlanCategory === "ADDITIONAL" && (
-                    <span className="ml-2 text-sm font-normal text-white/40">
-                      (optional — select multiple)
-                    </span>
-                  )}
-                </h3>
-
-                {!selectedPlanGroup || selectedPlanGroup.items.length === 0 ? (
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60">
-                    No plans available in this category.
-                  </div>
-                ) : activePlanCategory === "ADDITIONAL" ? (
-                  /* Additional tab — multi-select */
-                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    {selectedPlanGroup.items.map((plan) => {
-                      const isSelected = selectedAdditionalPlanIds.includes(
-                        plan.id,
-                      );
-                      return (
+              ) : groupedPlans.every((group) => group.items.length === 0) ? (
+                <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60">
+                  No active plans are available right now.
+                </div>
+              ) : (
+                <div>
+                  {/* Tab bar: Annual | Short Term | Additional */}
+                  <div className="mb-3 flex flex-wrap justify-center">
+                    <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/5 p-1">
+                      {groupedPlans.map((group) => (
                         <button
+                          key={group.key}
                           type="button"
-                          key={plan.id}
-                          onClick={() => toggleAdditionalPlan(plan.id)}
-                          className={`rounded-lg border p-3 text-left transition w-full relative ${
-                            isSelected
-                              ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
-                              : "border-white/10 bg-white/5 hover:border-white/30"
+                          onClick={() => setActivePlanCategory(group.key)}
+                          className={`rounded-full px-5 py-2 text-xs font-semibold transition sm:text-sm ${
+                            activePlanCategory === group.key
+                              ? "bg-red-700 text-white shadow-[0_0_18px_rgba(220,38,38,0.32)]"
+                              : "text-white/55 hover:bg-white/10 hover:text-white"
                           }`}
                         >
-                          {isSelected && (
-                            <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600">
-                              <Check className="h-3 w-3 text-white" />
-                            </span>
-                          )}
-                          <p className="text-base font-semibold pr-6">
-                            {plan.duration}
-                          </p>
-                          <p className="text-sm text-white/55">
-                            {planTitle(plan)}
-                          </p>
-                          <p className="mt-2 text-lg font-bold">
-                            {money(plan.currency, plan.price)}
-                          </p>
-                          <ul className="mt-3 space-y-1 text-sm text-white/65">
-                            {plan.features.slice(0, 3).map((feature) => (
-                              <li key={feature} className="flex gap-2">
-                                <Check className="mt-0.5 h-4 w-4 text-red-400" />
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* Annual / Short Term tab — single select */
-                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    {selectedPlanGroup.items.map((plan) => {
-                      const selected = selectedPlanId === plan.id;
-                      const today = new Date().toISOString().slice(0, 10);
-                      return (
-                        <div
-                          key={plan.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSelectedPlanId(plan.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ")
-                              setSelectedPlanId(plan.id);
-                          }}
-                          className={`rounded-lg border p-3 text-left transition w-full cursor-pointer ${
-                            selected
-                              ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
-                              : "border-white/10 bg-white/5 hover:border-white/30"
-                          }`}
-                        >
-                          <p className="text-base font-semibold">
-                            {plan.duration}
-                          </p>
-                          <p className="text-sm text-white/55">
-                            {planTitle(plan)}
-                          </p>
-                          <p className="mt-2 text-lg font-bold">
-                            {money(plan.currency, plan.price)}
-                          </p>
-                          <ul className="mt-3 space-y-1 text-sm text-white/65">
-                            {plan.features.slice(0, 3).map((feature) => (
-                              <li key={feature} className="flex gap-2">
-                                <Check className="mt-0.5 h-4 w-4 text-red-400" />
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                          {selected && (
-                            <div
-                              className="mt-4 border-t border-white/10 pt-3 space-y-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div>
-                                <p className="mb-1 text-xs text-white/50">
-                                  Start Date *
-                                </p>
-                                <input
-                                  type="date"
-                                  min={today}
-                                  value={membershipStartDate}
-                                  onChange={(e) =>
-                                    setMembershipStartDate(e.target.value)
-                                  }
-                                  style={{ colorScheme: "dark" }}
-                                  className="h-8 w-full rounded-md border border-white/10 bg-black/40 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-700/50"
-                                />
-                              </div>
-                              <div>
-                                <p className="mb-1 text-xs text-white/50">
-                                  End Date
-                                </p>
-                                <p
-                                  className={`h-8 flex items-center rounded-md border border-white/10 bg-black/40 px-3 text-sm ${
-                                    membershipEndDate
-                                      ? "text-white/80"
-                                      : "text-white/30 italic"
-                                  }`}
-                                >
-                                  {membershipEndDate
-                                    ? formatDate(membershipEndDate)
-                                    : "Pick a start date"}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
-            <TotalBox
-              currency={currency}
-              plan={selectedPlan}
-              additionalPlans={selectedAdditionalPlans}
-              registrationFee={registrationFee}
-              discountAmount={discountAmount}
-              discountLabel={discountLabel}
-              total={frequencyAdjustedTotal}
-              upfrontTotal={total}
-              paymentFrequency={paymentFrequency}
-              totalPlanMonths={totalPlanMonths}
-            />
-            {/* Payment Frequency Selector */}
-            <div className="rounded-lg border border-white/10 bg-[#120817] p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">
-                Payment Frequency
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  {
-                    value: "UPFRONT" as const,
-                    label: "Upfront",
-                    unit: "" as const,
-                    minMonths: 1,
-                  },
-                  {
-                    value: "MONTHLY" as const,
-                    label: "Monthly",
-                    unit: "/mo" as const,
-                    minMonths: 1,
-                  },
-                  {
-                    value: "QUARTERLY" as const,
-                    label: "Quarterly",
-                    unit: "/qtr" as const,
-                    minMonths: 3,
-                  },
-                  {
-                    value: "YEARLY" as const,
-                    label: "Yearly",
-                    unit: "/yr" as const,
-                    minMonths: 12,
-                  },
-                ]
-                  .filter(
-                    ({ minMonths }) =>
-                      totalPlanMonths === 0 || totalPlanMonths >= minMonths,
-                  )
-                  .map(({ value, label, unit }) => {
-                    const periodAmt =
-                      value === "UPFRONT" ? total : calcPerPeriod(value);
-                    const displayAmt = value === "UPFRONT" ? total : periodAmt;
-                    const displayUnit = value === "UPFRONT" ? "" : unit;
-                    return (
-                      <label
-                        key={value}
-                        className={`flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 transition ${
-                          paymentFrequency === value
-                            ? "border-red-500 bg-red-950/40"
-                            : "border-white/10 bg-white/5 hover:border-white/25"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="paymentFrequency"
-                          value={value}
-                          checked={paymentFrequency === value}
-                          onChange={() => setPaymentFrequency(value)}
-                          className="sr-only"
-                        />
-                        <span
-                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
-                            paymentFrequency === value
-                              ? "border-red-500 bg-red-600"
-                              : "border-white/30"
-                          }`}
-                        >
-                          {paymentFrequency === value && (
-                            <span className="h-1 w-1 rounded-full bg-white" />
-                          )}
-                        </span>
-                        <span className="flex-1 text-xs font-medium text-white">
-                          {label}
-                        </span>
-                        {periodAmt !== null && (
-                          <span className="text-xs font-semibold text-white/80">
-                            {money(currency, displayAmt!)}
-                            {displayUnit && (
-                              <span className="text-white/40 font-normal ml-0.5">
-                                {displayUnit}
+                          {group.label}
+                          {group.key === "ADDITIONAL" &&
+                            selectedAdditionalPlanIds.length > 0 && (
+                              <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white">
+                                {selectedAdditionalPlanIds.length}
                               </span>
                             )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <h3 className="mb-4 text-center text-base font-semibold sm:text-lg">
+                    {selectedPlanGroup?.title ?? "Select a Plan"}
+                    {activePlanCategory === "ADDITIONAL" && (
+                      <span className="ml-2 text-sm font-normal text-white/40">
+                        (optional — select multiple)
+                      </span>
+                    )}
+                  </h3>
+
+                  {!selectedPlanGroup ||
+                  selectedPlanGroup.items.length === 0 ? (
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60">
+                      No plans available in this category.
+                    </div>
+                  ) : activePlanCategory === "ADDITIONAL" ? (
+                    /* Additional tab — multi-select */
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                      {selectedPlanGroup.items.map((plan) => {
+                        const isSelected = selectedAdditionalPlanIds.includes(
+                          plan.id,
+                        );
+                        return (
+                          <button
+                            type="button"
+                            key={plan.id}
+                            onClick={() => toggleAdditionalPlan(plan.id)}
+                            className={`rounded-lg border p-3 text-left transition w-full relative ${
+                              isSelected
+                                ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
+                                : "border-white/10 bg-white/5 hover:border-white/30"
+                            }`}
+                          >
+                            {isSelected && (
+                              <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600">
+                                <Check className="h-3 w-3 text-white" />
+                              </span>
+                            )}
+                            <p className="text-base font-semibold pr-6">
+                              {plan.duration}
+                            </p>
+                            <p className="text-sm text-white/55">
+                              {planTitle(plan)}
+                            </p>
+                            <p className="mt-2 text-lg font-bold">
+                              {money(plan.currency, plan.price)}
+                            </p>
+                            <ul className="mt-3 space-y-1 text-sm text-white/65">
+                              {plan.features.slice(0, 3).map((feature) => (
+                                <li key={feature} className="flex gap-2">
+                                  <Check className="mt-0.5 h-4 w-4 text-red-400" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Annual / Short Term tab — single select */
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                      {selectedPlanGroup.items.map((plan) => {
+                        const selected = selectedPlanId === plan.id;
+                        const today = new Date().toISOString().slice(0, 10);
+                        return (
+                          <div
+                            key={plan.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedPlanId(plan.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ")
+                                setSelectedPlanId(plan.id);
+                            }}
+                            className={`rounded-lg border p-3 text-left transition w-full cursor-pointer ${
+                              selected
+                                ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
+                                : "border-white/10 bg-white/5 hover:border-white/30"
+                            }`}
+                          >
+                            <p className="text-base font-semibold">
+                              {plan.duration}
+                            </p>
+                            <p className="text-sm text-white/55">
+                              {planTitle(plan)}
+                            </p>
+                            <p className="mt-2 text-lg font-bold">
+                              {money(plan.currency, plan.price)}
+                            </p>
+                            <ul className="mt-3 space-y-1 text-sm text-white/65">
+                              {plan.features.slice(0, 3).map((feature) => (
+                                <li key={feature} className="flex gap-2">
+                                  <Check className="mt-0.5 h-4 w-4 text-red-400" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            {selected && (
+                              <div
+                                className="mt-4 border-t border-white/10 pt-3 space-y-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div>
+                                  <p className="mb-1 text-xs text-white/50">
+                                    Start Date *
+                                  </p>
+                                  <input
+                                    type="date"
+                                    min={today}
+                                    value={membershipStartDate}
+                                    onChange={(e) =>
+                                      setMembershipStartDate(e.target.value)
+                                    }
+                                    style={{ colorScheme: "dark" }}
+                                    className="h-8 w-full rounded-md border border-white/10 bg-black/40 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-700/50"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-xs text-white/50">
+                                    End Date
+                                  </p>
+                                  <p
+                                    className={`h-8 flex items-center rounded-md border border-white/10 bg-black/40 px-3 text-sm ${
+                                      membershipEndDate
+                                        ? "text-white/80"
+                                        : "text-white/30 italic"
+                                    }`}
+                                  >
+                                    {membershipEndDate
+                                      ? formatDate(membershipEndDate)
+                                      : "Pick a start date"}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
+              <TotalBox
+                currency={currency}
+                plan={selectedPlan}
+                additionalPlans={selectedAdditionalPlans}
+                registrationFee={registrationFee}
+                discountAmount={discountAmount}
+                discountLabel={discountLabel}
+                total={frequencyAdjustedTotal}
+                upfrontTotal={total}
+                paymentFrequency={paymentFrequency}
+                totalPlanMonths={totalPlanMonths}
+              />
+              {/* Payment Frequency Selector */}
+              <div className="rounded-lg border border-white/10 bg-[#120817] p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">
+                  Payment Frequency
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    {
+                      value: "UPFRONT" as const,
+                      label: "Upfront",
+                      unit: "" as const,
+                      minMonths: 1,
+                    },
+                    {
+                      value: "MONTHLY" as const,
+                      label: "Monthly",
+                      unit: "/mo" as const,
+                      minMonths: 1,
+                    },
+                    {
+                      value: "QUARTERLY" as const,
+                      label: "Quarterly",
+                      unit: "/qtr" as const,
+                      minMonths: 3,
+                    },
+                    {
+                      value: "YEARLY" as const,
+                      label: "Yearly",
+                      unit: "/yr" as const,
+                      minMonths: 12,
+                    },
+                  ]
+                    .filter(
+                      ({ minMonths }) =>
+                        totalPlanMonths === 0 || totalPlanMonths >= minMonths,
+                    )
+                    .map(({ value, label, unit }) => {
+                      const periodAmt =
+                        value === "UPFRONT" ? total : calcPerPeriod(value);
+                      const displayAmt =
+                        value === "UPFRONT" ? total : periodAmt;
+                      const displayUnit = value === "UPFRONT" ? "" : unit;
+                      return (
+                        <label
+                          key={value}
+                          className={`flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 transition ${
+                            paymentFrequency === value
+                              ? "border-red-500 bg-red-950/40"
+                              : "border-white/10 bg-white/5 hover:border-white/25"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="paymentFrequency"
+                            value={value}
+                            checked={paymentFrequency === value}
+                            onChange={() => setPaymentFrequency(value)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
+                              paymentFrequency === value
+                                ? "border-red-500 bg-red-600"
+                                : "border-white/30"
+                            }`}
+                          >
+                            {paymentFrequency === value && (
+                              <span className="h-1 w-1 rounded-full bg-white" />
+                            )}
                           </span>
-                        )}
-                      </label>
-                    );
-                  })}
+                          <span className="flex-1 text-xs font-medium text-white">
+                            {label}
+                          </span>
+                          {periodAmt !== null && (
+                            <span className="text-xs font-semibold text-white/80">
+                              {money(currency, displayAmt!)}
+                              {displayUnit && (
+                                <span className="text-white/40 font-normal ml-0.5">
+                                  {displayUnit}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+              <div className="flex gap-3 justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isBusy}
+                  onClick={() =>
+                    setStep((prev) => Math.max(prev - 1, 0) as Step)
+                  }
+                  className="border-white/15 bg-transparent text-white hover:bg-white/10"
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={goNext}
+                  className="btn-gradient text-white"
+                >
+                  Next
+                </Button>
               </div>
             </div>
-            <div className="flex gap-3 justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isBusy}
-                onClick={() => setStep((prev) => Math.max(prev - 1, 0) as Step)}
-                className="border-white/15 bg-transparent text-white hover:bg-white/10"
-              >
-                Back
-              </Button>
-              <Button
-                type="button"
-                onClick={goNext}
-                className="btn-gradient text-white"
-              >
-                Next
-              </Button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {step === 2 && (
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_320px] w-full max-w-4xl mx-auto">
-          {/* Left: agreement */}
-          <div className="rounded-lg bg-white/5 p-5">
-            <div className="mb-4 inline-flex flex-col gap-2">
-              <span className="bg-white/10 px-4 py-2 text-2xl">
-                Client:{" "}
-                {form.firstName ? `${form.firstName} ${form.lastName}` : "-"}
-              </span>
-            </div>
-            <p className="text-sm leading-relaxed text-white/65">
-              {content.agreement_text}
-            </p>
-            <div className="mt-5 space-y-3 rounded-md bg-white/10 p-4">
-              {/* First checkbox: clicking opens the full contract modal */}
-              <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-white/80">
-                <Checkbox
-                  checked={agreementChecks[0]}
-                  onCheckedChange={() => openContractPage()}
-                  className="mt-0.5 border-white/30 data-[state=checked]:bg-red-700"
-                />
-                <span>
-                  {content.agreement_checkbox_1}{" "}
-                  <button
-                    type="button"
-                    onClick={() => openContractPage()}
-                    className="underline text-red-400 hover:text-red-300 text-xs font-medium ml-1"
-                  >
-                    {agreementChecks[0]
-                      ? "(view contract)"
-                      : "View & Sign Contract →"}
-                  </button>
+        {step === 2 && (
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_320px] w-full max-w-4xl mx-auto">
+            {/* Left: agreement */}
+            <div className="rounded-lg bg-white/5 p-5">
+              <div className="mb-4 inline-flex flex-col gap-2">
+                <span className="bg-white/10 px-4 py-2 text-2xl">
+                  Client:{" "}
+                  {form.firstName ? `${form.firstName} ${form.lastName}` : "-"}
                 </span>
-              </label>
-              {/* Second checkbox: normal */}
-              <CheckRow
-                label={content.agreement_checkbox_2}
-                checked={agreementChecks[1]}
-                onCheckedChange={(checked) =>
-                  setAgreementChecks((prev) =>
-                    prev.map((item, i) => (i === 1 ? checked : item)),
-                  )
-                }
-              />
-            </div>
-          </div>
-          {/* Right: total */}
-          <div className="flex flex-col justify-start">
-            <TotalBox
-              currency={currency}
-              plan={selectedPlan}
-              additionalPlans={selectedAdditionalPlans}
-              registrationFee={registrationFee}
-              discountAmount={discountAmount}
-              discountLabel={discountLabel}
-              total={frequencyAdjustedTotal}
-              upfrontTotal={total}
-              paymentFrequency={paymentFrequency}
-              totalPlanMonths={totalPlanMonths}
-            />
-          </div>
-        </div>
-      )}
-
-      {showTermsModal && (
-        <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
-          <DialogContent className="bg-[#0f0a14] border border-white/10 text-white max-w-2xl w-full max-h-[75vh] flex flex-col p-0 overflow-hidden">
-            <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10 shrink-0">
-              <DialogTitle className="text-lg font-bold text-white">
-                Membership Terms &amp; Conditions
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  1. Membership Agreement
-                </h3>
-                <p>
-                  By joining, you enter into a binding membership agreement with
-                  the gym. The membership starts from your selected start date
-                  and remains valid for the agreed duration. Membership fees are
-                  non-refundable once the membership period begins.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  2. Payment Terms
-                </h3>
-                <p>
-                  All fees must be paid in advance according to the selected
-                  payment frequency (monthly, quarterly, or yearly). Failure to
-                  pay may result in suspension or termination of membership.
-                  Late payments may incur additional charges.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  3. Gym Rules &amp; House Rules
-                </h3>
-                <p>
-                  Members must conduct themselves respectfully at all times.
-                  Proper gym attire and footwear are required. Equipment must be
-                  returned to its designated place after use. Aggressive or
-                  unsafe behaviour will result in immediate termination of
-                  membership without refund.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  4. Health &amp; Safety Responsibility
-                </h3>
-                <p>
-                  You confirm that you are in good physical health and have
-                  consulted a medical professional if required before commencing
-                  any exercise program. The gym will not be held liable for any
-                  injury, illness, or loss of personal property during your use
-                  of the facilities. You exercise at your own risk.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  5. Cancellation Policy
-                </h3>
-                <p>
-                  Memberships may be cancelled with a written notice of at least
-                  30 days before the next billing cycle. Early termination fees
-                  may apply. Monthly memberships cannot be cancelled mid-cycle;
-                  cancellation takes effect at the end of the current period.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  6. Freeze &amp; Suspension
-                </h3>
-                <p>
-                  Members may request a membership freeze for medical reasons
-                  with valid documentation. Freeze periods extend the membership
-                  end date accordingly. Abuse of freeze requests may result in
-                  membership termination.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  7. Guest Policy
-                </h3>
-                <p>
-                  Guests are only permitted when accompanied by an active member
-                  and subject to a guest fee. Guest visits are limited per month
-                  and guests must register at reception. Members are responsible
-                  for the behaviour of their guests.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">
-                  8. Privacy &amp; Data
-                </h3>
-                <p>
-                  Your personal data will be processed in accordance with our
-                  Privacy Policy. We collect and store data necessary to manage
-                  your membership and may contact you with relevant information
-                  about your account or facility updates.
-                </p>
-              </section>
-              <section>
-                <h3 className="font-semibold text-white mb-1">9. Amendments</h3>
-                <p>
-                  The gym reserves the right to amend these terms at any time.
-                  Members will be notified of significant changes with
-                  reasonable notice. Continued use of the facilities after
-                  notification constitutes acceptance of the updated terms.
-                </p>
-              </section>
-            </div>
-            <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowTermsModal(false)}
-                className="border-white/15 bg-transparent text-white hover:bg-white/10"
-              >
-                Close
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  setTermChecks((prev) =>
-                    prev.map((item, i) => (i === 0 ? true : item)),
-                  );
-                  setShowTermsModal(false);
-                }}
-                className="btn-gradient text-white flex-1"
-              >
-                I Agree to the Terms &amp; Conditions
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {step === 3 && (
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_320px] w-full max-w-4xl mx-auto">
-          {/* Left: terms + signature */}
-          <div className="space-y-4">
-            <div className="rounded-lg bg-white/5 p-4">
-              <p className="mb-4 text-sm leading-relaxed text-white/65">
-                {content.terms_text}
+              </div>
+              <p className="text-sm leading-relaxed text-white/65">
+                {content.agreement_text}
               </p>
-              <div className="space-y-3 rounded-md bg-white/10 p-4">
-                {/* First checkbox opens terms modal */}
+              <div className="mt-5 space-y-3 rounded-md bg-white/10 p-4">
+                {/* First checkbox: clicking opens the full contract modal */}
                 <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-white/80">
                   <Checkbox
-                    checked={termChecks[0]}
-                    onCheckedChange={() => {
-                      if (!termChecks[0]) {
-                        setShowTermsModal(true);
-                      } else {
-                        setTermChecks((prev) =>
-                          prev.map((item, i) => (i === 0 ? false : item)),
-                        );
-                      }
-                    }}
+                    checked={agreementChecks[0]}
+                    onCheckedChange={() => openContractPage()}
                     className="mt-0.5 border-white/30 data-[state=checked]:bg-red-700"
                   />
                   <span>
-                    {content.terms_checkbox_1}{" "}
+                    {content.agreement_checkbox_1}{" "}
                     <button
                       type="button"
-                      onClick={() => setShowTermsModal(true)}
+                      onClick={() => openContractPage()}
                       className="underline text-red-400 hover:text-red-300 text-xs font-medium ml-1"
                     >
-                      {termChecks[0] ? "(view terms)" : "Read Terms →"}
+                      {agreementChecks[0]
+                        ? "(view contract)"
+                        : "View & Sign Contract →"}
                     </button>
                   </span>
                 </label>
-                {/* Second checkbox */}
+                {/* Second checkbox: normal */}
                 <CheckRow
-                  label={content.terms_checkbox_2}
-                  checked={termChecks[1]}
+                  label={content.agreement_checkbox_2}
+                  checked={agreementChecks[1]}
                   onCheckedChange={(checked) =>
-                    setTermChecks((prev) =>
+                    setAgreementChecks((prev) =>
                       prev.map((item, i) => (i === 1 ? checked : item)),
                     )
                   }
                 />
               </div>
             </div>
-            <div className="rounded-lg bg-white/5 p-4">
-              {signatureDataUrl ? (
-                <div>
-                  <Label className="text-white/70 mb-2 block">
-                    Your Signature{" "}
-                    <span className="text-green-400 text-xs">
-                      (signed via contract)
-                    </span>
-                  </Label>
-                  <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] overflow-hidden flex items-center justify-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={signatureDataUrl}
-                      alt="Your signature"
-                      className="h-full w-full object-contain"
-                      style={{ filter: "invert(1)" }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] flex items-center justify-center text-white/30 text-sm">
-                  No signature found — please complete the contract step.
-                </div>
-              )}
-              <div className="mt-4 rounded-md bg-white/10 p-3">
-                <CheckRow
-                  label={content.terms_final_checkbox}
-                  checked={termChecks[2]}
-                  onCheckedChange={(checked) =>
-                    setTermChecks((prev) =>
-                      prev.map((item, i) => (i === 2 ? checked : item)),
-                    )
-                  }
-                />
-              </div>
+            {/* Right: total */}
+            <div className="flex flex-col justify-start">
+              <TotalBox
+                currency={currency}
+                plan={selectedPlan}
+                additionalPlans={selectedAdditionalPlans}
+                registrationFee={registrationFee}
+                discountAmount={discountAmount}
+                discountLabel={discountLabel}
+                total={frequencyAdjustedTotal}
+                upfrontTotal={total}
+                paymentFrequency={paymentFrequency}
+                totalPlanMonths={totalPlanMonths}
+              />
             </div>
           </div>
-          {/* Right: total */}
-          <div className="flex flex-col justify-start">
-            <TotalBox
-              currency={currency}
-              plan={selectedPlan}
-              additionalPlans={selectedAdditionalPlans}
-              registrationFee={registrationFee}
-              discountAmount={discountAmount}
-              discountLabel={discountLabel}
-              total={frequencyAdjustedTotal}
-              upfrontTotal={total}
-              paymentFrequency={paymentFrequency}
-              totalPlanMonths={totalPlanMonths}
-            />
-          </div>
-        </div>
-      )}
+        )}
 
-      <div
-        className={`mt-3 flex gap-3 w-full max-w-4xl mx-auto ${step === 1 ? "hidden" : step === 0 ? "justify-end" : "justify-between"}`}
-      >
-        {step > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isBusy}
-            onClick={() => setStep((prev) => Math.max(prev - 1, 0) as Step)}
-            className="border-white/15 bg-transparent text-white hover:bg-white/10"
-          >
-            Back
-          </Button>
+        {showTermsModal && (
+          <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+            <DialogContent className="bg-[#0f0a14] border border-white/10 text-white max-w-2xl w-full max-h-[75vh] flex flex-col p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10 shrink-0">
+                <DialogTitle className="text-lg font-bold text-white">
+                  Membership Terms &amp; Conditions
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    1. Membership Agreement
+                  </h3>
+                  <p>
+                    By joining, you enter into a binding membership agreement
+                    with the gym. The membership starts from your selected start
+                    date and remains valid for the agreed duration. Membership
+                    fees are non-refundable once the membership period begins.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    2. Payment Terms
+                  </h3>
+                  <p>
+                    All fees must be paid in advance according to the selected
+                    payment frequency (monthly, quarterly, or yearly). Failure
+                    to pay may result in suspension or termination of
+                    membership. Late payments may incur additional charges.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    3. Gym Rules &amp; House Rules
+                  </h3>
+                  <p>
+                    Members must conduct themselves respectfully at all times.
+                    Proper gym attire and footwear are required. Equipment must
+                    be returned to its designated place after use. Aggressive or
+                    unsafe behaviour will result in immediate termination of
+                    membership without refund.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    4. Health &amp; Safety Responsibility
+                  </h3>
+                  <p>
+                    You confirm that you are in good physical health and have
+                    consulted a medical professional if required before
+                    commencing any exercise program. The gym will not be held
+                    liable for any injury, illness, or loss of personal property
+                    during your use of the facilities. You exercise at your own
+                    risk.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    5. Cancellation Policy
+                  </h3>
+                  <p>
+                    Memberships may be cancelled with a written notice of at
+                    least 30 days before the next billing cycle. Early
+                    termination fees may apply. Monthly memberships cannot be
+                    cancelled mid-cycle; cancellation takes effect at the end of
+                    the current period.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    6. Freeze &amp; Suspension
+                  </h3>
+                  <p>
+                    Members may request a membership freeze for medical reasons
+                    with valid documentation. Freeze periods extend the
+                    membership end date accordingly. Abuse of freeze requests
+                    may result in membership termination.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    7. Guest Policy
+                  </h3>
+                  <p>
+                    Guests are only permitted when accompanied by an active
+                    member and subject to a guest fee. Guest visits are limited
+                    per month and guests must register at reception. Members are
+                    responsible for the behaviour of their guests.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    8. Privacy &amp; Data
+                  </h3>
+                  <p>
+                    Your personal data will be processed in accordance with our
+                    Privacy Policy. We collect and store data necessary to
+                    manage your membership and may contact you with relevant
+                    information about your account or facility updates.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    9. Amendments
+                  </h3>
+                  <p>
+                    The gym reserves the right to amend these terms at any time.
+                    Members will be notified of significant changes with
+                    reasonable notice. Continued use of the facilities after
+                    notification constitutes acceptance of the updated terms.
+                  </p>
+                </section>
+              </div>
+              <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowTermsModal(false)}
+                  className="border-white/15 bg-transparent text-white hover:bg-white/10"
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setTermChecks((prev) =>
+                      prev.map((item, i) => (i === 0 ? true : item)),
+                    );
+                    setShowTermsModal(false);
+                  }}
+                  className="btn-gradient text-white flex-1"
+                >
+                  I Agree to the Terms &amp; Conditions
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
-        {step < 3 ? (
-          <Button
-            type="button"
-            onClick={goNext}
-            className="btn-gradient text-white"
-          >
-            Next
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onClick={submit}
-            disabled={isBusy || !!success}
-            className="btn-gradient text-white"
-          >
-            {isBusy ? "Submitting..." : "Sign & Confirm"}
-          </Button>
+
+        {step === 3 && (
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_320px] w-full max-w-4xl mx-auto">
+            {/* Left: terms + signature */}
+            <div className="space-y-4">
+              <div className="rounded-lg bg-white/5 p-4">
+                <p className="mb-4 text-sm leading-relaxed text-white/65">
+                  {content.terms_text}
+                </p>
+                <div className="space-y-3 rounded-md bg-white/10 p-4">
+                  {/* First checkbox opens terms modal */}
+                  <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-white/80">
+                    <Checkbox
+                      checked={termChecks[0]}
+                      onCheckedChange={() => {
+                        if (!termChecks[0]) {
+                          setShowTermsModal(true);
+                        } else {
+                          setTermChecks((prev) =>
+                            prev.map((item, i) => (i === 0 ? false : item)),
+                          );
+                        }
+                      }}
+                      className="mt-0.5 border-white/30 data-[state=checked]:bg-red-700"
+                    />
+                    <span>
+                      {content.terms_checkbox_1}{" "}
+                      <button
+                        type="button"
+                        onClick={() => setShowTermsModal(true)}
+                        className="underline text-red-400 hover:text-red-300 text-xs font-medium ml-1"
+                      >
+                        {termChecks[0] ? "(view terms)" : "Read Terms →"}
+                      </button>
+                    </span>
+                  </label>
+                  {/* Second checkbox */}
+                  <CheckRow
+                    label={content.terms_checkbox_2}
+                    checked={termChecks[1]}
+                    onCheckedChange={(checked) =>
+                      setTermChecks((prev) =>
+                        prev.map((item, i) => (i === 1 ? checked : item)),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div className="rounded-lg bg-white/5 p-4">
+                {signatureDataUrl ? (
+                  <div>
+                    <Label className="text-white/70 mb-2 block">
+                      Your Signature{" "}
+                      <span className="text-green-400 text-xs">
+                        (signed via contract)
+                      </span>
+                    </Label>
+                    <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] overflow-hidden flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={signatureDataUrl}
+                        alt="Your signature"
+                        className="h-full w-full object-contain"
+                        style={{ filter: "invert(1)" }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] flex items-center justify-center text-white/30 text-sm">
+                    No signature found — please complete the contract step.
+                  </div>
+                )}
+                <div className="mt-4 rounded-md bg-white/10 p-3">
+                  <CheckRow
+                    label={content.terms_final_checkbox}
+                    checked={termChecks[2]}
+                    onCheckedChange={(checked) =>
+                      setTermChecks((prev) =>
+                        prev.map((item, i) => (i === 2 ? checked : item)),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Right: total */}
+            <div className="flex flex-col justify-start">
+              <TotalBox
+                currency={currency}
+                plan={selectedPlan}
+                additionalPlans={selectedAdditionalPlans}
+                registrationFee={registrationFee}
+                discountAmount={discountAmount}
+                discountLabel={discountLabel}
+                total={frequencyAdjustedTotal}
+                upfrontTotal={total}
+                paymentFrequency={paymentFrequency}
+                totalPlanMonths={totalPlanMonths}
+              />
+            </div>
+          </div>
         )}
+
+        <div
+          className={`mt-3 flex gap-3 w-full max-w-4xl mx-auto ${step === 1 ? "hidden" : step === 0 ? "justify-end" : "justify-between"}`}
+        >
+          {step > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isBusy}
+              onClick={() => setStep((prev) => Math.max(prev - 1, 0) as Step)}
+              className="border-white/15 bg-transparent text-white hover:bg-white/10"
+            >
+              Back
+            </Button>
+          )}
+          {step < 3 ? (
+            <Button
+              type="button"
+              onClick={goNext}
+              className="btn-gradient text-white"
+            >
+              Next
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={isBusy || !!success}
+              className="btn-gradient text-white"
+            >
+              {isBusy ? "Submitting..." : "Sign & Confirm"}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
