@@ -1103,7 +1103,7 @@ export function StepperRegistrationForm({
                   {[
                     {
                       value: "UPFRONT" as const,
-                      label: "Upfront",
+                      label: "Yearly",
                       unit: "" as const,
                       minMonths: 1,
                     },
@@ -1118,12 +1118,6 @@ export function StepperRegistrationForm({
                       label: "Quarterly",
                       unit: "/qtr" as const,
                       minMonths: 3,
-                    },
-                    {
-                      value: "YEARLY" as const,
-                      label: "Yearly",
-                      unit: "/yr" as const,
-                      minMonths: 12,
                     },
                   ]
                     .filter(

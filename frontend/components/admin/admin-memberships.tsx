@@ -403,8 +403,10 @@ export function AdminMemberships() {
                         <span className="text-xs border border-blue-500/20 bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-full font-medium">
                           {periodInfo
                             ? periodInfo.label
-                            : m.paymentFrequency.charAt(0) +
-                              m.paymentFrequency.slice(1).toLowerCase()}
+                            : m.paymentFrequency.toUpperCase() === "UPFRONT"
+                              ? "Yearly"
+                              : m.paymentFrequency.charAt(0) +
+                                m.paymentFrequency.slice(1).toLowerCase()}
                         </span>
                       )}
                       {periodInfo && (
@@ -434,8 +436,10 @@ export function AdminMemberships() {
                     <span>
                       Billing frequency:{" "}
                       <span className="text-white/70 font-medium capitalize">
-                        {m.paymentFrequency.charAt(0) +
-                          m.paymentFrequency.slice(1).toLowerCase()}
+                        {m.paymentFrequency.toUpperCase() === "UPFRONT"
+                          ? "Yearly"
+                          : m.paymentFrequency.charAt(0) +
+                            m.paymentFrequency.slice(1).toLowerCase()}
                       </span>
                     </span>
                   )}

@@ -203,8 +203,10 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
             ? "Quarterly"
             : data.paymentFrequency === "YEARLY"
               ? "Yearly"
-              : data.paymentFrequency.charAt(0) +
-                data.paymentFrequency.slice(1).toLowerCase();
+              : data.paymentFrequency === "UPFRONT"
+                ? "Yearly"
+                : data.paymentFrequency.charAt(0) +
+                  data.paymentFrequency.slice(1).toLowerCase();
       row(`${freqLabel} Payment`, money(data.currency, data.periodicAmount));
     }
 

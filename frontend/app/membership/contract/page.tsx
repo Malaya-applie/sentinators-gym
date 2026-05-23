@@ -593,9 +593,7 @@ export default function MembershipContractPage() {
                     <span>{money(currency, total)}</span>
                   </div>
                   <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-3">
-                    {(
-                      ["UPFRONT", "MONTHLY", "QUARTERLY", "YEARLY"] as const
-                    ).map((f) => (
+                    {(["UPFRONT", "MONTHLY", "QUARTERLY"] as const).map((f) => (
                       <label
                         key={f}
                         className="flex items-center gap-1.5 cursor-default text-gray-900"
@@ -608,7 +606,7 @@ export default function MembershipContractPage() {
                         />
                         <span>
                           {f === "UPFRONT"
-                            ? "Upfront"
+                            ? "Yearly"
                             : f.charAt(0) + f.slice(1).toLowerCase()}
                         </span>
                       </label>

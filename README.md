@@ -267,14 +267,13 @@ Each `MembershipPlan` has three price fields:
 
 ### Payment Frequencies
 
-A member can choose one of four payment frequencies during registration:
+A member can choose one of three payment frequencies during registration:
 
 | Frequency | Value       | Description                                     |
 | --------- | ----------- | ----------------------------------------------- |
-| Upfront   | `UPFRONT`   | Pay the full amount once at the time of joining |
+| Yearly    | `UPFRONT`   | Pay the full amount once at the time of joining |
 | Monthly   | `MONTHLY`   | Pay a fixed amount every month                  |
 | Quarterly | `QUARTERLY` | Pay a fixed amount every 3 months               |
-| Yearly    | `YEARLY`    | Yearly billing (uses base `price` field)        |
 
 ---
 
@@ -291,12 +290,11 @@ Where **Plan Charge** depends on the selected frequency:
 | `UPFRONT`   | `plan.price`                                                   |
 | `MONTHLY`   | `plan.monthlyPrice × totalPlanMonths` (if monthlyPrice is set) |
 | `QUARTERLY` | `plan.quarterlyPrice × floor(totalPlanMonths / 3)` (if set)    |
-| `YEARLY`    | `plan.price` (upfront price used as-is)                        |
 
 **Full formula:**
 
 ```
-UPFRONT:
+UPFRONT (displayed as "Yearly" — pay full amount at once):
   total = plan.price + additionalTotal + registrationFee − discountAmount
 
 MONTHLY (when monthlyPrice is set):
@@ -306,7 +304,7 @@ QUARTERLY (when quarterlyPrice is set):
   quarters = floor(totalPlanMonths / 3)
   total = (plan.quarterlyPrice × quarters) + additionalTotal + registrationFee − discountAmount
 
-YEARLY / fallback:
+Fallback (MONTHLY/QUARTERLY without explicit price set):
   total = plan.price + additionalTotal + registrationFee − discountAmount
 ```
 
@@ -318,12 +316,11 @@ YEARLY / fallback:
 
 This is the installment amount shown on the signed contract and in the confirmation email.
 
-| Frequency   | Per-period amount                                                   |
-| ----------- | ------------------------------------------------------------------- |
-| `UPFRONT`   | `null` — no periodic payments, shown as lump sum                    |
-| `MONTHLY`   | `plan.monthlyPrice` (if set), else `plan.price / totalPlanMonths`   |
-| `QUARTERLY` | `plan.quarterlyPrice` (if set), else `plan.price / floor(months/3)` |
-| `YEARLY`    | `plan.price / ceil(months/12)`                                      |
+| Frequency   | Per-period amount                                                    |
+| ----------- | -------------------------------------------------------------------- |
+| `UPFRONT`   | `null` — no periodic payments, shown as lump sum (labelled "Yearly") |
+| `MONTHLY`   | `plan.monthlyPrice` (if set), else `plan.price / totalPlanMonths`    |
+| `QUARTERLY` | `plan.quarterlyPrice` (if set), else `plan.price / floor(months/3)`  |
 
 ---
 
@@ -333,18 +330,17 @@ This is the installment amount shown on the signed contract and in the confirmat
 `price = CHF 388`, `monthlyPrice = CHF 70`, `quarterlyPrice = CHF 200`  
 Add-ons: CHF 0 | Registration fee: CHF 30 | Discount: CHF 0
 
-| Frequency | Calculation                        | Total   | Per-period   |
-| --------- | ---------------------------------- | ------- | ------------ |
-| Upfront   | 388 + 30                           | CHF 418 | —            |
-| Monthly   | (70 × 6) + 30 = 420 + 30           | CHF 450 | CHF 70 /mo   |
-| Quarterly | (200 × 2) + 30 = 400 + 30          | CHF 430 | CHF 200 /qtr |
-| Yearly    | 388 + 30 (< 12 months, uses price) | CHF 418 | CHF 418 /yr  |
+| Frequency          | Calculation               | Total   | Per-period   |
+| ------------------ | ------------------------- | ------- | ------------ |
+| Yearly (= UPFRONT) | 388 + 30                  | CHF 418 | —            |
+| Monthly            | (70 × 6) + 30 = 420 + 30  | CHF 450 | CHF 70 /mo   |
+| Quarterly          | (200 × 2) + 30 = 400 + 30 | CHF 430 | CHF 200 /qtr |
 
 ---
 
 ### Auto-reset Rules
 
-- If a plan duration is **less than 3 months**, Quarterly is not available — the frequency is auto-reset to **Upfront**.
+- If a plan duration is **less than 3 months**, Quarterly is not available — the frequency is auto-reset to **Yearly** (UPFRONT).
 - Prices are validated server-side: `monthlyPrice` and `quarterlyPrice` cannot be negative (`Math.max(0, value)`).
 - If `monthlyPrice` / `quarterlyPrice` is saved as `0` in the admin panel, it is stored as `null` (treated as "not set").
 

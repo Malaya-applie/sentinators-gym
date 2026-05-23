@@ -460,7 +460,7 @@ router.post(
             : paymentFrequency === "YEARLY"
               ? "Yearly"
               : paymentFrequency === "UPFRONT"
-                ? "Upfront (full payment)"
+                ? "Yearly (full payment)"
                 : String(paymentFrequency);
       const periodicLine =
         paymentFrequency !== "UPFRONT" &&
