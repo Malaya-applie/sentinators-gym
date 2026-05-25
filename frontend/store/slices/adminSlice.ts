@@ -45,7 +45,7 @@ export interface AdminMembership {
   registrationDetails?: Record<string, unknown>;
   notes?: string;
   createdAt: string;
-  user: { id: number; name: string; email: string };
+  user: { id: number; firstName: string; lastName: string; email: string };
   plan: {
     id: number;
     name: string;
@@ -248,6 +248,33 @@ export const fetchAdminOrders = createAsyncThunk(
   },
 );
 
+export const renewMembership = createAsyncThunk(
+  "admin/renewMembership",
+  async (
+    data: {
+      userId: number;
+      planId: number;
+      additionalPlanIds?: number[];
+      startDate?: string;
+      paymentFrequency?: string;
+      registrationFee?: number;
+      totalAmount?: number;
+      notes?: string;
+      signatureDataUrl?: string;
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const res = await adminApi().post("/admin/memberships/renew", data);
+      return res.data.purchase as AdminMembership;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.error || "Failed to renew membership",
+      );
+    }
+  },
+);
+
 export const updateOrderStatus = createAsyncThunk(
   "admin/updateOrder",
   async (
@@ -384,6 +411,19 @@ const adminSlice = createSlice({
         if (idx !== -1) state.orders[idx] = action.payload;
       })
       .addCase(updateOrderStatus.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      });
+
+    builder
+      .addCase(renewMembership.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(renewMembership.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.memberships.unshift(action.payload);
+      })
+      .addCase(renewMembership.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       });

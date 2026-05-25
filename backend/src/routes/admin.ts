@@ -290,6 +290,129 @@ router.patch(
   },
 );
 
+// ─── POST /api/admin/memberships/renew ──────────────────
+// body: { userId, planId, additionalPlanIds?, startDate, paymentFrequency, registrationFee?, totalAmount?, notes? }
+router.post(
+  "/memberships/renew",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const {
+        userId,
+        planId,
+        additionalPlanIds = [],
+        startDate,
+        paymentFrequency = "MONTHLY",
+        registrationFee = 0,
+        totalAmount,
+        notes,
+        signatureDataUrl,
+      } = req.body;
+
+      if (!userId || !planId) {
+        res.status(400).json({ error: "userId and planId are required" });
+        return;
+      }
+
+      const [user, plan] = await Promise.all([
+        prisma.user.findUnique({ where: { id: Number(userId) } }),
+        prisma.membershipPlan.findUnique({ where: { id: Number(planId) } }),
+      ]);
+
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+      if (!plan) {
+        res.status(404).json({ error: "Plan not found" });
+        return;
+      }
+
+      // Compute end date from start + plan duration + additional plan durations
+      let parsedStart: Date | null = null;
+      if (startDate) {
+        const d = new Date(startDate);
+        if (!Number.isNaN(d.getTime())) parsedStart = d;
+      }
+
+      let parsedEnd: Date | null = null;
+      if (parsedStart) {
+        const allIds: number[] = Array.isArray(additionalPlanIds)
+          ? additionalPlanIds.map(Number).filter(Boolean)
+          : [];
+
+        const addOns = allIds.length
+          ? await prisma.membershipPlan.findMany({
+              where: { id: { in: allIds } },
+            })
+          : [];
+
+        const totalMonths = [plan, ...addOns].reduce((sum, p) => {
+          const m = p.duration
+            .toLowerCase()
+            .trim()
+            .match(/^(\d+)\s*(month|year|day|week)/);
+          if (!m) return sum;
+          const num = parseInt(m[1]);
+          const unit = m[2];
+          if (unit === "month") return sum + num;
+          if (unit === "year") return sum + num * 12;
+          if (unit === "week") return sum + Math.round((num * 7) / 30.44);
+          if (unit === "day") return sum + Math.round(num / 30.44);
+          return sum;
+        }, 0);
+
+        if (totalMonths > 0) {
+          const end = new Date(parsedStart);
+          end.setMonth(end.getMonth() + totalMonths);
+          parsedEnd = end;
+        }
+      }
+
+      const contractNumber =
+        "CNT-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const customerNumber =
+        "CUS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      const purchase = await prisma.membershipPurchase.create({
+        data: {
+          userId: Number(userId),
+          planId: Number(planId),
+          additionalPlanIds: Array.isArray(additionalPlanIds)
+            ? additionalPlanIds.map(Number).filter(Boolean)
+            : [],
+          status: "APPROVED",
+          registrationFee: Number(registrationFee) || 0,
+          totalAmount: totalAmount != null ? Number(totalAmount) : null,
+          startDate: parsedStart,
+          endDate: parsedEnd,
+          paymentFrequency,
+          notes: notes || null,
+          signatureDataUrl: signatureDataUrl || null,
+          acceptedAgreement: true,
+          acceptedTerms: true,
+          registrationDetails: {
+            contractNumber,
+            customerNumber,
+            renewedByAdmin: true,
+          },
+        },
+        include: {
+          user: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+          plan: true,
+        },
+      });
+
+      res.json({ message: "Membership renewed successfully", purchase });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to renew membership" });
+    }
+  },
+);
+
 // ─── GET /api/admin/orders ───────────────────────────────
 router.get(
   "/orders",

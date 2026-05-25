@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchAdminMemberships,
   updateMembershipStatus,
+  renewMembership,
+  AdminMembership,
 } from "@/store/slices/adminSlice";
 import {
   CreditCard,
@@ -13,10 +15,47 @@ import {
   Filter,
   Search,
   ChevronDown,
+  RefreshCw,
+  AlertCircle,
+  Clock,
+  Eraser,
+  ArrowLeft,
 } from "lucide-react";
+import axios from "axios";
+
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+function adminApi() {
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("gym_admin_token")
+      : null;
+  return axios.create({
+    baseURL: BASE,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
 
 const STATUS_FILTERS = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
 const FREQUENCY_FILTERS = ["ALL", "MONTHLY", "QUARTERLY", "ANNUALLY"] as const;
+const EXPIRY_FILTERS = ["ALL", "EXPIRING_THIS_MONTH", "EXPIRED"] as const;
+
+type ExpiryFilter = (typeof EXPIRY_FILTERS)[number];
+
+interface MembershipPlan {
+  id: number;
+  name: string;
+  duration: string;
+  price: number;
+  monthlyPrice?: number | null;
+  quarterlyPrice?: number | null;
+  currency: string;
+  features: string[];
+  category: string;
+}
 
 // Converts a duration string like "6 months" / "1 year" to months.
 function parseDurationToMonths(duration: string): number {
@@ -70,6 +109,1099 @@ const statusBadge = (status: string) => {
   }
 };
 
+function getExpiryStatus(endDate?: string): "active" | "expiring" | "expired" {
+  if (!endDate) return "active";
+  const end = new Date(endDate);
+  const now = new Date();
+  if (end < now) return "expired";
+  const nextMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate(),
+  );
+  if (end <= nextMonth) return "expiring";
+  return "active";
+}
+
+// ─── Renew Modal helpers (same as stepper) ───────────────
+function money(currency: string, amount: number) {
+  return `${currency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+function planTitle(plan: MembershipPlan) {
+  return plan.name || plan.duration;
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function ContractField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-sm">
+      <span className="text-gray-600 shrink-0 font-medium">{label}:</span>
+      <span className="font-semibold text-gray-900 break-all">{value}</span>
+    </div>
+  );
+}
+
+// ─── Renew Modal ───────────────────────────────────────
+function RenewModal({
+  membership,
+  onClose,
+  onRenewed,
+}: {
+  membership: AdminMembership;
+  onClose: () => void;
+  onRenewed: () => void;
+}) {
+  const dispatch = useAppDispatch();
+  const { actionLoading } = useAppSelector((s) => s.admin);
+
+  const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [planCategories, setPlanCategories] = useState<
+    { id: number; name: string; label: string; order: number }[]
+  >([]);
+  const [activePlanCategory, setActivePlanCategory] = useState("MEMBERSHIP");
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [additionalPlanIds, setAdditionalPlanIds] = useState<number[]>([]);
+  const [startDate, setStartDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [frequency, setFrequency] = useState<
+    "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT"
+  >("UPFRONT");
+  const [notes, setNotes] = useState("");
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [error, setError] = useState("");
+
+  // Contract step state
+  const [modalStep, setModalStep] = useState<"plan" | "contract">("plan");
+  const [endDate, setEndDate] = useState("");
+  const [contractNumber] = useState(
+    () => `CNT-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+  );
+  const [customerNumber] = useState(
+    () => `MBR-${Math.floor(Math.random() * 90000 + 10000)}`,
+  );
+
+  // Contract signature canvas (dark ink on white — matches web contract page)
+  const contractCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const contractDrawingRef = useRef(false);
+  const [contractSig, setContractSig] = useState("");
+
+  function contractPoint(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = contractCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function beginContractDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = contractCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx || !canvas) return;
+    canvas.setPointerCapture(e.pointerId);
+    const { x, y } = contractPoint(e);
+    contractDrawingRef.current = true;
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  function drawContractSig(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!contractDrawingRef.current) return;
+    const ctx = contractCanvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = contractPoint(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  function endContractDraw() {
+    if (!contractDrawingRef.current) return;
+    contractDrawingRef.current = false;
+    const dataUrl = contractCanvasRef.current?.toDataURL("image/png") || "";
+    if (dataUrl) setContractSig(dataUrl);
+  }
+
+  function clearContractSig() {
+    const canvas = contractCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setContractSig("");
+  }
+
+  useEffect(() => {
+    setLoadingPlans(true);
+    Promise.all([
+      adminApi().get("/membership/plans"),
+      adminApi().get("/content/plan-categories"),
+    ])
+      .then(([plansRes, catsRes]) => {
+        setPlans(plansRes.data.plans ?? []);
+        setPlanCategories(catsRes.data ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPlans(false));
+  }, []);
+
+  // All categories as grouped plans — same as stepper
+  const groupedPlans = useMemo(
+    () =>
+      planCategories.map((cat) => ({
+        key: cat.name,
+        label: cat.label,
+        title: cat.label,
+        items: plans.filter((p) => p.category === cat.name),
+      })),
+    [plans, planCategories],
+  );
+
+  const selectedPlanGroup =
+    groupedPlans.find((g) => g.key === activePlanCategory) ?? groupedPlans[0];
+
+  // Auto-set active category when groupedPlans loads — same as stepper
+  useEffect(() => {
+    if (
+      !groupedPlans.some((g) => g.key === activePlanCategory) &&
+      groupedPlans.length > 0
+    ) {
+      setActivePlanCategory(groupedPlans[0].key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedPlans]);
+
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
+  const additionalPlans = useMemo(
+    () =>
+      additionalPlanIds
+        .map((id) => plans.find((p) => p.id === id))
+        .filter(Boolean) as MembershipPlan[],
+    [additionalPlanIds, plans],
+  );
+
+  // Total duration in months (main + addons) — same formula as stepper
+  const totalPlanMonths = useMemo(
+    () =>
+      parseDurationToMonths(selectedPlan?.duration ?? "") +
+      additionalPlans.reduce(
+        (s, p) => s + parseDurationToMonths(p.duration),
+        0,
+      ),
+    [selectedPlan, additionalPlans],
+  );
+
+  const additionalTotal = additionalPlans.reduce((s, p) => s + p.price, 0);
+  const subtotal = (selectedPlan?.price ?? 0) + additionalTotal;
+
+  // Frequency-adjusted total — identical to stepper logic
+  const frequencyAdjustedTotal = useMemo(() => {
+    if (!selectedPlan || totalPlanMonths <= 0 || frequency === "UPFRONT")
+      return subtotal;
+    if (
+      frequency === "MONTHLY" &&
+      selectedPlan.monthlyPrice != null &&
+      selectedPlan.monthlyPrice > 0
+    ) {
+      return selectedPlan.monthlyPrice * totalPlanMonths + additionalTotal;
+    }
+    if (
+      frequency === "QUARTERLY" &&
+      selectedPlan.quarterlyPrice != null &&
+      selectedPlan.quarterlyPrice > 0
+    ) {
+      const quarters = Math.floor(totalPlanMonths / 3);
+      return selectedPlan.quarterlyPrice * quarters + additionalTotal;
+    }
+    return subtotal;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlan, totalPlanMonths, frequency, additionalTotal]);
+
+  // Per-period amount — identical to stepper
+  function calcPerPeriod(
+    freq: "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT",
+  ): number | null {
+    if (freq === "UPFRONT" || totalPlanMonths <= 0 || !selectedPlan)
+      return null;
+    const membershipNetCost = subtotal;
+    const fallbackMonthly = membershipNetCost / totalPlanMonths;
+    if (freq === "MONTHLY") {
+      if (selectedPlan.monthlyPrice != null && selectedPlan.monthlyPrice > 0)
+        return selectedPlan.monthlyPrice;
+      return fallbackMonthly;
+    }
+    if (freq === "QUARTERLY") {
+      if (totalPlanMonths < 3) return null;
+      if (
+        selectedPlan.quarterlyPrice != null &&
+        selectedPlan.quarterlyPrice > 0
+      )
+        return selectedPlan.quarterlyPrice;
+      return fallbackMonthly * 3;
+    }
+    if (totalPlanMonths < 12) return null;
+    return fallbackMonthly * 12;
+  }
+
+  // Auto-reset frequency if duration becomes too short — identical to stepper
+  useEffect(() => {
+    if (
+      totalPlanMonths > 0 &&
+      totalPlanMonths < 3 &&
+      frequency !== "MONTHLY" &&
+      frequency !== "UPFRONT"
+    ) {
+      setFrequency("UPFRONT");
+    } else if (
+      totalPlanMonths >= 3 &&
+      totalPlanMonths < 12 &&
+      frequency === "YEARLY"
+    ) {
+      setFrequency("QUARTERLY");
+    }
+  }, [totalPlanMonths, frequency]);
+
+  // Auto-compute end date when plan/addons/startDate changes
+  useEffect(() => {
+    if (!selectedPlan || !startDate) {
+      setEndDate("");
+      return;
+    }
+    const totalMonths =
+      parseDurationToMonths(selectedPlan.duration) +
+      additionalPlans.reduce(
+        (s, p) => s + parseDurationToMonths(p.duration),
+        0,
+      );
+    if (totalMonths > 0) {
+      const d = new Date(startDate + "T00:00:00");
+      d.setMonth(d.getMonth() + totalMonths);
+      setEndDate(d.toISOString().slice(0, 10));
+    } else {
+      setEndDate("");
+    }
+  }, [selectedPlan, additionalPlans, startDate]);
+
+  // Init contract canvas when entering contract step
+  useEffect(() => {
+    if (modalStep !== "contract" || contractSig) return;
+    const t = setTimeout(() => {
+      const canvas = contractCanvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(rect.width * scale);
+      canvas.height = Math.floor(rect.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.scale(scale, scale);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [modalStep, contractSig]);
+
+  function toggleAddon(id: number) {
+    setAdditionalPlanIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  async function handleSubmit() {
+    if (!selectedPlanId) {
+      setError("Please select a plan.");
+      return;
+    }
+    if (!contractSig) {
+      setError("Please sign the contract.");
+      return;
+    }
+    setError("");
+    try {
+      await dispatch(
+        renewMembership({
+          userId: membership.user.id,
+          planId: selectedPlanId,
+          additionalPlanIds,
+          startDate,
+          paymentFrequency: frequency,
+          totalAmount: frequencyAdjustedTotal,
+          notes,
+          signatureDataUrl: contractSig,
+        }),
+      ).unwrap();
+      onRenewed();
+      onClose();
+    } catch (e: any) {
+      setError(e as string);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm">
+      <div
+        className="bg-[#0f0f0f] border border-white/10 rounded-2xl w-full max-w-4xl flex flex-col"
+        style={{ height: "min(92vh, 760px)" }}
+      >
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/8 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-green-500/15 flex items-center justify-center">
+              <RefreshCw size={15} className="text-green-400" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold text-sm leading-tight">
+                Renew Membership
+              </h3>
+              <p className="text-[11px] text-white/35 mt-0.5">
+                {membership.user.firstName} {membership.user.lastName}
+                <span className="text-white/20 mx-1.5">·</span>
+                {membership.user.email}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/30 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/6"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {loadingPlans ? (
+          <div className="flex-1 flex items-center justify-center text-white/30 text-sm">
+            Loading plans…
+          </div>
+        ) : modalStep === "contract" ? (
+          /* ── Contract step ── */
+          <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-4">
+            <button
+              type="button"
+              onClick={() => {
+                setModalStep("plan");
+                setError("");
+              }}
+              className="mb-4 flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-xs transition-colors font-medium"
+            >
+              <ArrowLeft size={14} /> Back to Plan Selection
+            </button>
+
+            <div className="bg-white rounded-lg overflow-hidden shadow-md text-gray-900 max-w-2xl mx-auto">
+              {/* Contract Header */}
+              <div className="bg-[#100a0a] text-white px-5 py-4 flex flex-wrap items-start gap-3">
+                <div className="flex-1 min-w-[130px]">
+                  <p className="text-base font-black tracking-widest text-red-500">
+                    SENTINATORS
+                  </p>
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest">
+                    Keep Pumping Gym
+                  </p>
+                </div>
+                <div className="flex-1 text-center min-w-[150px]">
+                  <p className="text-sm font-black tracking-wide uppercase">
+                    Fitness Membership Contract
+                  </p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
+                    Membership Renewal
+                  </p>
+                </div>
+                <div className="text-right text-xs space-y-1 min-w-[160px]">
+                  <div className="flex items-center justify-end gap-2">
+                    <span className="text-white/50">Contract Number:</span>
+                    <span className="font-mono font-bold">
+                      {contractNumber}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <span className="text-white/50">Customer Number:</span>
+                    <span className="font-mono font-bold">
+                      {customerNumber}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <span className="text-white/50">Date:</span>
+                    <span className="font-semibold">
+                      {new Date().toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contract Body */}
+              <div className="p-4 space-y-4">
+                {/* Sections 1 & 2 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="border border-gray-300 rounded overflow-hidden">
+                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                      1. Member Details
+                    </div>
+                    <div className="p-3 space-y-2">
+                      <ContractField
+                        label="First Name / Surname"
+                        value={
+                          `${membership.user.firstName} ${membership.user.lastName}`.trim() ||
+                          "-"
+                        }
+                      />
+                      <ContractField
+                        label="Address"
+                        value={membership.address || "-"}
+                      />
+                      <ContractField
+                        label="E-Mail"
+                        value={membership.user.email || "-"}
+                      />
+                      <ContractField
+                        label="Emergency Contact"
+                        value={membership.emergencyContact || "-"}
+                      />
+                    </div>
+                  </div>
+                  <div className="border border-gray-300 rounded overflow-hidden">
+                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                      2. Subscription Selection
+                    </div>
+                    <div className="p-3">
+                      <div className="grid grid-cols-2 gap-y-2 mb-3">
+                        {plans
+                          .filter((p) => p.category !== "ADDITIONAL")
+                          .map((plan) => (
+                            <label
+                              key={plan.id}
+                              className="flex items-center gap-1.5 cursor-default text-sm text-gray-900"
+                            >
+                              <input
+                                type="checkbox"
+                                readOnly
+                                checked={selectedPlanId === plan.id}
+                                className="accent-red-700 w-3 h-3"
+                              />
+                              <span>{planTitle(plan)}</span>
+                            </label>
+                          ))}
+                      </div>
+                      <div className="space-y-2 mt-1">
+                        <ContractField
+                          label="Start Date"
+                          value={startDate ? formatDate(startDate) : "-"}
+                        />
+                        <ContractField
+                          label="Valid until"
+                          value={endDate ? formatDate(endDate) : "-"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sections 3 & 4 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="border border-gray-300 rounded overflow-hidden">
+                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                      3. Price Overview
+                    </div>
+                    <div className="p-3 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">
+                          {selectedPlan ? planTitle(selectedPlan) : "Plan"}
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          {selectedPlan
+                            ? money(selectedPlan.currency, selectedPlan.price)
+                            : "-"}
+                        </span>
+                      </div>
+                      {additionalPlans.map((ap) => (
+                        <div key={ap.id} className="flex justify-between">
+                          <span className="text-gray-700">
+                            + {planTitle(ap)}
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            {money(ap.currency, ap.price)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between font-bold pt-2 border-t-2 border-gray-300 text-gray-900">
+                        <span>Total</span>
+                        <span>
+                          {money(
+                            selectedPlan?.currency ?? "",
+                            frequencyAdjustedTotal,
+                          )}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-3">
+                        {(["UPFRONT", "MONTHLY", "QUARTERLY"] as const).map(
+                          (f) => (
+                            <label
+                              key={f}
+                              className="flex items-center gap-1.5 cursor-default text-gray-900"
+                            >
+                              <input
+                                type="checkbox"
+                                readOnly
+                                checked={frequency === f}
+                                className="accent-red-700 w-3 h-3"
+                              />
+                              <span>
+                                {f === "UPFRONT"
+                                  ? "Yearly"
+                                  : f.charAt(0) + f.slice(1).toLowerCase()}
+                              </span>
+                            </label>
+                          ),
+                        )}
+                      </div>
+                      {calcPerPeriod(frequency) !== null &&
+                        frequency !== "UPFRONT" && (
+                          <div className="flex justify-between font-semibold pt-1 text-red-700">
+                            <span>
+                              Due per{" "}
+                              {frequency === "MONTHLY" ? "month" : "quarter"}
+                            </span>
+                            <span>
+                              {money(
+                                selectedPlan?.currency ?? "",
+                                calcPerPeriod(frequency)!,
+                              )}
+                            </span>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                  <div className="border border-gray-300 rounded overflow-hidden">
+                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                      4. Membership Category
+                    </div>
+                    <div className="p-3 space-y-2 text-sm">
+                      {planCategories.map((cat) => (
+                        <label
+                          key={cat.id}
+                          className="flex items-center gap-1.5 cursor-default text-gray-900"
+                        >
+                          <input
+                            type="checkbox"
+                            readOnly
+                            checked={selectedPlan?.category === cat.name}
+                            className="accent-red-700 w-3 h-3"
+                          />
+                          <span>{cat.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 5: Contract Conditions */}
+                <div className="border border-gray-300 rounded overflow-hidden">
+                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                    5. Contract Conditions
+                  </div>
+                  <div className="p-3">
+                    {[
+                      {
+                        title: "Term",
+                        text: "The selected membership begins on the start date and runs for the agreed term. An automatic extension occurs only if no timely cancellation is made.",
+                      },
+                      {
+                        title: "Notice Period",
+                        text: "Cancellation must be declared in writing and must be received at least 4 weeks before the end of the respective term.",
+                      },
+                      {
+                        title: "Payment Obligation",
+                        text: "The membership fee is to be paid in advance according to the chosen payment method and due date. In case of late payment, we reserve the right to charge reminder fees and suspend the membership.",
+                      },
+                      {
+                        title: "House Rules",
+                        text: "The membership is subject to the house rules of the gym. These are posted in the studio and can be viewed on our website. With your signature, you acknowledge these rules.",
+                      },
+                      {
+                        title: "Liability",
+                        text: "The gym is not liable for items brought in. Use of the equipment is at your own risk. Parents are liable for their children.",
+                      },
+                      {
+                        title: "Data Protection",
+                        text: "Your data will be used exclusively for contract processing and member support. Further information can be found in our privacy policy.",
+                      },
+                      {
+                        title: "Health Responsibility",
+                        text: "With your signature, you confirm that you are healthy enough to participate in training. In case of doubt, we recommend a medical clarification.",
+                      },
+                    ].map(({ title, text }) => (
+                      <div
+                        key={title}
+                        className="py-2 border-b border-gray-200 last:border-0"
+                      >
+                        <p className="font-bold text-sm text-gray-900 mb-0.5">
+                          {title}
+                        </p>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section 6: Signatures */}
+                <div className="border border-gray-300 rounded overflow-hidden">
+                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                    6. Signatures
+                  </div>
+                  <div className="p-5 space-y-5">
+                    <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
+                      {/* Place & Date */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                          Place / Date
+                        </span>
+                        <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-[110px]">
+                          <p className="text-base font-bold text-gray-900">
+                            {new Date().toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-auto pt-3 border-t border-gray-300">
+                            Date of signing
+                          </p>
+                        </div>
+                      </div>
+                      {/* Member Signature */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                            Member Signature
+                            {contractSig ? (
+                              <span className="ml-1.5 text-green-600 font-bold">
+                                ✓
+                              </span>
+                            ) : (
+                              <span className="ml-1 text-red-500">*</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={clearContractSig}
+                            className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Eraser size={11} />{" "}
+                            {contractSig ? "Re-sign" : "Clear"}
+                          </button>
+                        </div>
+                        {contractSig ? (
+                          <div className="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden min-h-[110px] flex items-center justify-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={contractSig}
+                              alt="Member signature"
+                              className="max-h-[110px] w-full object-contain p-1"
+                            />
+                          </div>
+                        ) : (
+                          <div className="relative rounded-lg border-2 border-dashed border-gray-300 bg-white overflow-hidden min-h-[110px] hover:border-gray-400 transition-colors">
+                            <canvas
+                              ref={contractCanvasRef}
+                              onPointerDown={beginContractDraw}
+                              onPointerMove={drawContractSig}
+                              onPointerUp={endContractDraw}
+                              onPointerLeave={endContractDraw}
+                              className="h-[110px] w-full touch-none cursor-crosshair"
+                            />
+                            <div className="absolute bottom-2 left-3 right-3 border-b border-gray-300 pointer-events-none" />
+                            <p className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-gray-300 pointer-events-none select-none">
+                              Sign above
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      {/* Gym Signature */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                          Gym Signature
+                        </span>
+                        <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 min-h-[110px] flex flex-col items-center justify-center">
+                          <p className="text-xs font-medium text-gray-400">
+                            To be signed by gym staff
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {error && (
+                      <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 font-medium">
+                        {error}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 justify-between items-center pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModalStep("plan");
+                          setError("");
+                        }}
+                        className="px-5 py-2.5 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={actionLoading || !contractSig}
+                        className="px-6 py-2.5 rounded-lg bg-red-700 text-white text-sm font-bold hover:bg-red-800 transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {actionLoading ? (
+                          <>
+                            <RefreshCw size={15} className="animate-spin" />{" "}
+                            Processing…
+                          </>
+                        ) : (
+                          "Accept & Renew Membership"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ── Two-panel body (plan step) ── */
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            {/* LEFT — Plan selection (scrollable) — identical structure to stepper */}
+            <div className="flex-1 overflow-y-auto border-r border-white/6 px-5 py-4 min-w-0">
+              {groupedPlans.every((g) => g.items.length === 0) ? (
+                <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60 text-sm">
+                  No active plans are available right now.
+                </div>
+              ) : (
+                <div>
+                  {/* Tab bar — same as stepper */}
+                  <div className="mb-3 flex flex-wrap justify-center">
+                    <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/5 p-1">
+                      {groupedPlans.map((group) => (
+                        <button
+                          key={group.key}
+                          type="button"
+                          onClick={() => setActivePlanCategory(group.key)}
+                          className={`rounded-full px-5 py-2 text-xs font-semibold transition sm:text-sm ${
+                            activePlanCategory === group.key
+                              ? "bg-red-700 text-white shadow-[0_0_18px_rgba(220,38,38,0.32)]"
+                              : "text-white/55 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {group.label}
+                          {group.key === "ADDITIONAL" &&
+                            additionalPlanIds.length > 0 && (
+                              <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white">
+                                {additionalPlanIds.length}
+                              </span>
+                            )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <h3 className="mb-4 text-center text-sm font-semibold">
+                    {selectedPlanGroup?.title ?? "Select a Plan"}
+                    {activePlanCategory === "ADDITIONAL" && (
+                      <span className="ml-2 text-xs font-normal text-white/40">
+                        (optional — select multiple)
+                      </span>
+                    )}
+                  </h3>
+
+                  {!selectedPlanGroup ||
+                  selectedPlanGroup.items.length === 0 ? (
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60 text-sm">
+                      No plans available in this category.
+                    </div>
+                  ) : activePlanCategory === "ADDITIONAL" ? (
+                    /* ADDITIONAL tab — multi-select, same as stepper */
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {selectedPlanGroup.items.map((plan) => {
+                        const isSelected = additionalPlanIds.includes(plan.id);
+                        return (
+                          <button
+                            type="button"
+                            key={plan.id}
+                            onClick={() => toggleAddon(plan.id)}
+                            className={`rounded-lg border p-3 text-left transition w-full relative ${
+                              isSelected
+                                ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
+                                : "border-white/10 bg-white/5 hover:border-white/30"
+                            }`}
+                          >
+                            {isSelected && (
+                              <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600">
+                                <Check className="h-3 w-3 text-white" />
+                              </span>
+                            )}
+                            <p className="text-base font-semibold pr-6">
+                              {plan.duration}
+                            </p>
+                            <p className="text-sm text-white/55">
+                              {planTitle(plan)}
+                            </p>
+                            <p className="mt-2 text-lg font-bold">
+                              {money(plan.currency, plan.price)}
+                            </p>
+                            <ul className="mt-3 space-y-1 text-sm text-white/65">
+                              {plan.features.slice(0, 3).map((feature) => (
+                                <li key={feature} className="flex gap-2">
+                                  <Check className="mt-0.5 h-4 w-4 text-red-400" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Main categories — single select, same as stepper */
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {selectedPlanGroup.items.map((plan) => {
+                        const selected = selectedPlanId === plan.id;
+                        return (
+                          <div
+                            key={plan.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedPlanId(plan.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ")
+                                setSelectedPlanId(plan.id);
+                            }}
+                            className={`rounded-lg border p-3 text-left transition w-full cursor-pointer ${
+                              selected
+                                ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
+                                : "border-white/10 bg-white/5 hover:border-white/30"
+                            }`}
+                          >
+                            <p className="text-base font-semibold">
+                              {plan.duration}
+                            </p>
+                            <p className="text-sm text-white/55">
+                              {planTitle(plan)}
+                            </p>
+                            <p className="mt-2 text-lg font-bold">
+                              {money(plan.currency, plan.price)}
+                            </p>
+                            <ul className="mt-3 space-y-1 text-sm text-white/65">
+                              {plan.features.slice(0, 3).map((feature) => (
+                                <li key={feature} className="flex gap-2">
+                                  <Check className="mt-0.5 h-4 w-4 text-red-400" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT — Settings + Signature + Summary (scrollable) */}
+            <div className="w-72 shrink-0 overflow-y-auto px-4 py-4 space-y-4 flex flex-col">
+              {/* Frequency */}
+              <div>
+                <p className="text-[10px] text-white/25 uppercase tracking-widest font-semibold mb-2">
+                  Payment Frequency
+                </p>
+                <div className="space-y-1.5">
+                  {[
+                    {
+                      value: "UPFRONT" as const,
+                      label: "Yearly",
+                      unit: "",
+                      minMonths: 1,
+                    },
+                    {
+                      value: "MONTHLY" as const,
+                      label: "Monthly",
+                      unit: "/mo",
+                      minMonths: 1,
+                    },
+                    {
+                      value: "QUARTERLY" as const,
+                      label: "Quarterly",
+                      unit: "/qtr",
+                      minMonths: 3,
+                    },
+                  ]
+                    .filter(
+                      ({ minMonths }) =>
+                        totalPlanMonths === 0 || totalPlanMonths >= minMonths,
+                    )
+                    .map(({ value, label, unit }) => {
+                      const periodAmt =
+                        value === "UPFRONT"
+                          ? frequencyAdjustedTotal
+                          : calcPerPeriod(value);
+                      const currency = selectedPlan?.currency ?? "";
+                      return (
+                        <label
+                          key={value}
+                          className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 transition ${
+                            frequency === value
+                              ? "border-green-500/60 bg-green-950/40"
+                              : "border-white/8 bg-white/3 hover:border-white/18"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="renewFrequency"
+                            value={value}
+                            checked={frequency === value}
+                            onChange={() => setFrequency(value)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                              frequency === value
+                                ? "border-green-500 bg-green-600"
+                                : "border-white/25"
+                            }`}
+                          >
+                            {frequency === value && (
+                              <span className="h-1 w-1 rounded-full bg-white" />
+                            )}
+                          </span>
+                          <span className="flex-1 text-xs font-medium text-white/80">
+                            {label}
+                          </span>
+                          {periodAmt !== null && currency && (
+                            <span className="text-[11px] font-semibold text-white/60">
+                              {currency} {periodAmt.toFixed(2)}
+                              {unit && (
+                                <span className="text-white/30 font-normal">
+                                  {unit}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Start date + Notes */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-white/25 uppercase tracking-widest font-semibold block mb-1.5">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full bg-[#161616] border border-white/8 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-white/25 transition-colors [color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/25 uppercase tracking-widest font-semibold block mb-1.5">
+                    Admin Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional note…"
+                    className="w-full bg-[#161616] border border-white/8 text-white text-xs rounded-lg px-3 py-2 placeholder:text-white/18 focus:outline-none focus:border-white/25 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Summary */}
+              {selectedPlan && (
+                <div className="bg-white/2 border border-white/8 rounded-xl p-3 space-y-1.5 text-[11px]">
+                  <div className="flex justify-between text-white/45">
+                    <span>Plan</span>
+                    <span className="text-white/70 font-medium">
+                      {selectedPlan.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-white/45">
+                    <span>Duration</span>
+                    <span className="text-white/70 font-medium">
+                      {selectedPlan.duration}
+                    </span>
+                  </div>
+                  {frequency !== "UPFRONT" &&
+                    calcPerPeriod(frequency) !== null && (
+                      <div className="flex justify-between text-white/45">
+                        <span>
+                          Per {frequency === "MONTHLY" ? "month" : "quarter"}
+                        </span>
+                        <span className="text-white/70 font-medium">
+                          {selectedPlan.currency}{" "}
+                          {calcPerPeriod(frequency)!.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  <div className="flex justify-between font-semibold text-white border-t border-white/8 pt-2 mt-1">
+                    <span>Total</span>
+                    <span className="text-green-400">
+                      {selectedPlan.currency}{" "}
+                      {frequencyAdjustedTotal.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Error */}
+              {error && (
+                <p className="text-red-400 text-[11px] flex items-center gap-1.5 bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2">
+                  <AlertCircle size={12} className="shrink-0" /> {error}
+                </p>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 mt-auto pt-2">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-2.5 text-xs rounded-xl border border-white/10 text-white/40 hover:text-white hover:border-white/20 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!selectedPlanId) {
+                      setError("Please select a plan first.");
+                      return;
+                    }
+                    setError("");
+                    setModalStep("contract");
+                  }}
+                  disabled={!selectedPlanId}
+                  className="flex-1 py-2.5 text-xs rounded-xl bg-red-700/20 hover:bg-red-700/30 text-red-400 border border-red-700/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 font-semibold"
+                >
+                  View & Sign Contract →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AdminMemberships() {
   const dispatch = useAppDispatch();
   const { memberships, loading, actionLoading } = useAppSelector(
@@ -86,6 +1218,8 @@ export function AdminMemberships() {
   const [startDateFrom, setStartDateFrom] = useState("");
   const [startDateTo, setStartDateTo] = useState("");
   const [notesMap, setNotesMap] = useState<Record<number, string>>({});
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("ALL");
+  const [renewTarget, setRenewTarget] = useState<AdminMembership | null>(null);
 
   useEffect(() => {
     dispatch(fetchAdminMemberships(filter === "ALL" ? undefined : filter));
@@ -101,6 +1235,22 @@ export function AdminMemberships() {
         return true;
       })
       .sort();
+  }, [memberships]);
+
+  // For each user, only the membership with the latest createdAt can be renewed.
+  // Once renewed, the old record stays but loses the Renew button.
+  const latestApprovedIdByUser = useMemo(() => {
+    const map = new Map<number, { id: number; createdAt: string }>();
+    for (const m of memberships) {
+      if (m.status !== "APPROVED") continue;
+      const existing = map.get(m.user.id);
+      if (!existing || m.createdAt > existing.createdAt) {
+        map.set(m.user.id, { id: m.id, createdAt: m.createdAt });
+      }
+    }
+    const ids = new Set<number>();
+    map.forEach((v) => ids.add(v.id));
+    return ids;
   }, [memberships]);
 
   const filtered = useMemo(() => {
@@ -123,6 +1273,12 @@ export function AdminMemberships() {
       if (startDateTo && m.startDate) {
         if (new Date(m.startDate) > new Date(startDateTo)) return false;
       }
+      if (expiryFilter !== "ALL") {
+        const es = getExpiryStatus(m.endDate);
+        if (expiryFilter === "EXPIRING_THIS_MONTH" && es !== "expiring")
+          return false;
+        if (expiryFilter === "EXPIRED" && es !== "expired") return false;
+      }
       return true;
     });
   }, [
@@ -132,6 +1288,7 @@ export function AdminMemberships() {
     userSearch,
     startDateFrom,
     startDateTo,
+    expiryFilter,
   ]);
 
   const handleAction = (id: number, status: "APPROVED" | "REJECTED") => {
@@ -163,6 +1320,7 @@ export function AdminMemberships() {
           </div>
           {(filter !== "ALL" ||
             frequencyFilter !== "ALL" ||
+            expiryFilter !== "ALL" ||
             planSearch ||
             userSearch ||
             startDateFrom ||
@@ -171,6 +1329,7 @@ export function AdminMemberships() {
               onClick={() => {
                 setFilter("ALL");
                 setFrequencyFilter("ALL");
+                setExpiryFilter("ALL");
                 setPlanSearch("");
                 setUserSearch("");
                 setStartDateFrom("");
@@ -236,6 +1395,51 @@ export function AdminMemberships() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-white/5" />
+
+          {/* Row 1b: Expiry filter */}
+          <div className="space-y-2">
+            <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium flex items-center gap-1.5">
+              <Clock size={10} />
+              Subscription Expiry
+            </p>
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                onClick={() => setExpiryFilter("ALL")}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-all font-medium ${
+                  expiryFilter === "ALL"
+                    ? "bg-white/10 text-white border-white/20"
+                    : "bg-transparent text-white/35 border-white/8 hover:border-white/20 hover:text-white/70"
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setExpiryFilter("EXPIRING_THIS_MONTH")}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-all font-medium flex items-center gap-1 ${
+                  expiryFilter === "EXPIRING_THIS_MONTH"
+                    ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
+                    : "bg-transparent text-white/35 border-white/8 hover:border-white/20 hover:text-white/70"
+                }`}
+              >
+                <Clock size={11} />
+                Expiring This Month
+              </button>
+              <button
+                onClick={() => setExpiryFilter("EXPIRED")}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-all font-medium flex items-center gap-1 ${
+                  expiryFilter === "EXPIRED"
+                    ? "bg-red-500/15 text-red-400 border-red-500/30"
+                    : "bg-transparent text-white/35 border-white/8 hover:border-white/20 hover:text-white/70"
+                }`}
+              >
+                <AlertCircle size={11} />
+                Expired
+              </button>
             </div>
           </div>
 
@@ -353,6 +1557,25 @@ export function AdminMemberships() {
                       {String(m.registrationDetails.customerNumber)}
                     </span>
                   )}
+                  {/* Expiry badge */}
+                  {m.status === "APPROVED" &&
+                    m.endDate &&
+                    (() => {
+                      const es = getExpiryStatus(m.endDate);
+                      if (es === "expired")
+                        return (
+                          <span className="text-xs border border-red-500/30 bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <AlertCircle size={10} /> Expired
+                          </span>
+                        );
+                      if (es === "expiring")
+                        return (
+                          <span className="text-xs border border-orange-500/30 bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Clock size={10} /> Expiring Soon
+                          </span>
+                        );
+                      return null;
+                    })()}
                 </div>
                 <p className="text-sm text-white/60">
                   Plan: <span className="text-white">{m.plan.name}</span> —{" "}
@@ -528,9 +1751,37 @@ export function AdminMemberships() {
                   </div>
                 </div>
               )}
+
+              {/* Renew button — only for latest per user AND only when expiring/expired */}
+              {m.status === "APPROVED" &&
+                latestApprovedIdByUser.has(m.id) &&
+                (getExpiryStatus(m.endDate) === "expiring" ||
+                  getExpiryStatus(m.endDate) === "expired") && (
+                  <div className="flex flex-col gap-2 min-w-35">
+                    <button
+                      onClick={() => setRenewTarget(m)}
+                      className="flex items-center justify-center gap-1.5 bg-green-600/15 hover:bg-green-600/25 text-green-400 border border-green-600/25 text-xs py-2 px-3 rounded-lg transition-colors font-medium"
+                    >
+                      <RefreshCw size={13} /> Renew Contract
+                    </button>
+                  </div>
+                )}
             </div>
           ))}
         </div>
+      )}
+
+      {/* Renew modal */}
+      {renewTarget && (
+        <RenewModal
+          membership={renewTarget}
+          onClose={() => setRenewTarget(null)}
+          onRenewed={() => {
+            dispatch(
+              fetchAdminMemberships(filter === "ALL" ? undefined : filter),
+            );
+          }}
+        />
       )}
     </div>
   );
