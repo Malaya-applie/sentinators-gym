@@ -45,204 +45,549 @@ function money(currency: string, amount: number): string {
 
 export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const doc = new PDFDocument({ size: "A4", margin: 0, autoFirstPage: true });
     const chunks: Buffer[] = [];
 
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const red = "#b91c1c";
-    const dark = "#111827";
-    const gray = "#6b7280";
+    const PAGE_W = doc.page.width; // 595.28
+    const PAGE_H = doc.page.height; // 841.89
+    const MARGIN = 28;
+    const CONTENT_W = PAGE_W - MARGIN * 2;
 
-    // ── Header ──────────────────────────────────────────────
-    doc.rect(0, 0, doc.page.width, 72).fill("#100a0a");
+    // Colors matching the web contract
+    const C_HEADER_BG = "#100a0a"; // dark header
+    const C_SECTION_BG = "#1a0a0a"; // section title bars
+    const C_RED = "#ef4444"; // red-500
+    const C_WHITE = "#ffffff";
+    const C_DARK = "#111827";
+    const C_GRAY = "#6b7280";
+    const C_LIGHT_GRAY = "#d1d5db";
+    const C_BORDER = "#d1d5db";
+    const C_ROW_LABEL = "#4b5563";
 
+    // ── Helpers ──────────────────────────────────────────────
+
+    /** Draw a filled rectangle with a hex color string */
+    function fillRect(
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      color: string,
+    ) {
+      doc.save().rect(x, y, w, h).fill(color).restore();
+    }
+
+    /** Draw a stroked rectangle (border) */
+    function strokeRect(
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      color: string,
+      lw = 0.5,
+    ) {
+      doc
+        .save()
+        .rect(x, y, w, h)
+        .lineWidth(lw)
+        .strokeColor(color)
+        .stroke()
+        .restore();
+    }
+
+    /**
+     * Draw a section box:
+     *  - dark header bar with white label
+     *  - white body
+     *  - outer border
+     * Returns the Y position just inside the body (after the header).
+     */
+    function sectionBox(
+      x: number,
+      y: number,
+      w: number,
+      title: string,
+      headerH = 18,
+    ): number {
+      // Header bar
+      fillRect(x, y, w, headerH, C_SECTION_BG);
+      doc
+        .save()
+        .fillColor(C_WHITE)
+        .fontSize(7.5)
+        .font("Helvetica-Bold")
+        .text(title.toUpperCase(), x + 6, y + (headerH - 7.5) / 2 + 1, {
+          width: w - 12,
+          lineBreak: false,
+        })
+        .restore();
+      return y + headerH; // body starts here
+    }
+
+    /** Draw a label:value row inside a box */
+    function fieldRow(
+      x: number,
+      y: number,
+      w: number,
+      label: string,
+      value: string,
+      labelW = 110,
+    ): number {
+      const rowH = 14;
+      doc
+        .save()
+        .fillColor(C_ROW_LABEL)
+        .fontSize(7)
+        .font("Helvetica")
+        .text(label + ":", x + 6, y + 3, { width: labelW, lineBreak: false })
+        .restore();
+      doc
+        .save()
+        .fillColor(C_DARK)
+        .fontSize(7)
+        .font("Helvetica-Bold")
+        .text(value || "-", x + labelW + 6, y + 3, {
+          width: w - labelW - 14,
+          lineBreak: false,
+        })
+        .restore();
+      // subtle separator
+      doc
+        .save()
+        .moveTo(x + 4, y + rowH - 1)
+        .lineTo(x + w - 4, y + rowH - 1)
+        .lineWidth(0.3)
+        .strokeColor("#e5e7eb")
+        .stroke()
+        .restore();
+      return y + rowH;
+    }
+
+    // ── PAGE 1 ───────────────────────────────────────────────
+
+    // ── HEADER BAR ───────────────────────────────────────────
+    const HEADER_H = 54;
+    fillRect(0, 0, PAGE_W, HEADER_H, C_HEADER_BG);
+
+    // Left: gym name + tagline
     doc
-      .fillColor("#ef4444")
-      .fontSize(16)
-      .font("Helvetica-Bold")
-      .text("SENTINATORS", 50, 22);
-
-    doc
-      .fillColor("#ffffff")
-      .fontSize(8)
-      .font("Helvetica")
-      .text("Keep Pumping Gym", 50, 42);
-
-    doc
-      .fillColor("#ffffff")
-      .fontSize(10)
-      .font("Helvetica-Bold")
-      .text("MEMBERSHIP AGREEMENT", 0, 27, { align: "right" });
-
-    doc.moveDown(0);
-
-    // ── Title ────────────────────────────────────────────────
-    doc.y = 90;
-    doc
-      .fillColor(dark)
+      .save()
+      .fillColor(C_RED)
       .fontSize(14)
       .font("Helvetica-Bold")
-      .text("Membership Registration Agreement", { align: "center" });
-
-    doc.moveDown(0.4);
+      .text("SENTINATORS", MARGIN, 13, { lineBreak: false })
+      .restore();
     doc
-      .fillColor(gray)
-      .fontSize(9)
+      .save()
+      .fillColor("#ffffff80")
+      .fontSize(7.5)
       .font("Helvetica")
-      .text(`Submitted: ${data.submittedAt}`, { align: "center" });
+      .text("Keep Pumping Gym", MARGIN, 30, { lineBreak: false })
+      .restore();
 
-    doc.moveDown(1);
+    // Center: contract title
+    doc
+      .save()
+      .fillColor(C_WHITE)
+      .fontSize(10)
+      .font("Helvetica-Bold")
+      .text("FITNESS MEMBERSHIP CONTRACT", 0, 16, {
+        align: "center",
+        width: PAGE_W,
+        lineBreak: false,
+      })
+      .restore();
+    doc
+      .save()
+      .fillColor("#ffffff60")
+      .fontSize(6.5)
+      .font("Helvetica")
+      .text("MEMBERSHIP AGREEMENT", 0, 30, {
+        align: "center",
+        width: PAGE_W,
+        lineBreak: false,
+      })
+      .restore();
 
-    // ── Helper: section title ────────────────────────────────
-    function sectionTitle(title: string) {
+    // Right: contract info
+    const rightX = PAGE_W - MARGIN - 140;
+    const contractLines = [
+      { label: "Contract No.:", value: data.contractNumber },
+      { label: "Customer No.:", value: data.customerNumber },
+      { label: "Date:", value: data.submittedAt },
+    ];
+    contractLines.forEach((line, i) => {
+      const ly = 10 + i * 14;
       doc
-        .fillColor(red)
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text(title.toUpperCase());
-      doc
-        .moveTo(50, doc.y)
-        .lineTo(doc.page.width - 50, doc.y)
-        .strokeColor("#e5e7eb")
-        .lineWidth(0.5)
-        .stroke();
-      doc.moveDown(0.4);
-    }
-
-    // ── Helper: row ──────────────────────────────────────────
-    function row(label: string, value: string) {
-      const y = doc.y;
-      doc
-        .fillColor(gray)
-        .fontSize(8)
+        .save()
+        .fillColor("#ffffff80")
+        .fontSize(6.5)
         .font("Helvetica")
-        .text(label + ":", 50, y, { width: 140, continued: false });
+        .text(line.label, rightX, ly, { width: 60, lineBreak: false })
+        .restore();
       doc
-        .fillColor(dark)
-        .fontSize(8)
+        .save()
+        .fillColor(C_WHITE)
+        .fontSize(6.5)
         .font("Helvetica-Bold")
-        .text(value || "-", 200, y, { width: 340 });
-      doc.moveDown(0.35);
-    }
+        .text(line.value, rightX + 62, ly, { width: 78, lineBreak: false })
+        .restore();
+    });
 
-    // ── Contract Info ────────────────────────────────────────
-    sectionTitle("Contract Information");
-    row("Contract No.", data.contractNumber);
-    row("Customer No.", data.customerNumber);
-    row("Date of Submission", data.submittedAt);
+    // ── TWO-COLUMN SECTION ROW 1: Member Details  |  Subscription ──
+    let curY = HEADER_H + 10;
+    const COL_GAP = 6;
+    const COL_W = (CONTENT_W - COL_GAP) / 2;
+    const COL1_X = MARGIN;
+    const COL2_X = MARGIN + COL_W + COL_GAP;
 
-    doc.moveDown(0.6);
+    // --- Section 1: Member Details ---
+    let s1BodyY = sectionBox(COL1_X, curY, COL_W, "1. Member Details");
+    const s1Fields: [string, string][] = [
+      ["First Name / Surname", data.memberName || "-"],
+      ["Date of Birth", data.dateOfBirth ? formatDate(data.dateOfBirth) : "-"],
+      ["Address", data.address || "-"],
+      ["Telephone", data.phone || "-"],
+      ["E-Mail", data.email || "-"],
+      ["Emergency Contact", data.emergencyContact || "-"],
+    ];
+    let s1Y = s1BodyY;
+    s1Fields.forEach(([lbl, val]) => {
+      s1Y = fieldRow(COL1_X, s1Y, COL_W, lbl, val);
+    });
+    const s1Height = s1Y - curY;
 
-    // ── Member Details ───────────────────────────────────────
-    sectionTitle("Member Details");
-    row("Full Name", data.memberName);
-    row("Email", data.email);
-    row("Phone", data.phone || "-");
-    row("Date of Birth", data.dateOfBirth ? formatDate(data.dateOfBirth) : "-");
-    row("Address", data.address || "-");
-    row("Emergency Contact", data.emergencyContact || "-");
+    // --- Section 2: Subscription Selection ---
+    let s2BodyY = sectionBox(COL2_X, curY, COL_W, "2. Subscription Selection");
+    let s2Y = s2BodyY + 4;
 
-    doc.moveDown(0.6);
+    // Plan name
+    doc
+      .save()
+      .fillColor(C_ROW_LABEL)
+      .fontSize(7)
+      .font("Helvetica")
+      .text("Plan:", COL2_X + 6, s2Y, { width: 60, lineBreak: false })
+      .restore();
+    doc
+      .save()
+      .fillColor(C_DARK)
+      .fontSize(7)
+      .font("Helvetica-Bold")
+      .text(data.planName || "-", COL2_X + 68, s2Y, {
+        width: COL_W - 76,
+        lineBreak: false,
+      })
+      .restore();
+    s2Y += 13;
 
-    // ── Plan Details ─────────────────────────────────────────
-    sectionTitle("Membership Plan");
-    row("Plan", data.planName);
-    row("Duration", data.planDuration);
-    row("Start Date", formatDate(data.startDate));
-    row("End Date", data.endDate ? formatDate(data.endDate) : "-");
-    row("Payment Frequency", data.paymentFrequency);
+    doc
+      .save()
+      .moveTo(COL2_X + 4, s2Y - 1)
+      .lineTo(COL2_X + COL_W - 4, s2Y - 1)
+      .lineWidth(0.3)
+      .strokeColor("#e5e7eb")
+      .stroke()
+      .restore();
 
+    s2Y = fieldRow(COL2_X, s2Y, COL_W, "Duration", data.planDuration || "-");
+    s2Y = fieldRow(
+      COL2_X,
+      s2Y,
+      COL_W,
+      "Start Date",
+      data.startDate ? formatDate(data.startDate) : "-",
+    );
+    s2Y = fieldRow(
+      COL2_X,
+      s2Y,
+      COL_W,
+      "Valid Until",
+      data.endDate ? formatDate(data.endDate) : "-",
+    );
+    s2Y = fieldRow(
+      COL2_X,
+      s2Y,
+      COL_W,
+      "Payment Freq.",
+      data.paymentFrequency === "UPFRONT"
+        ? "Yearly (Upfront)"
+        : data.paymentFrequency.charAt(0) +
+            data.paymentFrequency.slice(1).toLowerCase(),
+    );
+
+    // Additional plans
     if (data.additionalPlans.length > 0) {
-      doc.moveDown(0.3);
       doc
-        .fillColor(gray)
-        .fontSize(8)
+        .save()
+        .fillColor(C_ROW_LABEL)
+        .fontSize(7)
         .font("Helvetica")
-        .text("Additional Plans:", 50);
+        .text("Add-on Plans:", COL2_X + 6, s2Y + 2, { lineBreak: false })
+        .restore();
+      s2Y += 12;
       data.additionalPlans.forEach((ap) => {
         doc
-          .fillColor(dark)
-          .fontSize(8)
+          .save()
+          .fillColor(C_DARK)
+          .fontSize(7)
           .font("Helvetica")
           .text(
-            `  • ${ap.name || ap.duration}  —  ${money(data.currency, ap.price)}`,
-            50,
-          );
+            `• ${ap.name || ap.duration} — ${money(data.currency, ap.price)}`,
+            COL2_X + 10,
+            s2Y + 2,
+            { width: COL_W - 20, lineBreak: false },
+          )
+          .restore();
+        s2Y += 11;
       });
     }
 
-    doc.moveDown(0.6);
+    const s2Height = s2Y - curY;
+    const row1Height = Math.max(s1Height, s2Height);
 
-    // ── Payment Summary ──────────────────────────────────────
-    sectionTitle("Payment Summary");
-    row("Plan Price", money(data.currency, data.planPrice));
+    // Draw borders for row 1 boxes
+    strokeRect(COL1_X, curY, COL_W, row1Height, C_BORDER, 0.5);
+    strokeRect(COL2_X, curY, COL_W, row1Height, C_BORDER, 0.5);
 
-    if (data.additionalPlans.length > 0) {
-      const addTotal = data.additionalPlans.reduce((s, p) => s + p.price, 0);
-      row("Additional Plans", money(data.currency, addTotal));
-    }
+    // ── TWO-COLUMN SECTION ROW 2: Price Overview  |  Membership Category ──
+    curY += row1Height + 8;
 
-    row("Registration Fee", money(data.currency, data.registrationFee));
+    // --- Section 3: Price Overview ---
+    let s3BodyY = sectionBox(COL1_X, curY, COL_W, "3. Price Overview");
+    let s3Y = s3BodyY;
+
+    s3Y = fieldRow(
+      COL1_X,
+      s3Y,
+      COL_W,
+      data.planName || "Plan",
+      money(data.currency, data.planPrice),
+      120,
+    );
+
+    data.additionalPlans.forEach((ap) => {
+      s3Y = fieldRow(
+        COL1_X,
+        s3Y,
+        COL_W,
+        `+ ${ap.name || ap.duration}`,
+        money(data.currency, ap.price),
+        120,
+      );
+    });
+
+    s3Y = fieldRow(
+      COL1_X,
+      s3Y,
+      COL_W,
+      "Registration Fee (one-time)",
+      money(data.currency, data.registrationFee),
+      120,
+    );
 
     if (data.discountAmount > 0) {
-      row(
-        `${data.discountLabel}`,
+      s3Y = fieldRow(
+        COL1_X,
+        s3Y,
+        COL_W,
+        data.discountLabel || "Discount",
         `- ${money(data.currency, data.discountAmount)}`,
+        120,
       );
     }
 
-    // Periodic payment row
-    if (data.periodicAmount != null && data.periodicAmount > 0) {
-      const freqLabel =
+    if (
+      data.periodicAmount != null &&
+      data.periodicAmount > 0 &&
+      data.paymentFrequency !== "UPFRONT"
+    ) {
+      const freqWord =
         data.paymentFrequency === "MONTHLY"
-          ? "Monthly"
+          ? "month"
           : data.paymentFrequency === "QUARTERLY"
-            ? "Quarterly"
-            : data.paymentFrequency === "YEARLY"
-              ? "Yearly"
-              : data.paymentFrequency === "UPFRONT"
-                ? "Yearly"
-                : data.paymentFrequency.charAt(0) +
-                  data.paymentFrequency.slice(1).toLowerCase();
-      row(`${freqLabel} Payment`, money(data.currency, data.periodicAmount));
+            ? "quarter"
+            : "year";
+      s3Y = fieldRow(
+        COL1_X,
+        s3Y,
+        COL_W,
+        `Due per ${freqWord}`,
+        money(data.currency, data.periodicAmount),
+        120,
+      );
     }
 
-    // Total line
-    doc.moveDown(0.2);
+    // Total row — bold, red amount
+    s3Y += 2;
     doc
-      .moveTo(50, doc.y)
-      .lineTo(doc.page.width - 50, doc.y)
-      .strokeColor("#d1d5db")
-      .lineWidth(0.5)
-      .stroke();
-    doc.moveDown(0.3);
-
-    const totalY = doc.y;
+      .save()
+      .moveTo(COL1_X + 4, s3Y)
+      .lineTo(COL1_X + COL_W - 4, s3Y)
+      .lineWidth(0.8)
+      .strokeColor(C_LIGHT_GRAY)
+      .stroke()
+      .restore();
+    s3Y += 4;
     doc
-      .fillColor(dark)
-      .fontSize(10)
+      .save()
+      .fillColor(C_DARK)
+      .fontSize(7.5)
       .font("Helvetica-Bold")
-      .text("Total Amount:", 50, totalY, { continued: false });
+      .text("Total", COL1_X + 6, s3Y + 2, { width: 120, lineBreak: false })
+      .restore();
     doc
-      .fillColor(red)
-      .fontSize(10)
+      .save()
+      .fillColor(C_RED)
+      .fontSize(7.5)
       .font("Helvetica-Bold")
-      .text(money(data.currency, data.total), 200, totalY);
+      .text(money(data.currency, data.total), COL1_X + 126, s3Y + 2, {
+        width: COL_W - 134,
+        lineBreak: false,
+      })
+      .restore();
+    s3Y += 16;
 
-    doc.moveDown(1);
+    // Payment frequency checkboxes
+    doc
+      .save()
+      .fillColor(C_ROW_LABEL)
+      .fontSize(6.5)
+      .font("Helvetica")
+      .text("Payment Method:", COL1_X + 6, s3Y, { lineBreak: false })
+      .restore();
+    s3Y += 10;
 
-    // ── Contract Conditions ──────────────────────────────────
-    // Add a new page if there isn't enough room for the conditions block
-    if (doc.y > doc.page.height - 220) {
+    const freqOptions = [
+      { key: "UPFRONT", label: "Yearly (Upfront)" },
+      { key: "MONTHLY", label: "Monthly" },
+      { key: "QUARTERLY", label: "Quarterly" },
+    ];
+    let freqX = COL1_X + 6;
+    freqOptions.forEach(({ key, label }) => {
+      const checked = data.paymentFrequency === key;
+      // checkbox square
+      doc
+        .save()
+        .rect(freqX, s3Y, 7, 7)
+        .lineWidth(0.8)
+        .strokeColor(checked ? C_RED : C_LIGHT_GRAY)
+        .stroke()
+        .restore();
+      if (checked) {
+        // filled inner square
+        doc
+          .save()
+          .rect(freqX + 1.5, s3Y + 1.5, 4, 4)
+          .fill(C_RED)
+          .restore();
+      }
+      doc
+        .save()
+        .fillColor(C_DARK)
+        .fontSize(6.5)
+        .font("Helvetica")
+        .text(label, freqX + 9, s3Y + 0.5, { lineBreak: false })
+        .restore();
+      freqX += 58;
+    });
+    s3Y += 12;
+
+    const s3Height = s3Y - curY;
+
+    // --- Section 4: Membership Category ---
+    let s4BodyY = sectionBox(COL2_X, curY, COL_W, "4. Membership Category");
+    let s4Y = s4BodyY + 4;
+
+    // Show plan category (derived from planDuration if not provided directly)
+    const categoryLabel = data.planDuration?.toLowerCase().includes("month")
+      ? "Flexible Monthly Membership"
+      : data.planDuration?.toLowerCase().includes("year")
+        ? "Annual Membership"
+        : data.planName || "Standard Membership";
+
+    // Simple display: show the main plan category
+    const catOptions = [
+      { label: "Standard Membership", match: "standard" },
+      { label: "Flexible Monthly Membership", match: "month" },
+      { label: "Annual Membership", match: "year" },
+      { label: "Student Membership", match: "student" },
+      { label: "Senior Membership", match: "senior" },
+    ];
+    catOptions.forEach(({ label, match }) => {
+      const checked =
+        data.planDuration?.toLowerCase().includes(match) ||
+        data.planName?.toLowerCase().includes(match);
+      doc
+        .save()
+        .rect(COL2_X + 6, s4Y, 7, 7)
+        .lineWidth(0.8)
+        .strokeColor(checked ? C_RED : C_LIGHT_GRAY)
+        .stroke()
+        .restore();
+      if (checked) {
+        doc
+          .save()
+          .rect(COL2_X + 7.5, s4Y + 1.5, 4, 4)
+          .fill(C_RED)
+          .restore();
+      }
+      doc
+        .save()
+        .fillColor(C_DARK)
+        .fontSize(7)
+        .font("Helvetica")
+        .text(label, COL2_X + 15, s4Y + 0.5, {
+          width: COL_W - 22,
+          lineBreak: false,
+        })
+        .restore();
+      s4Y += 13;
+    });
+
+    // minor note
+    if (data.isMinor) {
+      doc
+        .save()
+        .fillColor(C_RED)
+        .fontSize(6.5)
+        .font("Helvetica-Bold")
+        .text("* Minor — Guardian signature required", COL2_X + 6, s4Y, {
+          width: COL_W - 12,
+          lineBreak: false,
+        })
+        .restore();
+      s4Y += 10;
+    }
+
+    const s4Height = s4Y - curY;
+    const row2Height = Math.max(s3Height, s4Height) + 4;
+
+    strokeRect(COL1_X, curY, COL_W, row2Height, C_BORDER, 0.5);
+    strokeRect(COL2_X, curY, COL_W, row2Height, C_BORDER, 0.5);
+
+    // ── SECTION 5: Contract Conditions (full width) ──────────
+    curY += row2Height + 8;
+
+    // If not enough space, add new page
+    if (curY > PAGE_H - 120) {
       doc.addPage();
+      curY = MARGIN;
     }
 
-    sectionTitle("Contract Conditions");
+    const condBodyY = sectionBox(
+      MARGIN,
+      curY,
+      CONTENT_W,
+      "5. Contract Conditions",
+    );
+    let condY = condBodyY + 2;
 
-    const conditions: { title: string; text: string }[] = [
+    const conditions = [
       {
         title: "Term",
         text: "The selected membership begins on the start date and runs for the agreed term. An automatic extension occurs only if no timely cancellation is made.",
@@ -273,30 +618,151 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       },
     ];
 
-    conditions.forEach(({ title, text }) => {
-      // Start a new page if this condition won't fit
-      if (doc.y > doc.page.height - 80) {
+    conditions.forEach(({ title, text }, idx) => {
+      // Check if there's space; if not, start a new page and draw a continuation header
+      if (condY > PAGE_H - 60) {
+        // Close current box first
+        strokeRect(MARGIN, curY, CONTENT_W, condY - curY, C_BORDER, 0.5);
         doc.addPage();
+        curY = MARGIN;
+        const newBodyY = sectionBox(
+          MARGIN,
+          curY,
+          CONTENT_W,
+          "5. Contract Conditions (continued)",
+        );
+        condY = newBodyY + 2;
       }
-      doc.fillColor(dark).fontSize(8.5).font("Helvetica-Bold").text(title, 50);
+
       doc
-        .fillColor(gray)
-        .fontSize(8)
+        .save()
+        .fillColor(C_DARK)
+        .fontSize(7.5)
+        .font("Helvetica-Bold")
+        .text(title, MARGIN + 6, condY + 2, {
+          width: CONTENT_W - 12,
+          lineBreak: false,
+        })
+        .restore();
+      condY += 12;
+
+      // Measure text height
+      const textH = doc.heightOfString(text, { width: CONTENT_W - 20 });
+      doc
+        .save()
+        .fillColor(C_GRAY)
+        .fontSize(7)
         .font("Helvetica")
-        .text(text, 50, undefined, { width: doc.page.width - 100 });
-      doc.moveDown(0.5);
+        .text(text, MARGIN + 10, condY, { width: CONTENT_W - 20 })
+        .restore();
+      condY += textH + 6;
+
+      // Separator between conditions (not after last)
+      if (idx < conditions.length - 1) {
+        doc
+          .save()
+          .moveTo(MARGIN + 4, condY)
+          .lineTo(MARGIN + CONTENT_W - 4, condY)
+          .lineWidth(0.3)
+          .strokeColor("#e5e7eb")
+          .stroke()
+          .restore();
+        condY += 3;
+      }
     });
 
-    doc.moveDown(0.6);
+    condY += 4;
+    strokeRect(MARGIN, curY, CONTENT_W, condY - curY, C_BORDER, 0.5);
+    curY = condY + 8;
 
-    // ── Signature ────────────────────────────────────────────
-    sectionTitle("Member Signature");
-
-    // Check if there's enough space for signature, add page if needed
-    if (doc.y > doc.page.height - 160) {
+    // ── SECTION 6: Signatures (full width) ───────────────────
+    if (curY > PAGE_H - 140) {
       doc.addPage();
+      curY = MARGIN;
     }
 
+    const sigBodyY = sectionBox(MARGIN, curY, CONTENT_W, "6. Signatures");
+    let sigY = sigBodyY + 8;
+
+    // Three equal columns: Place/Date | Member Sig | Gym Sig
+    const SIG_COL_W = (CONTENT_W - COL_GAP * 2) / 3;
+    const SIG_H = 70;
+
+    // Column positions
+    const sigCol1 = MARGIN;
+    const sigCol2 = MARGIN + SIG_COL_W + COL_GAP;
+    const sigCol3 = MARGIN + (SIG_COL_W + COL_GAP) * 2;
+
+    // Labels row
+    const labelY = sigY;
+    doc
+      .save()
+      .fillColor(C_GRAY)
+      .fontSize(6.5)
+      .font("Helvetica-Bold")
+      .text("PLACE / DATE", sigCol1 + 4, labelY, {
+        width: SIG_COL_W,
+        lineBreak: false,
+      })
+      .restore();
+    doc
+      .save()
+      .fillColor(C_GRAY)
+      .fontSize(6.5)
+      .font("Helvetica-Bold")
+      .text("MEMBER SIGNATURE", sigCol2 + 4, labelY, {
+        width: SIG_COL_W,
+        lineBreak: false,
+      })
+      .restore();
+    doc
+      .save()
+      .fillColor(C_GRAY)
+      .fontSize(6.5)
+      .font("Helvetica-Bold")
+      .text("GYM SIGNATURE", sigCol3 + 4, labelY, {
+        width: SIG_COL_W,
+        lineBreak: false,
+      })
+      .restore();
+    sigY += 10;
+
+    // Signature boxes
+    strokeRect(sigCol1, sigY, SIG_COL_W, SIG_H, C_BORDER, 0.5);
+    strokeRect(sigCol2, sigY, SIG_COL_W, SIG_H, C_BORDER, 0.5);
+    strokeRect(sigCol3, sigY, SIG_COL_W, SIG_H, C_BORDER, 0.5);
+
+    // Col 1: date
+    doc
+      .save()
+      .fillColor(C_DARK)
+      .fontSize(9)
+      .font("Helvetica-Bold")
+      .text(data.submittedAt, sigCol1 + 6, sigY + 10, {
+        width: SIG_COL_W - 12,
+        lineBreak: false,
+      })
+      .restore();
+    doc
+      .save()
+      .moveTo(sigCol1 + 6, sigY + SIG_H - 12)
+      .lineTo(sigCol1 + SIG_COL_W - 6, sigY + SIG_H - 12)
+      .lineWidth(0.5)
+      .strokeColor(C_LIGHT_GRAY)
+      .stroke()
+      .restore();
+    doc
+      .save()
+      .fillColor(C_GRAY)
+      .fontSize(6)
+      .font("Helvetica")
+      .text("Date of signing", sigCol1 + 6, sigY + SIG_H - 9, {
+        width: SIG_COL_W - 12,
+        lineBreak: false,
+      })
+      .restore();
+
+    // Col 2: member signature image
     if (
       data.signatureDataUrl &&
       data.signatureDataUrl.startsWith("data:image/")
@@ -307,39 +773,72 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
           "",
         );
         const imgBuffer = Buffer.from(base64Data, "base64");
-        const sigY = doc.y;
-        doc.image(imgBuffer, 50, sigY, { width: 200, height: 60 });
-        doc.y = sigY + 70;
+        doc.image(imgBuffer, sigCol2 + 6, sigY + 6, {
+          width: SIG_COL_W - 12,
+          height: SIG_H - 20,
+        });
       } catch {
         doc
-          .fillColor(gray)
-          .fontSize(8)
-          .text("[Signature captured electronically]", 50);
-        doc.moveDown(0.5);
+          .save()
+          .fillColor(C_GRAY)
+          .fontSize(6.5)
+          .font("Helvetica")
+          .text("[Signed electronically]", sigCol2 + 6, sigY + SIG_H / 2 - 5, {
+            width: SIG_COL_W - 12,
+            align: "center",
+            lineBreak: false,
+          })
+          .restore();
       }
     }
-
     doc
-      .moveTo(50, doc.y)
-      .lineTo(250, doc.y)
-      .strokeColor("#111827")
-      .lineWidth(1)
-      .stroke();
-    doc.moveDown(0.3);
+      .save()
+      .moveTo(sigCol2 + 6, sigY + SIG_H - 12)
+      .lineTo(sigCol2 + SIG_COL_W - 6, sigY + SIG_H - 12)
+      .lineWidth(0.5)
+      .strokeColor(C_LIGHT_GRAY)
+      .stroke()
+      .restore();
     doc
-      .fillColor(gray)
-      .fontSize(8)
+      .save()
+      .fillColor(C_GRAY)
+      .fontSize(6)
       .font("Helvetica")
-      .text(`${data.memberName} — Member Signature`, 50);
+      .text(data.memberName + " — Member", sigCol2 + 6, sigY + SIG_H - 9, {
+        width: SIG_COL_W - 12,
+        lineBreak: false,
+      })
+      .restore();
+
+    // Col 3: gym stamp placeholder
+    doc
+      .save()
+      .fillColor(C_GRAY)
+      .fontSize(7)
+      .font("Helvetica")
+      .text("To be signed by gym staff", sigCol3 + 6, sigY + SIG_H / 2 - 5, {
+        width: SIG_COL_W - 12,
+        align: "center",
+      })
+      .restore();
+
+    sigY += SIG_H + 6;
 
     // Guardian signature (for minors)
     if (data.isMinor && data.guardianSignatureDataUrl) {
-      doc.moveDown(0.8);
+      sigY += 4;
       doc
-        .fillColor(red)
-        .fontSize(9)
+        .save()
+        .fillColor(C_GRAY)
+        .fontSize(6.5)
         .font("Helvetica-Bold")
-        .text("GUARDIAN / PARENT SIGNATURE");
+        .text("GUARDIAN / PARENT SIGNATURE", MARGIN + 4, sigY, {
+          lineBreak: false,
+        })
+        .restore();
+      sigY += 10;
+
+      strokeRect(MARGIN, sigY, SIG_COL_W, SIG_H, C_BORDER, 0.5);
 
       try {
         const base64Data = data.guardianSignatureDataUrl.replace(
@@ -347,45 +846,71 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
           "",
         );
         const imgBuffer = Buffer.from(base64Data, "base64");
-        const sigY = doc.y;
-        doc.image(imgBuffer, 50, sigY, { width: 200, height: 60 });
-        doc.y = sigY + 70;
+        doc.image(imgBuffer, MARGIN + 6, sigY + 6, {
+          width: SIG_COL_W - 12,
+          height: SIG_H - 20,
+        });
       } catch {
         doc
-          .fillColor(gray)
-          .fontSize(8)
-          .text("[Guardian signature captured electronically]", 50);
-        doc.moveDown(0.5);
+          .save()
+          .fillColor(C_GRAY)
+          .fontSize(6.5)
+          .font("Helvetica")
+          .text(
+            "[Guardian signed electronically]",
+            MARGIN + 6,
+            sigY + SIG_H / 2 - 5,
+            {
+              width: SIG_COL_W - 12,
+              align: "center",
+              lineBreak: false,
+            },
+          )
+          .restore();
       }
 
       doc
-        .moveTo(50, doc.y)
-        .lineTo(250, doc.y)
-        .strokeColor("#111827")
-        .lineWidth(1)
-        .stroke();
-      doc.moveDown(0.3);
+        .save()
+        .moveTo(MARGIN + 6, sigY + SIG_H - 12)
+        .lineTo(MARGIN + SIG_COL_W - 6, sigY + SIG_H - 12)
+        .lineWidth(0.5)
+        .strokeColor(C_LIGHT_GRAY)
+        .stroke()
+        .restore();
       doc
-        .fillColor(gray)
-        .fontSize(8)
+        .save()
+        .fillColor(C_GRAY)
+        .fontSize(6)
         .font("Helvetica")
-        .text("Guardian / Parent Signature", 50);
+        .text("Guardian / Parent Signature", MARGIN + 6, sigY + SIG_H - 9, {
+          lineBreak: false,
+        })
+        .restore();
+
+      sigY += SIG_H + 6;
     }
 
-    doc.moveDown(1.2);
+    const sigBoxH = sigY - sigBodyY + 4;
+    strokeRect(MARGIN, sigBodyY - 18, CONTENT_W, sigBoxH + 18, C_BORDER, 0.5);
+    curY = sigY + 10;
 
-    // ── Footer ───────────────────────────────────────────────
+    // ── FOOTER ───────────────────────────────────────────────
+    if (curY > PAGE_H - 30) {
+      doc.addPage();
+      curY = PAGE_H - 28;
+    }
     doc
-      .fillColor(gray)
-      .fontSize(7.5)
+      .save()
+      .fillColor(C_GRAY)
+      .fontSize(6.5)
       .font("Helvetica")
       .text(
-        "This document is generated electronically and constitutes a binding membership agreement. " +
-          "Please retain this copy for your records.",
-        50,
-        undefined,
-        { align: "center", width: doc.page.width - 100 },
-      );
+        "This document is generated electronically and constitutes a binding membership agreement. Please retain this copy for your records.",
+        MARGIN,
+        curY,
+        { align: "center", width: CONTENT_W },
+      )
+      .restore();
 
     doc.end();
   });
