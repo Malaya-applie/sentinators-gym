@@ -1,3 +1,11 @@
+/* Hide site navbar when printing (e.g. contract PDF) */
+@media print {
+  nav,
+  header {
+    display: none !important;
+  }
+}
+
 /* Hide horizontal scrollbar utility */
 .hide-scrollbar {
   scrollbar-width: none !important; /* Firefox */

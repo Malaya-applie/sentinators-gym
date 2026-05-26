@@ -199,52 +199,79 @@ export function StepperRegistrationForm({
     () => "CUS-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
   );
 
-  // Restore state after returning from the contract page
+  // Restore state after returning from the contract page.
+  // Uses pageshow so it also fires when Next.js restores a cached page on router.back().
   useEffect(() => {
-    const contractResultRaw = sessionStorage.getItem("gymContractResult");
-    const formStateRaw = sessionStorage.getItem("gymRegState");
-    if (!contractResultRaw || !formStateRaw) return;
-    try {
-      const contractResult = JSON.parse(contractResultRaw);
-      const saved = JSON.parse(formStateRaw);
-      setForm(saved.form);
-      setSelectedPlanId(saved.selectedPlanId);
-      setSelectedAdditionalPlanIds(saved.selectedAdditionalPlanIds);
-      setActivePlanCategory(saved.activePlanCategory);
-      setMembershipStartDate(saved.membershipStartDate);
-      setMembershipEndDate(saved.membershipEndDate);
-      setPaymentFrequency(saved.paymentFrequency);
-      setStep(saved.step);
-      setTermChecks(saved.termChecks);
-      if (contractResult.contractAccepted && contractResult.contractMemberSig) {
-        setContractMemberSig(contractResult.contractMemberSig);
-        if (contractResult.guardianSig)
-          setGuardianSig(contractResult.guardianSig);
-        // The PDF is stored in window (to avoid sessionStorage 5 MB limit)
-        const windowPdf = (window as unknown as Record<string, unknown>)
-          .__gymContractPdf as string | undefined;
-        if (windowPdf) {
-          setContractPdfBase64(windowPdf);
-          delete (window as unknown as Record<string, unknown>)
-            .__gymContractPdf;
-        } else if (contractResult.contractPdfBase64)
-          setContractPdfBase64(contractResult.contractPdfBase64);
-        else if (contractResult.pdfBase64)
-          setContractPdfBase64(contractResult.pdfBase64);
-        else if (contractResult.contractImageBase64)
-          setContractPdfBase64(contractResult.contractImageBase64);
-        setSignatureDataUrl(contractResult.contractMemberSig);
-        setAgreementChecks(
-          (saved.agreementChecks as boolean[]).map((v, i) =>
-            i === 0 ? true : v,
-          ),
-        );
-      } else {
-        setAgreementChecks(saved.agreementChecks);
-      }
-    } catch {}
-    sessionStorage.removeItem("gymContractResult");
-    sessionStorage.removeItem("gymRegState");
+    function restoreContractResult() {
+      const contractResultRaw = sessionStorage.getItem("gymContractResult");
+      const formStateRaw = sessionStorage.getItem("gymRegState");
+      if (!contractResultRaw || !formStateRaw) return;
+      try {
+        const contractResult = JSON.parse(contractResultRaw);
+        const saved = JSON.parse(formStateRaw);
+        setForm(saved.form);
+        setSelectedPlanId(saved.selectedPlanId);
+        setSelectedAdditionalPlanIds(saved.selectedAdditionalPlanIds);
+        setActivePlanCategory(saved.activePlanCategory);
+        setMembershipStartDate(saved.membershipStartDate);
+        setMembershipEndDate(saved.membershipEndDate);
+        setPaymentFrequency(saved.paymentFrequency);
+        setStep(saved.step);
+        setTermChecks(saved.termChecks);
+
+        // Resolve PDF from window (fast) or sessionStorage fallback
+        function takePdf(): string | undefined {
+          const win = (window as unknown as Record<string, unknown>)
+            .__gymContractPdf as string | undefined;
+          if (win) {
+            delete (window as unknown as Record<string, unknown>)
+              .__gymContractPdf;
+            return win;
+          }
+          const ss = sessionStorage.getItem("gymContractPdf") ?? undefined;
+          if (ss) sessionStorage.removeItem("gymContractPdf");
+          return ss;
+        }
+
+        if (
+          contractResult.contractAccepted &&
+          contractResult.contractMemberSig
+        ) {
+          setContractMemberSig(contractResult.contractMemberSig);
+          if (contractResult.guardianSig)
+            setGuardianSig(contractResult.guardianSig);
+          const pdf =
+            takePdf() ??
+            contractResult.contractPdfBase64 ??
+            contractResult.pdfBase64 ??
+            contractResult.contractImageBase64;
+          if (pdf) setContractPdfBase64(pdf);
+          setSignatureDataUrl(contractResult.contractMemberSig);
+          setAgreementChecks(
+            (saved.agreementChecks as boolean[]).map((v, i) =>
+              i === 0 ? true : v,
+            ),
+          );
+        } else {
+          setAgreementChecks(saved.agreementChecks);
+          // Restore signatures and PDF even when just viewing
+          if (saved.contractMemberSig) {
+            setContractMemberSig(saved.contractMemberSig);
+            setSignatureDataUrl(saved.contractMemberSig);
+          }
+          if (saved.guardianSig) setGuardianSig(saved.guardianSig);
+          const pdf = takePdf();
+          if (pdf) setContractPdfBase64(pdf);
+        }
+      } catch {}
+      sessionStorage.removeItem("gymContractResult");
+      sessionStorage.removeItem("gymRegState");
+    }
+
+    restoreContractResult();
+    // pageshow fires on bfcache restore (Next.js router.back() cached page)
+    window.addEventListener("pageshow", restoreContractResult);
+    return () => window.removeEventListener("pageshow", restoreContractResult);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -623,6 +650,8 @@ export function StepperRegistrationForm({
       discountLabel,
       total: frequencyAdjustedTotal,
       planCategories,
+      contractMemberSig,
+      guardianSig,
       selectedPlan: selectedPlan ?? null,
       selectedAdditionalPlans: selectedAdditionalPlans.map((p) => ({
         id: p.id,
@@ -646,7 +675,28 @@ export function StepperRegistrationForm({
         })),
     };
     sessionStorage.setItem("gymRegState", JSON.stringify(state));
+    // Preserve existing PDF across navigation so it survives the round-trip
+    if (contractPdfBase64) {
+      (window as unknown as Record<string, unknown>).__gymContractPdf =
+        contractPdfBase64;
+    }
     router.push("/membership/contract");
+  }
+
+  function downloadContractPdf() {
+    if (contractPdfBase64) {
+      // Direct download — PDF was captured during signing
+      const link = document.createElement("a");
+      link.href = contractPdfBase64;
+      link.download = `membership-contract-${contractNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // PDF not cached — open contract page in print mode so browser generates the PDF
+      sessionStorage.setItem("gymContractPrintMode", "1");
+      openContractPage();
+    }
   }
 
   async function submit() {
@@ -1233,6 +1283,15 @@ export function StepperRegistrationForm({
                         ? "(view contract)"
                         : "View & Sign Contract →"}
                     </button>
+                    {agreementChecks[0] && (
+                      <button
+                        type="button"
+                        onClick={downloadContractPdf}
+                        className="inline-flex items-center gap-1 ml-2 text-xs font-medium text-green-400 hover:text-green-300 underline transition-colors"
+                      >
+                        ↓ Download PDF
+                      </button>
+                    )}
                   </span>
                 </label>
                 {/* Second checkbox: normal */}

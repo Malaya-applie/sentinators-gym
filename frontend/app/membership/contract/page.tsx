@@ -50,6 +50,8 @@ type RegState = {
   customerNumber: string;
   isMinor: boolean;
   selectedPlanId: number | null;
+  contractMemberSig?: string;
+  guardianSig?: string;
 };
 
 function money(currency: string, amount: number) {
@@ -106,6 +108,42 @@ export default function MembershipContractPage() {
       router.replace("/");
     }
   }, [router]);
+
+  // Pre-populate signatures if returning to view an already-signed contract
+  useEffect(() => {
+    if (state?.contractMemberSig) {
+      setContractMemberSig(state.contractMemberSig);
+    }
+    if (state?.guardianSig) {
+      setGuardianSig(state.guardianSig);
+    }
+  }, [state?.contractMemberSig, state?.guardianSig]);
+
+  // Print / download mode: triggered by the Download PDF button in the stepper
+  useEffect(() => {
+    if (!state) return;
+    const printFlag = sessionStorage.getItem("gymContractPrintMode");
+    if (!printFlag) return;
+    sessionStorage.removeItem("gymContractPrintMode");
+
+    function handleAfterPrint() {
+      window.removeEventListener("afterprint", handleAfterPrint);
+      // Go back to the stepper, marking contract as not re-signed
+      sessionStorage.setItem(
+        "gymContractResult",
+        JSON.stringify({ contractAccepted: false }),
+      );
+      router.back();
+    }
+    window.addEventListener("afterprint", handleAfterPrint);
+
+    // Allow the contract to fully render before printing
+    const timer = setTimeout(() => window.print(), 800);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, [state, router]);
 
   // Init member signature canvas
   useEffect(() => {
@@ -225,7 +263,10 @@ export default function MembershipContractPage() {
       let capturedPdfDataUri: string | undefined;
       if (contractDocRef.current) {
         const { default: html2canvas } = await import("html2canvas");
-        const { default: jsPDF } = await import("jspdf");
+        // jsPDF v4 uses a named export; v2/v3 used a default export – support both.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const jsPDFModule = (await import("jspdf")) as any;
+        const jsPDF = jsPDFModule.jsPDF ?? jsPDFModule.default;
 
         // Tailwind v4 uses oklch()/lab() colors that html2canvas v1.4.x can't parse.
         // Use a 1x1 canvas to convert any unsupported color to sRGB hex/rgba.
@@ -348,13 +389,22 @@ export default function MembershipContractPage() {
           pageNum++;
         }
 
-        capturedPdfDataUri = pdf.output("datauristring");
+        // v2/v3 used "datauristring"; v4 uses "datauri" – try both.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        capturedPdfDataUri =
+          (pdf as any).output("datauristring") ||
+          (pdf as any).output("datauri");
       }
 
-      // Store in window — no size limit, persists across client-side navigation
+      // Store in window (fast) and sessionStorage (survives bfcache restore)
       if (capturedPdfDataUri) {
         (window as unknown as Record<string, unknown>).__gymContractPdf =
           capturedPdfDataUri;
+        try {
+          sessionStorage.setItem("gymContractPdf", capturedPdfDataUri);
+        } catch {
+          // sessionStorage quota exceeded for very large PDFs — window copy is enough
+        }
       }
       sessionStorage.setItem(
         "gymContractResult",
@@ -419,6 +469,15 @@ export default function MembershipContractPage() {
 
   return (
     <div className="min-h-screen bg-[#08010a] py-6 px-4">
+      {/* Print-mode CSS: hide interactive elements and force colors when saving as PDF */}
+      <style>{`
+        @media print {
+          [data-pdf-exclude] { display: none !important; }
+          body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .min-h-screen { min-height: unset !important; background: white !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        }
+      `}</style>
       <div className="max-w-3xl mx-auto">
         {/* Logo */}
         <div className="flex justify-center mb-6">
@@ -742,7 +801,7 @@ export default function MembershipContractPage() {
                         <button
                           type="button"
                           onClick={() => setContractMemberSig("")}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors print:hidden"
                         >
                           <Eraser size={11} /> Re-sign
                         </button>
@@ -750,7 +809,7 @@ export default function MembershipContractPage() {
                         <button
                           type="button"
                           onClick={clearContractSig}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors print:hidden"
                         >
                           <Eraser size={11} /> Clear
                         </button>
