@@ -188,6 +188,7 @@ export function StepperRegistrationForm({
   const [contractMemberSig, setContractMemberSig] = useState("");
   const [guardianSig, setGuardianSig] = useState("");
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showGymRulesModal, setShowGymRulesModal] = useState(false);
   const [contractPdfBase64, setContractPdfBase64] = useState<
     string | undefined
   >();
@@ -1264,6 +1265,158 @@ export function StepperRegistrationForm({
           </div>
         )}
 
+        {showGymRulesModal && (
+          <Dialog open={showGymRulesModal} onOpenChange={setShowGymRulesModal}>
+            <DialogContent className="bg-[#0f0a14] border border-white/10 text-white max-w-2xl w-full max-h-[75vh] flex flex-col p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10 shrink-0">
+                <DialogTitle className="text-lg font-bold text-white">
+                  Gym Rules &amp; Health Responsibility Policy
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    1. General Conduct
+                  </h3>
+                  <p>
+                    All members must treat staff, fellow members, and equipment
+                    with respect at all times. Harassment, aggressive behaviour,
+                    or intimidation of any kind will result in immediate
+                    termination of membership without refund.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    2. Dress Code &amp; Hygiene
+                  </h3>
+                  <p>
+                    Appropriate gym attire and closed-toe athletic footwear must
+                    be worn at all times on the gym floor. Members are expected
+                    to maintain personal hygiene. Use of a personal towel during
+                    workouts is mandatory.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    3. Equipment Use
+                  </h3>
+                  <p>
+                    All equipment must be used for its intended purpose and
+                    returned to its designated place after use. Weights must be
+                    re-racked after every set. Dropping weights carelessly is
+                    not permitted. Members must wipe down equipment with the
+                    provided disinfectant spray after each use.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    4. Time Limits &amp; Sharing
+                  </h3>
+                  <p>
+                    During peak hours, members may be asked to share equipment
+                    or limit their time on a single machine to 30 minutes.
+                    Reserving equipment while not actively using it is not
+                    permitted.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    5. Mobile Phones &amp; Photography
+                  </h3>
+                  <p>
+                    Phone calls should be taken outside the workout areas.
+                    Photography or video recording of other members without
+                    their explicit consent is strictly prohibited and may result
+                    in membership termination.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    6. Health Responsibility
+                  </h3>
+                  <p>
+                    Members are responsible for their own health and safety
+                    during gym use. By accepting this policy, you confirm that
+                    you are in a suitable physical condition to participate in
+                    exercise and have consulted a qualified medical professional
+                    if you have any pre-existing medical conditions, injuries,
+                    or health concerns.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    7. Liability Waiver
+                  </h3>
+                  <p>
+                    The gym and its staff shall not be held liable for any
+                    injury, illness, accident, or loss of personal property
+                    sustained during your use of the facilities. You voluntarily
+                    assume all risks associated with gym participation. Members
+                    exercise entirely at their own risk.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    8. Emergency Procedures
+                  </h3>
+                  <p>
+                    In case of a medical emergency, notify gym staff
+                    immediately. Do not attempt to move an injured person unless
+                    trained to do so. First-aid kits and defibrillators are
+                    located at the front desk. Emergency exits are clearly
+                    marked throughout the facility.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    9. Prohibited Substances
+                  </h3>
+                  <p>
+                    The use of illegal performance-enhancing drugs or any
+                    controlled substances on gym premises is strictly
+                    prohibited. Members found in violation of this rule will
+                    have their membership revoked immediately and the incident
+                    may be reported to relevant authorities.
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold text-white mb-1">
+                    10. Compliance
+                  </h3>
+                  <p>
+                    All members are expected to follow the instructions of gym
+                    staff at all times. Failure to comply with these rules may
+                    result in a warning, suspension, or permanent termination of
+                    membership at the discretion of management.
+                  </p>
+                </section>
+              </div>
+              <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowGymRulesModal(false)}
+                  className="border-white/15 bg-transparent text-white hover:bg-white/10"
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setTermChecks((prev) =>
+                      prev.map((item, i) => (i === 1 ? true : item)),
+                    );
+                    setShowGymRulesModal(false);
+                  }}
+                  className="btn-gradient text-white flex-1"
+                >
+                  I Accept the Gym Rules &amp; Health Responsibility Policy
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
         {showTermsModal && (
           <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
             <DialogContent className="bg-[#0f0a14] border border-white/10 text-white max-w-2xl w-full max-h-[75vh] flex flex-col p-0 overflow-hidden">
@@ -1438,16 +1591,32 @@ export function StepperRegistrationForm({
                       </button>
                     </span>
                   </label>
-                  {/* Second checkbox */}
-                  <CheckRow
-                    label={content.terms_checkbox_2}
-                    checked={termChecks[1]}
-                    onCheckedChange={(checked) =>
-                      setTermChecks((prev) =>
-                        prev.map((item, i) => (i === 1 ? checked : item)),
-                      )
-                    }
-                  />
+                  {/* Second checkbox — opens gym rules & health responsibility modal */}
+                  <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-white/80">
+                    <Checkbox
+                      checked={termChecks[1]}
+                      onCheckedChange={() => {
+                        if (!termChecks[1]) {
+                          setShowGymRulesModal(true);
+                        } else {
+                          setTermChecks((prev) =>
+                            prev.map((item, i) => (i === 1 ? false : item)),
+                          );
+                        }
+                      }}
+                      className="mt-0.5 border-white/30 data-[state=checked]:bg-red-700"
+                    />
+                    <span>
+                      {content.terms_checkbox_2}{" "}
+                      <button
+                        type="button"
+                        onClick={() => setShowGymRulesModal(true)}
+                        className="underline text-red-400 hover:text-red-300 text-xs font-medium ml-1"
+                      >
+                        {termChecks[1] ? "(view rules)" : "Read Rules →"}
+                      </button>
+                    </span>
+                  </label>
                 </div>
               </div>
               <div className="rounded-lg bg-white/5 p-4">
