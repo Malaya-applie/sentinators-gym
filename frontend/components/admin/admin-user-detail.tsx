@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchAdminUserDetail,
   clearSelectedUser,
 } from "@/store/slices/adminSlice";
+import { adminApi } from "@/store/slices/adminSlice";
 import {
   ArrowLeft,
+  ArrowDown,
   User,
   Mail,
   Phone,
@@ -90,30 +92,76 @@ export function AdminUserDetail({ userId, onBack }: Props) {
   const dispatch = useAppDispatch();
   const { selectedUser, loading } = useAppSelector((s) => s.admin);
 
-  useEffect(() => {
-    dispatch(fetchAdminUserDetail(userId));
-    return () => {
-      dispatch(clearSelectedUser());
-    };
-  }, [dispatch, userId]);
+   useEffect(() => {
+     dispatch(fetchAdminUserDetail(userId));
+     return () => {
+       dispatch(clearSelectedUser());
+     };
+   }, [dispatch, userId]);
 
-  const genderLabel = (g?: string | null) => {
-    if (!g) return null;
-    return g.charAt(0) + g.slice(1).toLowerCase();
-  };
+   const [downloadLoading, setDownloadLoading] = useState(false);
+
+   const handleDownloadContract = async () => {
+     setDownloadLoading(true);
+     try {
+       const res = await adminApi().get(`/admin/users/${userId}/contract/download`, {
+         responseType: "blob",
+       });
+       const url = window.URL.createObjectURL(new Blob([res.data]));
+       const link = document.createElement("a");
+       link.href = url;
+       link.setAttribute("download", `contract-${userId}.pdf`);
+       document.body.appendChild(link);
+       link.click();
+       link.parentNode?.removeChild(link);
+       window.URL.revokeObjectURL(url);
+     } catch (err) {
+       console.error("Failed to download contract", err);
+     } finally {
+       setDownloadLoading(false);
+     }
+   };
+
+
+   const genderLabel = (g?: string | null) => {
+     if (!g) return null;
+     return g.charAt(0) + g.slice(1).toLowerCase();
+   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
-        >
-          <ArrowLeft size={16} />
-          Back to Customers
-        </button>
-      </div>
+       {/* Header */}
+       <div className="flex items-center gap-3">
+         <button
+           onClick={onBack}
+           className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
+         >
+           <ArrowLeft size={16} />
+           Back to Customers
+         </button>
+          <button
+            onClick={handleDownloadContract}
+            disabled={loading || !selectedUser || downloadLoading}
+            className={`flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors ${
+              loading || !selectedUser || downloadLoading ? "opacity-50" : ""
+            }`}
+          >
+           {downloadLoading ? (
+             <>
+               <span className="mr-2">Downloading...</span>
+               <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+               </svg>
+             </>
+           ) : (
+             <>
+               <ArrowDown size={16} />
+               Download Contract
+             </>
+           )}
+         </button>
+       </div>
 
       {loading || !selectedUser ? (
         <div className="text-white/40 text-sm py-10 text-center">

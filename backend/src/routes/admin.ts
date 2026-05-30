@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, AuthRequest } from "../middleware/auth";
+import { generateAgreementPdf } from "../lib/generateAgreementPdf";
 
 const router = Router();
 
@@ -605,1050 +606,163 @@ router.get(
     } catch (err) {
       res.status(500).json({ error: "Failed" });
     }
-  },
+  }
 );
 
-router.post(
-  "/content/stats",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { value, label, order } = req.body;
-      const row = await prisma.stat.create({
-        data: { value, label, order: order ?? 0 },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/stats/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.stat.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/stats/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.stat.delete({ where: { id: Number(req.params.id) } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── TRAINERS ──────────────────────────────────────────
 router.get(
-  "/content/trainers",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.trainer.findMany({ orderBy: { order: "asc" } });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/trainers",
+  "/users/:id/contract/download",
   requireAdmin,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { name, role, description, image, order } = req.body;
-      const row = await prisma.trainer.create({
-        data: { name, role, description, image, order: order ?? 0 },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
+      const userId = Number(req.params.id);
+      if (isNaN(userId)) {
+        res.status(400).json({ error: "Invalid user id" });
+        return;
+      }
 
-router.put(
-  "/content/trainers/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.trainer.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/trainers/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.trainer.delete({ where: { id: Number(req.params.id) } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── TESTIMONIALS ──────────────────────────────────────
-router.get(
-  "/content/testimonials",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.testimonial.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/testimonials",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { name, role, rating, content, image, order } = req.body;
-      const row = await prisma.testimonial.create({
-        data: {
-          name,
-          role,
-          rating: rating ?? 5,
-          content,
-          image,
-          order: order ?? 0,
+      // Fetch user (basic fields)
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          dateOfBirth: true,
+          gender: true,
         },
       });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
 
-router.put(
-  "/content/testimonials/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.testimonial.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
 
-router.delete(
-  "/content/testimonials/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.testimonial.delete({ where: { id: Number(req.params.id) } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── BLOG POSTS ────────────────────────────────────────
-router.get(
-  "/content/blog",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.blogPost.findMany({
-        orderBy: { createdAt: "desc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/blog",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { title, excerpt, content, image } = req.body;
-      const row = await prisma.blogPost.create({
-        data: { title, excerpt, content, image },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/blog/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.blogPost.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/blog/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.blogPost.delete({ where: { id: Number(req.params.id) } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── GALLERY ───────────────────────────────────────────
-router.get(
-  "/content/gallery",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.galleryImage.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/gallery",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { src, alt, category, gridCol, gridRow, order } = req.body;
-      const row = await prisma.galleryImage.create({
-        data: {
-          src,
-          alt,
-          category: category ?? "All",
-          gridCol,
-          gridRow,
-          order: order ?? 0,
+      // Fetch approved memberships with plan, ordered by latest
+      const memberships = await prisma.membershipPurchase.findMany({
+        where: {
+          userId,
+          status: "APPROVED",
+        },
+        include: {
+          plan: true,
+        },
+        orderBy: {
+          createdAt: "desc",
         },
       });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
 
-router.put(
-  "/content/gallery/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.galleryImage.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
+      if (memberships.length === 0) {
+        res.status(404).json({ error: "No approved membership found for this user" });
+        return;
+      }
 
-router.delete(
-  "/content/gallery/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.galleryImage.delete({
-        where: { id: Number(req.params.id) },
-      });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
+      const latestMembership = memberships[0];
 
-// ─── ACHIEVEMENTS ──────────────────────────────────────
-router.get(
-  "/content/achievements",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.achievement.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
+      // Fetch additional plans for this membership
+      const additionalPlanIds = latestMembership.additionalPlanIds
+        .map((id) => Number(id))
+        .filter(Boolean);
+      const additionalPlans: { name: string; duration: string; price: number }[] = [];
+      if (additionalPlanIds.length > 0) {
+        const plans = await prisma.membershipPlan.findMany({
+          where: {
+            id: {
+              in: additionalPlanIds,
+            },
+          },
+          select: {
+            name: true,
+            duration: true,
+            price: true,
+          },
+        });
+        additionalPlans.push(...plans.map((p) => ({
+          name: p.name,
+          duration: p.duration,
+          price: p.price,
+        })));
+      }
 
-router.post(
-  "/content/achievements",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { image, title, order } = req.body;
-      const row = await prisma.achievement.create({
-        data: { image, title, order: order ?? 0 },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
+      // Prepare data for PDF generation
+      const registrationDetails = latestMembership.registrationDetails as { contractNumber?: string; customerNumber?: string } || {};
+      const contractNumber = registrationDetails.contractNumber ?? `CNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const customerNumber = registrationDetails.customerNumber ?? `CUS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-router.put(
-  "/content/achievements/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.achievement.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
+      const memberName = `${user.firstName} ${user.lastName}`.trim();
+      const email = user.email || "";
+      const phone = user.phone || "";
+      const dateOfBirth = user.dateOfBirth ? user.dateOfBirth.toISOString().split("T")[0] : "";
+      // Address and emergencyContact are stored in the membership
+      const address = latestMembership.address ?? "";
+      const emergencyContact = latestMembership.emergencyContact ?? "";
+      const planName = latestMembership.plan.name;
+      const planDuration = latestMembership.plan.duration;
+      const planPrice = latestMembership.plan.price;
+      const currency = latestMembership.plan.currency;
+      const registrationFee = latestMembership.registrationFee ?? 0;
+      // discountAmount and discountLabel are not stored; we can set to 0 and empty string
+      const discountAmount = 0;
+      const discountLabel = "";
+      const total = latestMembership.totalAmount ?? 0;
+      const startDate = latestMembership.startDate ? new Date(latestMembership.startDate).toISOString().split("T")[0] : "";
+      const endDate = latestMembership.endDate ? new Date(latestMembership.endDate).toISOString().split("T")[0] : "";
+      const paymentFrequency = latestMembership.paymentFrequency ?? "MONTHLY";
+      // periodicAmount is not stored; we can calculate from total and paymentFrequency? Not needed for now, set to null
+      const periodicAmount = null;
+      const signatureDataUrl = latestMembership.signatureDataUrl ?? "";
+      const isMinor = false; // we don't have this field, assume false
+      const guardianSignatureDataUrl = undefined;
+      const submittedAt = latestMembership.createdAt
+        ? new Date(latestMembership.createdAt).toISOString()
+        : new Date().toISOString();
 
-router.delete(
-  "/content/achievements/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.achievement.delete({ where: { id: Number(req.params.id) } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── WHY CHOOSE US FEATURES ────────────────────────────
-router.get(
-  "/content/why-features",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.whyChooseUsFeature.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/why-features",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { icon, title, description, order } = req.body;
-      const row = await prisma.whyChooseUsFeature.create({
-        data: { icon, title, description, order: order ?? 0 },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/why-features/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.whyChooseUsFeature.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/why-features/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.whyChooseUsFeature.delete({
-        where: { id: Number(req.params.id) },
-      });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── EVENT HIGHLIGHTS ──────────────────────────────────
-router.get(
-  "/content/event-highlights",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.eventHighlight.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/event-highlights",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { title, description, videoUrl, image, isMain, order } = req.body;
-      const row = await prisma.eventHighlight.create({
-        data: {
-          title,
-          description,
-          videoUrl,
-          image,
-          isMain: isMain ?? false,
-          order: order ?? 0,
-        },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/event-highlights/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.eventHighlight.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/event-highlights/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.eventHighlight.delete({
-        where: { id: Number(req.params.id) },
-      });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── TRAINING ZONES ────────────────────────────────────
-router.get(
-  "/content/training-zones",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.trainingZone.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/training-zones",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { image, alt, order } = req.body;
-      const row = await prisma.trainingZone.create({
-        data: { image, alt, order: order ?? 0 },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/training-zones/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const row = await prisma.trainingZone.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/training-zones/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.trainingZone.delete({
-        where: { id: Number(req.params.id) },
-      });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── SHOP PRODUCTS ─────────────────────────────────────
-// Features are stored as String[] in DB but serialized as comma-separated string for the admin panel.
-
-function parseFeatures(val: unknown): string[] {
-  if (Array.isArray(val)) return val.map(String);
-  if (typeof val === "string")
-    return val
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  return [];
-}
-
-function serializeProduct(p: {
-  id: number;
-  name: string;
-  price: number;
-  currency: string;
-  image: string | null;
-  category: string;
-  features: string[];
-  stock: number;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return { ...p, features: p.features.join(", ") };
-}
-
-router.get(
-  "/content/products",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.product.findMany({ orderBy: { id: "asc" } });
-      res.json(rows.map(serializeProduct));
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/products",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { name, price, currency, image, category, features, stock } =
-        req.body;
-      const row = await prisma.product.create({
-        data: {
-          name,
-          price: Number(price),
-          currency: currency || "CHF",
-          image: image || null,
-          category: category || "General",
-          features: parseFeatures(features),
-          stock: Number(stock) || 100,
-        },
-      });
-      res.json(serializeProduct(row));
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/products/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { features, price, stock, ...rest } = req.body;
-      const row = await prisma.product.update({
-        where: { id: Number(req.params.id) },
-        data: {
-          ...rest,
-          ...(price !== undefined ? { price: Number(price) } : {}),
-          ...(stock !== undefined ? { stock: Number(stock) } : {}),
-          ...(features !== undefined
-            ? { features: parseFeatures(features) }
-            : {}),
-        },
-      });
-      res.json(serializeProduct(row));
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/products/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.product.delete({ where: { id: Number(req.params.id) } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── SHOP PRODUCT CATEGORIES (Tabs) ─────────────────────
-router.get(
-  "/content/product-categories",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.productCategory.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/product-categories",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { name, order } = req.body;
-      const row = await prisma.productCategory.create({
-        data: { name, order: order ?? 0 },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/product-categories/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { order, ...rest } = req.body;
-      const row = await prisma.productCategory.update({
-        where: { id: Number(req.params.id) },
-        data: {
-          ...rest,
-          ...(order !== undefined ? { order: Number(order) } : {}),
-        },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/product-categories/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.productCategory.delete({
-        where: { id: Number(req.params.id) },
-      });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── MEMBERSHIP PLANS ─────────────────────────────────────────────────────
-// features are stored as String[] but serialized as comma-separated for admin UI
-
-function serializePlan(p: {
-  id: number;
-  name: string;
-  duration: string;
-  price: number;
-  monthlyPrice: number | null;
-  quarterlyPrice: number | null;
-  currency: string;
-  features: string[];
-  category: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return { ...p, features: p.features.join(", ") };
-}
-
-router.get(
-  "/content/membership-plans",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.membershipPlan.findMany({
-        orderBy: [{ category: "asc" }, { id: "asc" }],
-      });
-      res.json(rows.map(serializePlan));
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/membership-plans",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const {
-        name,
-        duration,
-        price,
-        monthlyPrice,
-        quarterlyPrice,
+      const pdfData = {
+        contractNumber,
+        customerNumber,
+        memberName,
+        email,
+        phone,
+        dateOfBirth,
+        address,
+        emergencyContact,
+        planName,
+        planDuration,
+        planPrice,
         currency,
-        features,
-        category,
-        isActive,
-      } = req.body;
-      const row = await prisma.membershipPlan.create({
-        data: {
-          name: name || "New Plan",
-          duration: duration || "1 Month",
-          price: Math.max(0, Number(price) || 0),
-          monthlyPrice:
-            monthlyPrice != null && Number(monthlyPrice) > 0
-              ? Number(monthlyPrice)
-              : null,
-          quarterlyPrice:
-            quarterlyPrice != null && Number(quarterlyPrice) > 0
-              ? Number(quarterlyPrice)
-              : null,
-          currency: currency || "CHF",
-          features: parseFeatures(features),
-          category: (category || "MEMBERSHIP") as any,
-          isActive: isActive !== false,
-        },
-      });
-      res.json(serializePlan(row));
+        additionalPlans,
+        registrationFee,
+        discountAmount,
+        discountLabel,
+        total,
+        startDate,
+        endDate,
+        paymentFrequency,
+        periodicAmount,
+        signatureDataUrl,
+        guardianSignatureDataUrl,
+        isMinor,
+        submittedAt,
+      };
+
+      const pdfBuffer = await generateAgreementPdf(pdfData);
+
+      // Set headers for PDF download
+      res.setHeader(
+        "Content-Type",
+        "application/pdf"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="contract-${userId}.pdf"`
+      );
+      res.send(pdfBuffer);
     } catch (err) {
-      res.status(500).json({ error: "Failed" });
+      console.error(err);
+      res.status(500).json({ error: "Failed to generate contract" });
     }
-  },
-);
-
-router.put(
-  "/content/membership-plans/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const {
-        features,
-        price,
-        monthlyPrice,
-        quarterlyPrice,
-        isActive,
-        ...rest
-      } = req.body;
-      const row = await prisma.membershipPlan.update({
-        where: { id: Number(req.params.id) },
-        data: {
-          ...rest,
-          ...(price !== undefined ? { price: Math.max(0, Number(price)) } : {}),
-          ...(monthlyPrice !== undefined
-            ? {
-                monthlyPrice:
-                  Number(monthlyPrice) > 0 ? Number(monthlyPrice) : null,
-              }
-            : {}),
-          ...(quarterlyPrice !== undefined
-            ? {
-                quarterlyPrice:
-                  Number(quarterlyPrice) > 0 ? Number(quarterlyPrice) : null,
-              }
-            : {}),
-          ...(features !== undefined
-            ? { features: parseFeatures(features) }
-            : {}),
-          ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
-        },
-      });
-      res.json(serializePlan(row));
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/membership-plans/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const id = Number(req.params.id);
-      // Prevent deleting plans that have purchases attached
-      const purchaseCount = await prisma.membershipPurchase.count({
-        where: { planId: id },
-      });
-      if (purchaseCount > 0) {
-        res.status(409).json({
-          error: `Cannot delete – this plan has ${purchaseCount} purchase(s). Deactivate it instead.`,
-        });
-        return;
-      }
-      await prisma.membershipPlan.delete({ where: { id } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── FAQ ITEMS ─────────────────────────────────────────────────────────────
-
-router.get(
-  "/content/faqs",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.faqItem.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/faqs",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { question, answer, order } = req.body;
-      const row = await prisma.faqItem.create({
-        data: {
-          question,
-          answer,
-          order: order ?? 0,
-        },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/faqs/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { order, ...rest } = req.body;
-      const row = await prisma.faqItem.update({
-        where: { id: Number(req.params.id) },
-        data: {
-          ...rest,
-          ...(order !== undefined ? { order: Number(order) } : {}),
-        },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/faqs/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      await prisma.faqItem.delete({ where: { id: Number(req.params.id) } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-// ─── PLAN CATEGORIES (dynamic, admin-managed) ──────────────────────────────
-
-router.get(
-  "/content/plan-categories",
-  requireAdmin,
-  async (_req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const rows = await prisma.planCategoryItem.findMany({
-        orderBy: { order: "asc" },
-      });
-      res.json(rows);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.post(
-  "/content/plan-categories",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { name, label, order } = req.body;
-      if (!name || !label) {
-        res.status(400).json({ error: "name and label are required" });
-        return;
-      }
-      const row = await prisma.planCategoryItem.create({
-        data: {
-          name: name.trim().toUpperCase().replace(/\s+/g, "_"),
-          label: label.trim(),
-          order: order !== undefined ? Number(order) : 0,
-        },
-      });
-      res.json(row);
-    } catch (err: any) {
-      if (err?.code === "P2002") {
-        res
-          .status(409)
-          .json({ error: "A category with that name already exists" });
-        return;
-      }
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.put(
-  "/content/plan-categories/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { label, order } = req.body;
-      const row = await prisma.planCategoryItem.update({
-        where: { id: Number(req.params.id) },
-        data: {
-          ...(label !== undefined ? { label: label.trim() } : {}),
-          ...(order !== undefined ? { order: Number(order) } : {}),
-        },
-      });
-      res.json(row);
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
-);
-
-router.delete(
-  "/content/plan-categories/:id",
-  requireAdmin,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const id = Number(req.params.id);
-      // Prevent deleting categories that have plans attached
-      const category = await prisma.planCategoryItem.findUnique({
-        where: { id },
-      });
-      if (!category) {
-        res.status(404).json({ error: "Category not found" });
-        return;
-      }
-      const planCount = await prisma.membershipPlan.count({
-        where: { category: category.name },
-      });
-      if (planCount > 0) {
-        res.status(409).json({
-          error: `Cannot delete — ${planCount} plan(s) use this category. Reassign them first.`,
-        });
-        return;
-      }
-      await prisma.planCategoryItem.delete({ where: { id } });
-      res.json({ message: "Deleted" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed" });
-    }
-  },
+  }
 );
 
 export default router;
