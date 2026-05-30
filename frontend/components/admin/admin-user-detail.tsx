@@ -7,6 +7,7 @@ import {
   clearSelectedUser,
 } from "@/store/slices/adminSlice";
 import { adminApi } from "@/store/slices/adminSlice";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   ArrowDown,
@@ -101,26 +102,33 @@ export function AdminUserDetail({ userId, onBack }: Props) {
 
    const [downloadLoading, setDownloadLoading] = useState(false);
 
-   const handleDownloadContract = async () => {
-     setDownloadLoading(true);
-     try {
-       const res = await adminApi().get(`/admin/users/${userId}/contract/download`, {
-         responseType: "blob",
-       });
-       const url = window.URL.createObjectURL(new Blob([res.data]));
-       const link = document.createElement("a");
-       link.href = url;
-       link.setAttribute("download", `contract-${userId}.pdf`);
-       document.body.appendChild(link);
-       link.click();
-       link.parentNode?.removeChild(link);
-       window.URL.revokeObjectURL(url);
-     } catch (err) {
-       console.error("Failed to download contract", err);
-     } finally {
-       setDownloadLoading(false);
-     }
-   };
+    const handleDownloadContract = async () => {
+      setDownloadLoading(true);
+      try {
+        const res = await adminApi().get(`/admin/users/${userId}/contract/download`, {
+          responseType: "blob",
+        });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `contract-${userId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (err: unknown) {
+        let message = 'Failed to download contract';
+        if (err && typeof err === 'object' && 'response' in err) {
+          const resp = (err as any).response;
+          if (resp && resp.data && resp.data.error) {
+            message = resp.data.error;
+          }
+        }
+        toast.error(message);
+      } finally {
+        setDownloadLoading(false);
+      }
+    };
 
 
    const genderLabel = (g?: string | null) => {
