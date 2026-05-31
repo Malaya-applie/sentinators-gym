@@ -7,6 +7,154 @@ import { generateAgreementPdf } from "../lib/generateAgreementPdf";
 
 const router = Router();
 
+// ─── ADMIN: MEMBERSHIP PLANS & PLAN CATEGORIES ───────────────
+function serializePlan(p: {
+  id: number;
+  name: string;
+  duration: string;
+  price: number;
+  monthlyPrice: number | null;
+  quarterlyPrice: number | null;
+  currency: string;
+  features: string[];
+  category: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return { ...p, features: p.features.join(", ") };
+}
+function parseFeatures(features: string | string[]): string[] {
+  if (Array.isArray(features)) return features;
+  if (typeof features === "string")
+    return features
+      .split(",")
+      .map((f) => f.trim())
+      .filter(Boolean);
+  return [];
+}
+
+// GET /api/admin/content/membership-plans
+router.get(
+  "/content/membership-plans",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.membershipPlan.findMany({
+        orderBy: [{ category: "asc" }, { id: "asc" }],
+      });
+      res.json(rows.map(serializePlan));
+    } catch (err) {
+      res.status(500).json({ error: "Failed" });
+    }
+  },
+);
+
+// POST /api/admin/content/membership-plans
+router.post(
+  "/content/membership-plans",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const {
+        name,
+        duration,
+        price,
+        monthlyPrice,
+        quarterlyPrice,
+        currency,
+        features,
+        category,
+        isActive,
+      } = req.body;
+      const row = await prisma.membershipPlan.create({
+        data: {
+          name: name || "New Plan",
+          duration: duration || "1 Month",
+          price: Math.max(0, Number(price) || 0),
+          monthlyPrice:
+            monthlyPrice != null && Number(monthlyPrice) > 0
+              ? Number(monthlyPrice)
+              : null,
+          quarterlyPrice:
+            quarterlyPrice != null && Number(quarterlyPrice) > 0
+              ? Number(quarterlyPrice)
+              : null,
+          currency: currency || "CHF",
+          features: parseFeatures(features),
+          category: (category || "MEMBERSHIP") as any,
+          isActive: isActive !== false,
+        },
+      });
+      res.json(serializePlan(row));
+    } catch (err) {
+      res.status(500).json({ error: "Failed" });
+    }
+  },
+);
+
+// PUT /api/admin/content/membership-plans/:id
+router.put(
+  "/content/membership-plans/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const {
+        features,
+        price,
+        monthlyPrice,
+        quarterlyPrice,
+        isActive,
+        ...rest
+      } = req.body;
+      const row = await prisma.membershipPlan.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...rest,
+          ...(price !== undefined ? { price: Math.max(0, Number(price)) } : {}),
+          ...(monthlyPrice !== undefined
+            ? {
+                monthlyPrice:
+                  Number(monthlyPrice) > 0 ? Number(monthlyPrice) : null,
+              }
+            : {}),
+          ...(quarterlyPrice !== undefined
+            ? {
+                quarterlyPrice:
+                  Number(quarterlyPrice) > 0 ? Number(quarterlyPrice) : null,
+              }
+            : {}),
+          ...(features !== undefined
+            ? { features: parseFeatures(features) }
+            : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(serializePlan(row));
+    } catch (err) {
+      res.status(500).json({ error: "Failed" });
+    }
+  },
+);
+
+// GET /api/admin/content/plan-categories
+router.get(
+  "/content/plan-categories",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const categories = await prisma.planCategoryItem.findMany({
+        orderBy: { order: "asc" },
+        select: { id: true, name: true, label: true, order: true },
+      });
+      res.json(categories);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch plan categories" });
+    }
+  },
+);
+
 // ─── POST /api/admin/login ───────────────────────────────
 router.post("/login", async (req: Request, res: Response): Promise<void> => {
   try {
@@ -606,7 +754,7 @@ router.get(
     } catch (err) {
       res.status(500).json({ error: "Failed" });
     }
-  }
+  },
 );
 
 router.get(
@@ -654,7 +802,9 @@ router.get(
       });
 
       if (memberships.length === 0) {
-        res.status(404).json({ error: "No approved membership found for this user" });
+        res
+          .status(404)
+          .json({ error: "No approved membership found for this user" });
         return;
       }
 
@@ -664,7 +814,11 @@ router.get(
       const additionalPlanIds = latestMembership.additionalPlanIds
         .map((id) => Number(id))
         .filter(Boolean);
-      const additionalPlans: { name: string; duration: string; price: number }[] = [];
+      const additionalPlans: {
+        name: string;
+        duration: string;
+        price: number;
+      }[] = [];
       if (additionalPlanIds.length > 0) {
         const plans = await prisma.membershipPlan.findMany({
           where: {
@@ -678,22 +832,34 @@ router.get(
             price: true,
           },
         });
-        additionalPlans.push(...plans.map((p) => ({
-          name: p.name,
-          duration: p.duration,
-          price: p.price,
-        })));
+        additionalPlans.push(
+          ...plans.map((p) => ({
+            name: p.name,
+            duration: p.duration,
+            price: p.price,
+          })),
+        );
       }
 
       // Prepare data for PDF generation
-      const registrationDetails = latestMembership.registrationDetails as { contractNumber?: string; customerNumber?: string } || {};
-      const contractNumber = registrationDetails.contractNumber ?? `CNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      const customerNumber = registrationDetails.customerNumber ?? `CUS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const registrationDetails =
+        (latestMembership.registrationDetails as {
+          contractNumber?: string;
+          customerNumber?: string;
+        }) || {};
+      const contractNumber =
+        registrationDetails.contractNumber ??
+        `CNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const customerNumber =
+        registrationDetails.customerNumber ??
+        `CUS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const memberName = `${user.firstName} ${user.lastName}`.trim();
       const email = user.email || "";
       const phone = user.phone || "";
-      const dateOfBirth = user.dateOfBirth ? user.dateOfBirth.toISOString().split("T")[0] : "";
+      const dateOfBirth = user.dateOfBirth
+        ? user.dateOfBirth.toISOString().split("T")[0]
+        : "";
       // Address and emergencyContact are stored in the membership
       const address = latestMembership.address ?? "";
       const emergencyContact = latestMembership.emergencyContact ?? "";
@@ -706,8 +872,12 @@ router.get(
       const discountAmount = 0;
       const discountLabel = "";
       const total = latestMembership.totalAmount ?? 0;
-      const startDate = latestMembership.startDate ? new Date(latestMembership.startDate).toISOString().split("T")[0] : "";
-      const endDate = latestMembership.endDate ? new Date(latestMembership.endDate).toISOString().split("T")[0] : "";
+      const startDate = latestMembership.startDate
+        ? new Date(latestMembership.startDate).toISOString().split("T")[0]
+        : "";
+      const endDate = latestMembership.endDate
+        ? new Date(latestMembership.endDate).toISOString().split("T")[0]
+        : "";
       const paymentFrequency = latestMembership.paymentFrequency ?? "MONTHLY";
       // periodicAmount is not stored; we can calculate from total and paymentFrequency? Not needed for now, set to null
       const periodicAmount = null;
@@ -749,20 +919,17 @@ router.get(
       const pdfBuffer = await generateAgreementPdf(pdfData);
 
       // Set headers for PDF download
-      res.setHeader(
-        "Content-Type",
-        "application/pdf"
-      );
+      res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="contract-${userId}.pdf"`
+        `attachment; filename="contract-${userId}.pdf"`,
       );
       res.send(pdfBuffer);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to generate contract" });
     }
-  }
+  },
 );
 
 export default router;
