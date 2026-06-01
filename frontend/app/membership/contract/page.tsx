@@ -72,6 +72,20 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function getSignatureDataUrl(canvas: HTMLCanvasElement | null): string {
+  if (!canvas) return "";
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 3; i < imageData.length; i += 4) {
+    if (imageData[i] !== 0) {
+      return canvas.toDataURL("image/png");
+    }
+  }
+  return "";
+}
+
 function ContractField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-sm">
@@ -178,11 +192,18 @@ export default function MembershipContractPage() {
     const canvas = contractCanvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
-    canvas.setPointerCapture(event.pointerId);
     const { x, y } = contractPoint(event);
-    contractDrawingRef.current = true;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
+
+    // Click once to start free drawing, click again to finish.
+    if (!contractDrawingRef.current) {
+      contractDrawingRef.current = true;
+      canvas.setPointerCapture(event.pointerId);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      return;
+    }
+
+    endContractDraw(event.pointerId);
   }
 
   function drawContractSig(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -197,10 +218,14 @@ export default function MembershipContractPage() {
     ctx.moveTo(x, y);
   }
 
-  function endContractDraw() {
+  function endContractDraw(pointerId?: number) {
     if (!contractDrawingRef.current) return;
     contractDrawingRef.current = false;
-    const dataUrl = contractCanvasRef.current?.toDataURL("image/png") || "";
+    const canvas = contractCanvasRef.current;
+    if (canvas && pointerId != null && canvas.hasPointerCapture(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
+    const dataUrl = getSignatureDataUrl(canvas);
     if (dataUrl) setContractMemberSig(dataUrl);
   }
 
@@ -254,7 +279,10 @@ export default function MembershipContractPage() {
 
   async function acceptContract() {
     setError("");
-    if (!contractMemberSig) {
+    const latestContractSig =
+      contractMemberSig || getSignatureDataUrl(contractCanvasRef.current);
+
+    if (!latestContractSig) {
       setError("Please draw your member signature to proceed.");
       return;
     }
@@ -410,7 +438,7 @@ export default function MembershipContractPage() {
         "gymContractResult",
         JSON.stringify({
           contractAccepted: true,
-          contractMemberSig,
+          contractMemberSig: latestContractSig,
           guardianSig,
         }),
       );
@@ -420,7 +448,7 @@ export default function MembershipContractPage() {
         "gymContractResult",
         JSON.stringify({
           contractAccepted: true,
-          contractMemberSig,
+          contractMemberSig: latestContractSig,
           guardianSig,
         }),
       );
@@ -830,8 +858,6 @@ export default function MembershipContractPage() {
                           ref={contractCanvasRef}
                           onPointerDown={beginContractDraw}
                           onPointerMove={drawContractSig}
-                          onPointerUp={endContractDraw}
-                          onPointerLeave={endContractDraw}
                           className="h-[110px] w-full touch-none cursor-crosshair"
                         />
                         <div className="absolute bottom-2 left-3 right-3 border-b border-gray-300 pointer-events-none" />
