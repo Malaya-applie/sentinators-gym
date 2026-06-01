@@ -105,12 +105,12 @@ function parseDurationToEndDate(
   const match = duration
     .toLowerCase()
     .trim()
-    .match(/^(\d+)\s*(month|year|day|week)/);
+    .match(/^(\d+)\s*(monat|month|year|day|week)/);
   if (!match) return "";
   const num = parseInt(match[1]);
   const unit = match[2];
   const end = new Date(start);
-  if (unit === "month") end.setMonth(end.getMonth() + num);
+  if (unit === "monat" || unit === "month") end.setMonth(end.getMonth() + num);
   else if (unit === "year") end.setFullYear(end.getFullYear() + num);
   else if (unit === "day") end.setDate(end.getDate() + num);
   else if (unit === "week") end.setDate(end.getDate() + num * 7);
@@ -123,11 +123,11 @@ function parseDurationToMonths(duration: string): number {
   const match = duration
     .toLowerCase()
     .trim()
-    .match(/^(\d+)\s*(month|year|day|week)/);
+    .match(/^(\d+)\s*(monat|month|year|day|week)/);
   if (!match) return 0;
   const num = parseInt(match[1]);
   const unit = match[2];
-  if (unit === "month") return num;
+  if (unit === "monat" || unit === "month") return num;
   if (unit === "year") return num * 12;
   if (unit === "week") return Math.round((num * 7) / 30.44);
   if (unit === "day") return Math.round(num / 30.44);
