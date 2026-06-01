@@ -911,6 +911,11 @@ function PlanForm({
   onChange: (key: string, value: string | number | boolean | null) => void;
   categories: PlanCategoryItem[];
 }) {
+  const durationOptions = Array.from({ length: 36 }, (_, i) => {
+    const months = i + 1;
+    return `${months} ${months === 1 ? "Month" : "Months"}`;
+  });
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -925,12 +930,20 @@ function PlanForm({
         </div>
         <div>
           <Label className="text-white/50 text-xs mb-1 block">Duration</Label>
-          <Input
+          <select
             value={String(form.duration ?? "")}
             onChange={(e) => onChange("duration", e.target.value)}
-            placeholder="12 Months"
-            className="bg-[#1a1a1a] border-white/10 text-white text-sm"
-          />
+            className="w-full bg-[#1a1a1a] border border-white/10 text-white text-sm rounded-md px-3 py-2"
+          >
+            <option value="" disabled>
+              Select duration
+            </option>
+            {durationOptions.map((duration) => (
+              <option key={duration} value={duration}>
+                {duration}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
