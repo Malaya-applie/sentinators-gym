@@ -155,6 +155,117 @@ router.get(
   },
 );
 
+// POST /api/admin/content/plan-categories
+router.post(
+  "/content/plan-categories",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, label, order } = req.body;
+      const catName = (name || label || "").trim();
+      if (!catName) {
+        res.status(400).json({ error: "name/label is required" });
+        return;
+      }
+      const row = await prisma.planCategoryItem.create({
+        data: {
+          name: catName,
+          label: label || catName,
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        res
+          .status(400)
+          .json({ error: "A category with this name already exists" });
+      } else {
+        res.status(500).json({ error: "Failed to create plan category" });
+      }
+    }
+  },
+);
+
+// PUT /api/admin/content/plan-categories/:id
+router.put(
+  "/content/plan-categories/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { label, order } = req.body;
+      const row = await prisma.planCategoryItem.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(label !== undefined ? { label } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update plan category" });
+    }
+  },
+);
+
+// DELETE /api/admin/content/plan-categories/:id
+router.delete(
+  "/content/plan-categories/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const id = Number(req.params.id);
+      const cat = await prisma.planCategoryItem.findUnique({ where: { id } });
+      if (!cat) {
+        res.status(404).json({ error: "Category not found" });
+        return;
+      }
+      // Check if any plans use this category
+      const count = await prisma.membershipPlan.count({
+        where: { category: cat.name },
+      });
+      if (count > 0) {
+        res
+          .status(400)
+          .json({
+            error: `Cannot delete: ${count} plan(s) are assigned to this category. Reassign them first.`,
+          });
+        return;
+      }
+      await prisma.planCategoryItem.delete({ where: { id } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete plan category" });
+    }
+  },
+);
+
+// DELETE /api/admin/content/membership-plans/:id
+router.delete(
+  "/content/membership-plans/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const id = Number(req.params.id);
+      const count = await prisma.membershipPurchase.count({
+        where: { planId: id },
+      });
+      if (count > 0) {
+        res
+          .status(400)
+          .json({
+            error: `Cannot delete: this plan has ${count} purchase(s). Deactivate it instead.`,
+          });
+        return;
+      }
+      await prisma.membershipPlan.delete({ where: { id } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete membership plan" });
+    }
+  },
+);
+
 // ─── POST /api/admin/login ───────────────────────────────
 router.post("/login", async (req: Request, res: Response): Promise<void> => {
   try {
@@ -756,7 +867,919 @@ router.get(
     }
   },
 );
+// POST /api/admin/content/stats
+router.post(
+  "/content/stats",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { value, label, order } = req.body;
+      const row = await prisma.stat.create({
+        data: {
+          value: value || "",
+          label: label || "",
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create stat" });
+    }
+  },
+);
 
+// PUT /api/admin/content/stats/:id
+router.put(
+  "/content/stats/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { value, label, order, isActive } = req.body;
+      const row = await prisma.stat.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(value !== undefined ? { value } : {}),
+          ...(label !== undefined ? { label } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update stat" });
+    }
+  },
+);
+
+// DELETE /api/admin/content/stats/:id
+router.delete(
+  "/content/stats/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.stat.delete({ where: { id: Number(req.params.id) } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete stat" });
+    }
+  },
+);
+
+// ─── TRAINERS ──────────────────────────────────────────
+router.get(
+  "/content/trainers",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.trainer.findMany({ orderBy: { order: "asc" } });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch trainers" });
+    }
+  },
+);
+
+router.post(
+  "/content/trainers",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, role, description, image, order } = req.body;
+      const row = await prisma.trainer.create({
+        data: {
+          name: name || "",
+          role: role || "",
+          description: description || null,
+          image: image || null,
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create trainer" });
+    }
+  },
+);
+
+router.put(
+  "/content/trainers/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, role, description, image, order, isActive } = req.body;
+      const row = await prisma.trainer.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(role !== undefined ? { role } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(image !== undefined ? { image } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update trainer" });
+    }
+  },
+);
+
+router.delete(
+  "/content/trainers/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.trainer.delete({ where: { id: Number(req.params.id) } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete trainer" });
+    }
+  },
+);
+
+// ─── TESTIMONIALS ──────────────────────────────────────
+router.get(
+  "/content/testimonials",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.testimonial.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch testimonials" });
+    }
+  },
+);
+
+router.post(
+  "/content/testimonials",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, role, rating, content, image, order } = req.body;
+      const row = await prisma.testimonial.create({
+        data: {
+          name: name || "",
+          role: role || "",
+          rating: Number(rating) || 5,
+          content: content || "",
+          image: image || null,
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create testimonial" });
+    }
+  },
+);
+
+router.put(
+  "/content/testimonials/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, role, rating, content, image, order, isActive } = req.body;
+      const row = await prisma.testimonial.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(role !== undefined ? { role } : {}),
+          ...(rating !== undefined ? { rating: Number(rating) } : {}),
+          ...(content !== undefined ? { content } : {}),
+          ...(image !== undefined ? { image } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update testimonial" });
+    }
+  },
+);
+
+router.delete(
+  "/content/testimonials/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.testimonial.delete({ where: { id: Number(req.params.id) } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete testimonial" });
+    }
+  },
+);
+
+// ─── BLOG ──────────────────────────────────────────────
+router.get(
+  "/content/blog",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.blogPost.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  },
+);
+
+router.post(
+  "/content/blog",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title, excerpt, content, image } = req.body;
+      const row = await prisma.blogPost.create({
+        data: {
+          title: title || "",
+          excerpt: excerpt || "",
+          content: content || null,
+          image: image || null,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create blog post" });
+    }
+  },
+);
+
+router.put(
+  "/content/blog/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title, excerpt, content, image, isActive } = req.body;
+      const row = await prisma.blogPost.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(title !== undefined ? { title } : {}),
+          ...(excerpt !== undefined ? { excerpt } : {}),
+          ...(content !== undefined ? { content } : {}),
+          ...(image !== undefined ? { image } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update blog post" });
+    }
+  },
+);
+
+router.delete(
+  "/content/blog/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.blogPost.delete({ where: { id: Number(req.params.id) } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete blog post" });
+    }
+  },
+);
+
+// ─── GALLERY ───────────────────────────────────────────
+router.get(
+  "/content/gallery",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.galleryImage.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch gallery" });
+    }
+  },
+);
+
+router.post(
+  "/content/gallery",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { src, alt, category, gridCol, gridRow, order } = req.body;
+      const row = await prisma.galleryImage.create({
+        data: {
+          src: src || "",
+          alt: alt || "",
+          category: category || "All",
+          gridCol: gridCol || null,
+          gridRow: gridRow || null,
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create gallery image" });
+    }
+  },
+);
+
+router.put(
+  "/content/gallery/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { src, alt, category, gridCol, gridRow, order, isActive } =
+        req.body;
+      const row = await prisma.galleryImage.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(src !== undefined ? { src } : {}),
+          ...(alt !== undefined ? { alt } : {}),
+          ...(category !== undefined ? { category } : {}),
+          ...(gridCol !== undefined ? { gridCol } : {}),
+          ...(gridRow !== undefined ? { gridRow } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update gallery image" });
+    }
+  },
+);
+
+router.delete(
+  "/content/gallery/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.galleryImage.delete({
+        where: { id: Number(req.params.id) },
+      });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete gallery image" });
+    }
+  },
+);
+
+// ─── ACHIEVEMENTS ──────────────────────────────────────
+router.get(
+  "/content/achievements",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.achievement.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
+  },
+);
+
+router.post(
+  "/content/achievements",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { image, title, order } = req.body;
+      const row = await prisma.achievement.create({
+        data: {
+          image: image || null,
+          title: title || "",
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create achievement" });
+    }
+  },
+);
+
+router.put(
+  "/content/achievements/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { image, title, order, isActive } = req.body;
+      const row = await prisma.achievement.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(image !== undefined ? { image } : {}),
+          ...(title !== undefined ? { title } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update achievement" });
+    }
+  },
+);
+
+router.delete(
+  "/content/achievements/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.achievement.delete({ where: { id: Number(req.params.id) } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete achievement" });
+    }
+  },
+);
+
+// ─── WHY CHOOSE US FEATURES ────────────────────────────
+router.get(
+  "/content/why-features",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.whyChooseUsFeature.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch why-features" });
+    }
+  },
+);
+
+router.post(
+  "/content/why-features",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { icon, title, description, order } = req.body;
+      const row = await prisma.whyChooseUsFeature.create({
+        data: {
+          icon: icon || "Dumbbell",
+          title: title || "",
+          description: description || "",
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create why-feature" });
+    }
+  },
+);
+
+router.put(
+  "/content/why-features/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { icon, title, description, order, isActive } = req.body;
+      const row = await prisma.whyChooseUsFeature.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(icon !== undefined ? { icon } : {}),
+          ...(title !== undefined ? { title } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update why-feature" });
+    }
+  },
+);
+
+router.delete(
+  "/content/why-features/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.whyChooseUsFeature.delete({
+        where: { id: Number(req.params.id) },
+      });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete why-feature" });
+    }
+  },
+);
+
+// ─── EVENT HIGHLIGHTS ──────────────────────────────────
+router.get(
+  "/content/event-highlights",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.eventHighlight.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch event-highlights" });
+    }
+  },
+);
+
+router.post(
+  "/content/event-highlights",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title, description, image, videoUrl, order } = req.body;
+      const row = await prisma.eventHighlight.create({
+        data: {
+          title: title || "",
+          description: description || null,
+          image: image || null,
+          videoUrl: videoUrl || null,
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create event-highlight" });
+    }
+  },
+);
+
+router.put(
+  "/content/event-highlights/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title, description, image, videoUrl, order, isActive, isMain } =
+        req.body;
+      const row = await prisma.eventHighlight.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(title !== undefined ? { title } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(image !== undefined ? { image } : {}),
+          ...(videoUrl !== undefined ? { videoUrl } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+          ...(isMain !== undefined ? { isMain } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update event-highlight" });
+    }
+  },
+);
+
+router.delete(
+  "/content/event-highlights/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.eventHighlight.delete({
+        where: { id: Number(req.params.id) },
+      });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete event-highlight" });
+    }
+  },
+);
+
+// ─── TRAINING ZONES ────────────────────────────────────
+router.get(
+  "/content/training-zones",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.trainingZone.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch training-zones" });
+    }
+  },
+);
+
+router.post(
+  "/content/training-zones",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { image, alt, order } = req.body;
+      const row = await prisma.trainingZone.create({
+        data: {
+          image: image || null,
+          alt: alt || "",
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create training-zone" });
+    }
+  },
+);
+
+router.put(
+  "/content/training-zones/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { image, alt, order, isActive } = req.body;
+      const row = await prisma.trainingZone.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(image !== undefined ? { image } : {}),
+          ...(alt !== undefined ? { alt } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update training-zone" });
+    }
+  },
+);
+
+router.delete(
+  "/content/training-zones/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.trainingZone.delete({
+        where: { id: Number(req.params.id) },
+      });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete training-zone" });
+    }
+  },
+);
+
+// ─── PRODUCTS (Admin) ──────────────────────────────────
+router.get(
+  "/content/products",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.product.findMany({ orderBy: { id: "asc" } });
+      // serialize features array to comma-separated string for the admin UI
+      res.json(rows.map((p) => ({ ...p, features: p.features.join(", ") })));
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  },
+);
+
+router.post(
+  "/content/products",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, price, currency, image, category, features, stock } =
+        req.body;
+      const featuresArr: string[] = Array.isArray(features)
+        ? features
+        : typeof features === "string"
+          ? features
+              .split(",")
+              .map((f: string) => f.trim())
+              .filter(Boolean)
+          : [];
+      const row = await prisma.product.create({
+        data: {
+          name: name || "",
+          price: Number(price) || 0,
+          currency: currency || "CHF",
+          image: image || null,
+          category: category || "General",
+          features: featuresArr,
+          stock: Number(stock) || 100,
+        },
+      });
+      res.json({ ...row, features: row.features.join(", ") });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create product" });
+    }
+  },
+);
+
+router.put(
+  "/content/products/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const {
+        name,
+        price,
+        currency,
+        image,
+        category,
+        features,
+        stock,
+        isActive,
+      } = req.body;
+      const row = await prisma.product.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(price !== undefined ? { price: Number(price) } : {}),
+          ...(currency !== undefined ? { currency } : {}),
+          ...(image !== undefined ? { image } : {}),
+          ...(category !== undefined ? { category } : {}),
+          ...(features !== undefined
+            ? {
+                features: Array.isArray(features)
+                  ? features
+                  : String(features)
+                      .split(",")
+                      .map((f: string) => f.trim())
+                      .filter(Boolean),
+              }
+            : {}),
+          ...(stock !== undefined ? { stock: Number(stock) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json({ ...row, features: row.features.join(", ") });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update product" });
+    }
+  },
+);
+
+router.delete(
+  "/content/products/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      // Check if product has order items
+      const count = await prisma.orderItem.count({
+        where: { productId: Number(req.params.id) },
+      });
+      if (count > 0) {
+        res
+          .status(400)
+          .json({
+            error:
+              "Cannot delete product with existing orders. Deactivate it instead.",
+          });
+        return;
+      }
+      await prisma.product.delete({ where: { id: Number(req.params.id) } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete product" });
+    }
+  },
+);
+
+// ─── PRODUCT CATEGORIES (Admin) ────────────────────────
+router.get(
+  "/content/product-categories",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.productCategory.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch product categories" });
+    }
+  },
+);
+
+router.post(
+  "/content/product-categories",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, order } = req.body;
+      const row = await prisma.productCategory.create({
+        data: { name: name || "", order: Number(order) || 0 },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create product category" });
+    }
+  },
+);
+
+router.put(
+  "/content/product-categories/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, order, isActive } = req.body;
+      const row = await prisma.productCategory.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update product category" });
+    }
+  },
+);
+
+router.delete(
+  "/content/product-categories/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.productCategory.delete({
+        where: { id: Number(req.params.id) },
+      });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete product category" });
+    }
+  },
+);
+
+// ─── FAQs ──────────────────────────────────────────────
+router.get(
+  "/content/faqs",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.faqItem.findMany({ orderBy: { order: "asc" } });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch FAQs" });
+    }
+  },
+);
+
+router.post(
+  "/content/faqs",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { question, answer, order } = req.body;
+      const row = await prisma.faqItem.create({
+        data: {
+          question: question || "",
+          answer: answer || "",
+          order: Number(order) || 0,
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to create FAQ" });
+    }
+  },
+);
+
+router.put(
+  "/content/faqs/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { question, answer, order, isActive } = req.body;
+      const row = await prisma.faqItem.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(question !== undefined ? { question } : {}),
+          ...(answer !== undefined ? { answer } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update FAQ" });
+    }
+  },
+);
+
+router.delete(
+  "/content/faqs/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.faqItem.delete({ where: { id: Number(req.params.id) } });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete FAQ" });
+    }
+  },
+);
 router.get(
   "/users/:id/contract/download",
   requireAdmin,
