@@ -195,6 +195,19 @@ function RenewModal({
   const contractDrawingRef = useRef(false);
   const [contractSig, setContractSig] = useState("");
 
+  function getContractSigDataUrl() {
+    const canvas = contractCanvasRef.current;
+    if (!canvas) return "";
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 3; i < imageData.length; i += 4) {
+      if (imageData[i] !== 0) return canvas.toDataURL("image/png");
+    }
+    return "";
+  }
+
   function contractPoint(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = contractCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -206,15 +219,22 @@ function RenewModal({
     const canvas = contractCanvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
-    canvas.setPointerCapture(e.pointerId);
     const { x, y } = contractPoint(e);
-    contractDrawingRef.current = true;
-    ctx.strokeStyle = "#111827";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(x, y);
+
+    // Click once to start free drawing, click again to finish.
+    if (!contractDrawingRef.current) {
+      contractDrawingRef.current = true;
+      canvas.setPointerCapture(e.pointerId);
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      return;
+    }
+
+    endContractDraw(e.pointerId);
   }
 
   function drawContractSig(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -228,10 +248,14 @@ function RenewModal({
     ctx.moveTo(x, y);
   }
 
-  function endContractDraw() {
+  function endContractDraw(pointerId?: number) {
     if (!contractDrawingRef.current) return;
     contractDrawingRef.current = false;
-    const dataUrl = contractCanvasRef.current?.toDataURL("image/png") || "";
+    const canvas = contractCanvasRef.current;
+    if (canvas && pointerId != null && canvas.hasPointerCapture(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
+    const dataUrl = getContractSigDataUrl();
     if (dataUrl) setContractSig(dataUrl);
   }
 
@@ -420,11 +444,13 @@ function RenewModal({
   }
 
   async function handleSubmit() {
+    const latestContractSig = contractSig || getContractSigDataUrl();
+
     if (!selectedPlanId) {
       setError("Please select a plan.");
       return;
     }
-    if (!contractSig) {
+    if (!latestContractSig) {
       setError("Please sign the contract.");
       return;
     }
@@ -439,7 +465,7 @@ function RenewModal({
           paymentFrequency: frequency,
           totalAmount: frequencyAdjustedTotal,
           notes,
-          signatureDataUrl: contractSig,
+          signatureDataUrl: latestContractSig,
         }),
       ).unwrap();
       onRenewed();
@@ -813,8 +839,6 @@ function RenewModal({
                               ref={contractCanvasRef}
                               onPointerDown={beginContractDraw}
                               onPointerMove={drawContractSig}
-                              onPointerUp={endContractDraw}
-                              onPointerLeave={endContractDraw}
                               className="h-[110px] w-full touch-none cursor-crosshair"
                             />
                             <div className="absolute bottom-2 left-3 right-3 border-b border-gray-300 pointer-events-none" />
@@ -857,7 +881,7 @@ function RenewModal({
                       <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={actionLoading || !contractSig}
+                        disabled={actionLoading}
                         className="px-6 py-2.5 rounded-lg bg-red-700 text-white text-sm font-bold hover:bg-red-800 transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {actionLoading ? (
