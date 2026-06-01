@@ -193,7 +193,10 @@ function RenewModal({
   // Contract signature canvas (dark ink on white — matches web contract page)
   const contractCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const contractDrawingRef = useRef(false);
+  const contractLastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const contractCurrentPointRef = useRef<{ x: number; y: number } | null>(null);
   const [contractSig, setContractSig] = useState("");
+  const [canvasHasContent, setCanvasHasContent] = useState(false);
 
   function getContractSigDataUrl() {
     const canvas = contractCanvasRef.current;
@@ -220,43 +223,56 @@ function RenewModal({
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
     const { x, y } = contractPoint(e);
-
-    // Click once to start free drawing, click again to finish.
-    if (!contractDrawingRef.current) {
-      contractDrawingRef.current = true;
-      canvas.setPointerCapture(e.pointerId);
-      ctx.strokeStyle = "#111827";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      return;
-    }
-
-    endContractDraw(e.pointerId);
+    contractDrawingRef.current = true;
+    contractLastPointRef.current = { x, y };
+    contractCurrentPointRef.current = { x, y };
+    canvas.setPointerCapture(e.pointerId);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 0.01, y + 0.01);
+    ctx.stroke();
   }
 
   function drawContractSig(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!contractDrawingRef.current) return;
-    const ctx = contractCanvasRef.current?.getContext("2d");
-    if (!ctx) return;
+    const canvas = contractCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    const lastPoint = contractLastPointRef.current;
+    if (!ctx || !canvas || !lastPoint) return;
     const { x, y } = contractPoint(e);
-    ctx.lineTo(x, y);
+    const midPoint = { x: (lastPoint.x + x) / 2, y: (lastPoint.y + y) / 2 };
+    ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midPoint.x, midPoint.y);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(midPoint.x, midPoint.y);
+    contractLastPointRef.current = { x, y };
+    contractCurrentPointRef.current = { x, y };
   }
 
   function endContractDraw(pointerId?: number) {
     if (!contractDrawingRef.current) return;
     contractDrawingRef.current = false;
     const canvas = contractCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    const currentPoint = contractCurrentPointRef.current;
+    if (ctx && currentPoint) {
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+      ctx.stroke();
+    }
     if (canvas && pointerId != null && canvas.hasPointerCapture(pointerId)) {
       canvas.releasePointerCapture(pointerId);
     }
+    contractLastPointRef.current = null;
+    contractCurrentPointRef.current = null;
+    if (getContractSigDataUrl()) setCanvasHasContent(true);
+  }
+
+  function confirmContractSig() {
     const dataUrl = getContractSigDataUrl();
-    if (dataUrl) setContractSig(dataUrl);
+    if (dataUrl) {
+      setContractSig(dataUrl);
+      setCanvasHasContent(false);
+    }
   }
 
   function clearContractSig() {
@@ -264,6 +280,20 @@ function RenewModal({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const scale = window.devicePixelRatio || 1;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    }
+    contractLastPointRef.current = null;
+    contractCurrentPointRef.current = null;
+    setCanvasHasContent(false);
     setContractSig("");
   }
 
@@ -432,7 +462,14 @@ function RenewModal({
       canvas.height = Math.floor(rect.height * scale);
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.scale(scale, scale);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#111827";
+      ctx.imageSmoothingEnabled = true;
     }, 150);
     return () => clearTimeout(t);
   }, [modalStep, contractSig]);
@@ -807,7 +844,7 @@ function RenewModal({
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                             Member Signature
-                            {contractSig ? (
+                            {contractSig || canvasHasContent ? (
                               <span className="ml-1.5 text-green-600 font-bold">
                                 ✓
                               </span>
@@ -815,14 +852,26 @@ function RenewModal({
                               <span className="ml-1 text-red-500">*</span>
                             )}
                           </span>
-                          <button
-                            type="button"
-                            onClick={clearContractSig}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <Eraser size={11} />{" "}
-                            {contractSig ? "Re-sign" : "Clear"}
-                          </button>
+                          {contractSig ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setContractSig("");
+                                setCanvasHasContent(false);
+                              }}
+                              className="flex items-center gap-1 text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors"
+                            >
+                              <Eraser size={11} /> Re-sign
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={clearContractSig}
+                              className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <Eraser size={11} /> Clear
+                            </button>
+                          )}
                         </div>
                         {contractSig ? (
                           <div className="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden min-h-[110px] flex items-center justify-center">
@@ -834,17 +883,70 @@ function RenewModal({
                             />
                           </div>
                         ) : (
-                          <div className="relative rounded-lg border-2 border-dashed border-gray-300 bg-white overflow-hidden min-h-[110px] hover:border-gray-400 transition-colors">
+                          <div
+                            className={`relative rounded-xl overflow-hidden min-h-[160px] transition-all border-2 ${
+                              canvasHasContent
+                                ? "border-green-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.06)]"
+                                : "border-dashed border-gray-300 hover:border-gray-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)]"
+                            } bg-white`}
+                          >
                             <canvas
                               ref={contractCanvasRef}
                               onPointerDown={beginContractDraw}
                               onPointerMove={drawContractSig}
-                              className="h-[110px] w-full touch-none cursor-crosshair"
+                              onPointerUp={() => endContractDraw()}
+                              onPointerCancel={() => endContractDraw()}
+                              className="h-[160px] w-full touch-none cursor-crosshair"
                             />
-                            <div className="absolute bottom-2 left-3 right-3 border-b border-gray-300 pointer-events-none" />
-                            <p className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-gray-300 pointer-events-none select-none">
-                              Sign above
-                            </p>
+                            {/* Baseline */}
+                            <div className="absolute bottom-9 left-5 right-5 border-b-2 border-dashed border-gray-200 pointer-events-none" />
+                            {/* Pen icon + hint — shown when blank */}
+                            {!canvasHasContent && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none select-none">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="22"
+                                  height="22"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="#d1d5db"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M12 20h9" />
+                                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                </svg>
+                                <p className="text-[11px] text-gray-300 font-medium tracking-wide">
+                                  Draw your signature
+                                </p>
+                              </div>
+                            )}
+                            {/* OK + Clear buttons — appear after first stroke */}
+                            {canvasHasContent && (
+                              <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center gap-2 pointer-events-none select-none">
+                                <button
+                                  type="button"
+                                  onClick={clearContractSig}
+                                  className="pointer-events-auto px-2.5 py-1 rounded-md text-[11px] font-semibold text-gray-400 border border-gray-200 bg-white hover:bg-gray-50 hover:text-red-500 transition-colors"
+                                >
+                                  Clear
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={confirmContractSig}
+                                  className="pointer-events-auto px-3.5 py-1 rounded-md text-[11px] font-bold text-white bg-green-500 hover:bg-green-600 transition-colors shadow-sm"
+                                >
+                                  ✓ OK
+                                </button>
+                              </div>
+                            )}
+                            {/* Bottom hint when blank */}
+                            {!canvasHasContent && (
+                              <p className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-gray-300 pointer-events-none select-none">
+                                Sign above the line
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>

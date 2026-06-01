@@ -22,6 +22,11 @@ type PlanCategory = {
   order: number;
 };
 
+type SignaturePoint = {
+  x: number;
+  y: number;
+};
+
 type RegState = {
   form: {
     firstName: string;
@@ -106,7 +111,10 @@ export default function MembershipContractPage() {
   const guardianDrawingRef = useRef(false);
   const [error, setError] = useState("");
   const [capturing, setCapturing] = useState(false);
+  const [canvasHasContent, setCanvasHasContent] = useState(false);
   const contractDocRef = useRef<HTMLDivElement | null>(null);
+  const contractLastPointRef = useRef<SignaturePoint | null>(null);
+  const contractCurrentPointRef = useRef<SignaturePoint | null>(null);
 
   // Load state from sessionStorage on mount
   useEffect(() => {
@@ -172,11 +180,16 @@ export default function MembershipContractPage() {
       canvas.height = Math.floor(rect.height * scale);
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.scale(scale, scale);
-      ctx.lineWidth = 2;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.lineWidth = 2.4;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.strokeStyle = "#111827";
+      ctx.fillStyle = "#111827";
+      ctx.imageSmoothingEnabled = true;
     }, 150);
     return () => clearTimeout(t);
   }, [state, contractMemberSig]);
@@ -194,39 +207,59 @@ export default function MembershipContractPage() {
     if (!ctx || !canvas) return;
     const { x, y } = contractPoint(event);
 
-    // Click once to start free drawing, click again to finish.
-    if (!contractDrawingRef.current) {
-      contractDrawingRef.current = true;
-      canvas.setPointerCapture(event.pointerId);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      return;
-    }
-
-    endContractDraw(event.pointerId);
+    contractDrawingRef.current = true;
+    contractLastPointRef.current = { x, y };
+    contractCurrentPointRef.current = { x, y };
+    canvas.setPointerCapture(event.pointerId);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 0.01, y + 0.01);
+    ctx.stroke();
   }
 
   function drawContractSig(event: React.PointerEvent<HTMLCanvasElement>) {
     if (!contractDrawingRef.current) return;
-    const ctx = contractCanvasRef.current?.getContext("2d");
-    if (!ctx) return;
+    const canvas = contractCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    const lastPoint = contractLastPointRef.current;
+    if (!ctx || !canvas || !lastPoint) return;
     const { x, y } = contractPoint(event);
-    ctx.lineTo(x, y);
+    const midPoint = {
+      x: (lastPoint.x + x) / 2,
+      y: (lastPoint.y + y) / 2,
+    };
+    ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midPoint.x, midPoint.y);
     ctx.stroke();
-    // Reset path so each segment is drawn independently (smooth incremental strokes)
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(midPoint.x, midPoint.y);
+    contractLastPointRef.current = { x, y };
+    contractCurrentPointRef.current = { x, y };
   }
 
   function endContractDraw(pointerId?: number) {
     if (!contractDrawingRef.current) return;
     contractDrawingRef.current = false;
     const canvas = contractCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    const currentPoint = contractCurrentPointRef.current;
+    if (ctx && currentPoint) {
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+      ctx.stroke();
+    }
     if (canvas && pointerId != null && canvas.hasPointerCapture(pointerId)) {
       canvas.releasePointerCapture(pointerId);
     }
-    const dataUrl = getSignatureDataUrl(canvas);
-    if (dataUrl) setContractMemberSig(dataUrl);
+    contractLastPointRef.current = null;
+    contractCurrentPointRef.current = null;
+    if (getSignatureDataUrl(canvas)) setCanvasHasContent(true);
+  }
+
+  function confirmContractSig() {
+    const dataUrl = getSignatureDataUrl(contractCanvasRef.current);
+    if (dataUrl) {
+      setContractMemberSig(dataUrl);
+      setCanvasHasContent(false);
+    }
   }
 
   function clearContractSig() {
@@ -234,7 +267,20 @@ export default function MembershipContractPage() {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setContractMemberSig("");
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const scale = window.devicePixelRatio || 1;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    }
+    contractLastPointRef.current = null;
+    contractCurrentPointRef.current = null;
+    setCanvasHasContent(false);
   }
 
   function beginGuardianDraw(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -817,7 +863,7 @@ export default function MembershipContractPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                         Member Signature
-                        {contractMemberSig ? (
+                        {contractMemberSig || canvasHasContent ? (
                           <span className="ml-1.5 text-green-600 font-bold">
                             ✓
                           </span>
@@ -828,7 +874,10 @@ export default function MembershipContractPage() {
                       {contractMemberSig ? (
                         <button
                           type="button"
-                          onClick={() => setContractMemberSig("")}
+                          onClick={() => {
+                            setContractMemberSig("");
+                            setCanvasHasContent(false);
+                          }}
                           className="flex items-center gap-1 text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors print:hidden"
                         >
                           <Eraser size={11} /> Re-sign
@@ -853,17 +902,70 @@ export default function MembershipContractPage() {
                         />
                       </div>
                     ) : (
-                      <div className="relative rounded-lg border-2 border-dashed border-gray-300 bg-white overflow-hidden min-h-[110px] hover:border-gray-400 transition-colors">
+                      <div
+                        className={`relative rounded-xl overflow-hidden min-h-[160px] transition-all border-2 ${
+                          canvasHasContent
+                            ? "border-green-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.06)]"
+                            : "border-dashed border-gray-300 hover:border-gray-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)]"
+                        } bg-white`}
+                      >
                         <canvas
                           ref={contractCanvasRef}
                           onPointerDown={beginContractDraw}
                           onPointerMove={drawContractSig}
-                          className="h-[110px] w-full touch-none cursor-crosshair"
+                          onPointerUp={() => endContractDraw()}
+                          onPointerCancel={() => endContractDraw()}
+                          className="h-[160px] w-full touch-none cursor-crosshair"
                         />
-                        <div className="absolute bottom-2 left-3 right-3 border-b border-gray-300 pointer-events-none" />
-                        <p className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-gray-300 pointer-events-none select-none">
-                          Sign above
-                        </p>
+                        {/* Baseline */}
+                        <div className="absolute bottom-9 left-5 right-5 border-b-2 border-dashed border-gray-200 pointer-events-none" />
+                        {/* Pen icon + hint — shown when blank */}
+                        {!canvasHasContent && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none select-none">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="22"
+                              height="22"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="#d1d5db"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                            </svg>
+                            <p className="text-[11px] text-gray-300 font-medium tracking-wide">
+                              Draw your signature
+                            </p>
+                          </div>
+                        )}
+                        {/* OK button — appears after first stroke, lets user confirm when done */}
+                        {canvasHasContent && (
+                          <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center gap-2 pointer-events-none select-none">
+                            <button
+                              type="button"
+                              onClick={clearContractSig}
+                              className="pointer-events-auto px-2.5 py-1 rounded-md text-[11px] font-semibold text-gray-400 border border-gray-200 bg-white hover:bg-gray-50 hover:text-red-500 transition-colors"
+                            >
+                              Clear
+                            </button>
+                            <button
+                              type="button"
+                              onClick={confirmContractSig}
+                              className="pointer-events-auto px-3.5 py-1 rounded-md text-[11px] font-bold text-white bg-green-500 hover:bg-green-600 transition-colors shadow-sm"
+                            >
+                              ✓ OK
+                            </button>
+                          </div>
+                        )}
+                        {/* Bottom hint when blank */}
+                        {!canvasHasContent && (
+                          <p className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-gray-300 pointer-events-none select-none">
+                            Sign above the line
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
