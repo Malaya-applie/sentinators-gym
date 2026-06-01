@@ -15,10 +15,12 @@ import {
   Clock,
   CheckCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function AdminDashboard() {
   const dispatch = useAppDispatch();
   const { stats, users, memberships, orders } = useAppSelector((s) => s.admin);
+  const t = useTranslations("admin.dashboard");
 
   useEffect(() => {
     dispatch(fetchAdminStats());
@@ -29,31 +31,31 @@ export function AdminDashboard() {
 
   const statCards = [
     {
-      label: "Total Customers",
+      label: t("totalCustomers"),
       value: stats?.totalUsers ?? 0,
       icon: <Users size={20} />,
       color: "blue",
     },
     {
-      label: "Pending Memberships",
+      label: t("pendingMemberships"),
       value: stats?.pendingMemberships ?? 0,
       icon: <Clock size={20} />,
       color: "yellow",
     },
     {
-      label: "Approved Memberships",
+      label: t("approvedMemberships"),
       value: stats?.approvedMemberships ?? 0,
       icon: <CreditCard size={20} />,
       color: "green",
     },
     {
-      label: "Pending Orders",
+      label: t("pendingOrders"),
       value: stats?.pendingOrders ?? 0,
       icon: <ShoppingBag size={20} />,
       color: "red",
     },
     {
-      label: "Approved Orders",
+      label: t("approvedOrders"),
       value: stats?.approvedOrders ?? 0,
       icon: <CheckCircle size={20} />,
       color: "purple",
@@ -100,10 +102,10 @@ export function AdminDashboard() {
         {/* Recent Customers */}
         <div className="bg-[#111] border border-white/5 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-white/70 mb-4 uppercase tracking-wide">
-            Recent Customers
+            {t("recentCustomers")}
           </h3>
           {recentUsers.length === 0 ? (
-            <p className="text-white/30 text-sm">No customers yet</p>
+            <p className="text-white/30 text-sm">{t("noCustomers")}</p>
           ) : (
             <ul className="space-y-3">
               {recentUsers.map((u) => (
@@ -126,10 +128,10 @@ export function AdminDashboard() {
         {/* Pending Memberships */}
         <div className="bg-[#111] border border-white/5 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-white/70 mb-4 uppercase tracking-wide">
-            Pending Memberships
+            {t("pendingMembershipsSection")}
           </h3>
           {pendingMemberships.length === 0 ? (
-            <p className="text-white/30 text-sm">No pending requests</p>
+            <p className="text-white/30 text-sm">{t("noPending")}</p>
           ) : (
             <ul className="space-y-3">
               {pendingMemberships.map((m) => (
@@ -149,10 +151,10 @@ export function AdminDashboard() {
         {/* Pending Orders */}
         <div className="bg-[#111] border border-white/5 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-white/70 mb-4 uppercase tracking-wide">
-            Pending Orders
+            {t("pendingOrdersSection")}
           </h3>
           {pendingOrders.length === 0 ? (
-            <p className="text-white/30 text-sm">No pending orders</p>
+            <p className="text-white/30 text-sm">{t("noPendingOrders")}</p>
           ) : (
             <ul className="space-y-3">
               {pendingOrders.map((o) => (
@@ -161,7 +163,8 @@ export function AdminDashboard() {
                     {o.user.firstName} {o.user.lastName}
                   </p>
                   <p className="text-xs text-white/30">
-                    CHF {o.totalAmount.toFixed(2)} — {o.items.length} item(s)
+                    CHF {o.totalAmount.toFixed(2)} — {o.items.length}{" "}
+                    {t("items")}
                   </p>
                 </li>
               ))}

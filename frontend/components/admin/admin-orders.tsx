@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAdminOrders, updateOrderStatus } from "@/store/slices/adminSlice";
 import { ShoppingBag, Check, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const STATUS_FILTERS = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
 
@@ -27,6 +28,7 @@ export function AdminOrders() {
     "ALL" | "PENDING" | "APPROVED" | "REJECTED"
   >("ALL");
   const [notesMap, setNotesMap] = useState<Record<number, string>>({});
+  const t = useTranslations("admin.orders");
 
   useEffect(() => {
     dispatch(fetchAdminOrders(filter === "ALL" ? undefined : filter));
@@ -43,7 +45,7 @@ export function AdminOrders() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
           <ShoppingBag size={20} className="text-purple-400" />
-          Shop Orders ({orders.length})
+          {t("title")} ({orders.length})
         </h2>
         <div className="flex gap-2">
           {STATUS_FILTERS.map((f) => (
@@ -56,17 +58,19 @@ export function AdminOrders() {
                   : "bg-white/5 text-white/40 border-white/10 hover:text-white"
               }`}
             >
-              {f}
+              {t(
+                f.toLowerCase() as "all" | "pending" | "approved" | "rejected",
+              )}
             </button>
           ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="text-white/40 text-sm">Loading...</div>
+        <div className="text-white/40 text-sm">{t("loading")}</div>
       ) : orders.length === 0 ? (
         <div className="bg-[#111] border border-white/5 rounded-xl p-10 text-center text-white/30">
-          No orders found.
+          {t("noOrders")}
         </div>
       ) : (
         <div className="space-y-3">
@@ -89,7 +93,7 @@ export function AdminOrders() {
                   </span>
                 </div>
                 <p className="text-sm text-white/60">
-                  Total:{" "}
+                  {t("total")}{" "}
                   <span className="text-white font-medium">
                     CHF {o.totalAmount.toFixed(2)}
                   </span>
@@ -103,11 +107,11 @@ export function AdminOrders() {
                   ))}
                 </div>
                 <p className="text-xs text-white/30">
-                  Placed: {new Date(o.createdAt).toLocaleString()}
+                  {t("placed")} {new Date(o.createdAt).toLocaleString()}
                 </p>
                 {o.notes && (
                   <p className="text-xs text-white/40 italic">
-                    Note: {o.notes}
+                    {t("note")} {o.notes}
                   </p>
                 )}
               </div>
@@ -117,7 +121,7 @@ export function AdminOrders() {
                 <div className="flex flex-col gap-2 min-w-50">
                   <input
                     type="text"
-                    placeholder="Optional admin note..."
+                    placeholder={t("adminNotePlaceholder")}
                     value={notesMap[o.id] || ""}
                     onChange={(e) =>
                       setNotesMap({ ...notesMap, [o.id]: e.target.value })
@@ -130,14 +134,14 @@ export function AdminOrders() {
                       onClick={() => handleAction(o.id, "APPROVED")}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/20 text-xs py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
-                      <Check size={13} /> Approve
+                      <Check size={13} /> {t("approve")}
                     </button>
                     <button
                       disabled={actionLoading}
                       onClick={() => handleAction(o.id, "REJECTED")}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/20 text-xs py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
-                      <X size={13} /> Reject
+                      <X size={13} /> {t("reject")}
                     </button>
                   </div>
                 </div>

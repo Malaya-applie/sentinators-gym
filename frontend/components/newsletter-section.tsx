@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SiteText } from "@/lib/content";
+import { useTranslations } from "next-intl";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export function NewsletterSection() {
   const [email, setEmail] = useState("");
   const [text, setText] = useState<SiteText>({});
+  const t = useTranslations("newsletter");
 
   useEffect(() => {
     fetch(`${API}/content/text/newsletter`)
@@ -47,13 +49,13 @@ export function NewsletterSection() {
             <form className="flex flex-col w-full gap-3 md:w-auto md:flex-row md:items-center md:gap-4 md:justify-end">
               <input
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full md:w-[320px] bg-transparent border border-white/30 rounded-md px-4 py-2 text-white placeholder:text-white/40 focus:outline-none focus:border-red-500 transition"
               />
               <Button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md w-full md:w-auto">
-                Subscribe
+                {t("subscribe")}
               </Button>
             </form>
           </div>

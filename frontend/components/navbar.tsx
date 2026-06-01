@@ -22,6 +22,7 @@ import {
   closeLoginModal,
   openRegistrationModal,
 } from "@/store/slices/authSlice";
+import { useTranslations } from "next-intl";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,15 +33,16 @@ export function Navbar() {
   const { user, loading, error, loginModalOpen } = useAppSelector(
     (s) => s.auth,
   );
+  const t = useTranslations("navbar");
 
   const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/about", label: "About" },
-    { href: "/membership", label: "Membership" },
-    { href: "/shop", label: "Shop" },
-    { href: "/events", label: "Events" },
-    { href: "/gallery", label: "Gallery" },
-    { href: "/blog", label: "Blog" },
+    { href: "/", label: t("home") },
+    { href: "/about", label: t("about") },
+    { href: "/membership", label: t("membership") },
+    { href: "/shop", label: t("shop") },
+    { href: "/events", label: t("events") },
+    { href: "/gallery", label: t("gallery") },
+    { href: "/blog", label: t("blog") },
   ];
 
   const isActive = (href: string) => {
@@ -200,7 +202,7 @@ export function Navbar() {
                   dispatch(openLoginModal());
                 }}
               >
-                Member Login
+                {t("memberLogin")}
               </Button>
             )}
           </div>
@@ -215,7 +217,7 @@ export function Navbar() {
         >
           <DialogHeader>
             <DialogTitle className="text-white text-xl font-bold">
-              Member Login
+              {t("loginTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleLoginSubmit} className="space-y-4 mt-2">
@@ -226,7 +228,7 @@ export function Navbar() {
             )}
             <div>
               <Label htmlFor="login-email" className="text-white mb-1 block">
-                Email
+                {t("email")}
               </Label>
               <Input
                 id="login-email"
@@ -237,12 +239,12 @@ export function Navbar() {
                 }
                 required
                 className="bg-[#18181b] text-white border-white/10"
-                placeholder="your@email.com"
+                placeholder={t("emailPlaceholder")}
               />
             </div>
             <div>
               <Label htmlFor="login-password" className="text-white mb-1 block">
-                Password
+                {t("password")}
               </Label>
               <Input
                 id="login-password"
@@ -261,10 +263,10 @@ export function Navbar() {
               disabled={loading}
               className="w-full btn-gradient hover:bg-red-700 text-white"
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading ? t("loggingIn") : t("login")}
             </Button>
             <p className="text-center text-white/50 text-xs">
-              New member?{" "}
+              {t("newMember")}{" "}
               <button
                 type="button"
                 className="text-red-400 hover:underline"
@@ -274,7 +276,7 @@ export function Navbar() {
                   dispatch(openRegistrationModal());
                 }}
               >
-                Fill the registration form on the homepage
+                {t("fillForm")}
               </button>
             </p>
           </form>

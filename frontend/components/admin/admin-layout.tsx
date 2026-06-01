@@ -13,6 +13,8 @@ import {
   Layout,
 } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { LanguageToggle } from "@/components/language-toggle";
 
 type AdminTab = "dashboard" | "users" | "memberships" | "orders" | "content";
 
@@ -22,14 +24,6 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const navItems: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-  { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
-  { id: "users", label: "Customers", icon: <Users size={18} /> },
-  { id: "memberships", label: "Memberships", icon: <CreditCard size={18} /> },
-  { id: "orders", label: "Shop Orders", icon: <ShoppingBag size={18} /> },
-  { id: "content", label: "Website Content", icon: <Layout size={18} /> },
-];
-
 export function AdminLayout({
   activeTab,
   setActiveTab,
@@ -38,6 +32,23 @@ export function AdminLayout({
   const dispatch = useAppDispatch();
   const { admin } = useAppSelector((s) => s.admin);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const t = useTranslations("admin");
+
+  const navItems: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+    {
+      id: "dashboard",
+      label: t("nav.dashboard"),
+      icon: <LayoutDashboard size={18} />,
+    },
+    { id: "users", label: t("nav.users"), icon: <Users size={18} /> },
+    {
+      id: "memberships",
+      label: t("nav.memberships"),
+      icon: <CreditCard size={18} />,
+    },
+    { id: "orders", label: t("nav.orders"), icon: <ShoppingBag size={18} /> },
+    { id: "content", label: t("nav.content"), icon: <Layout size={18} /> },
+  ];
 
   return (
     <div className="min-h-screen bg-[#080808] text-white flex">
@@ -50,7 +61,7 @@ export function AdminLayout({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
           <div>
-            <h2 className="font-bold text-white text-base">GYM Admin</h2>
+            <h2 className="font-bold text-white text-base">{t("title")}</h2>
             <p className="text-white/30 text-xs truncate">{admin?.email}</p>
           </div>
           <button
@@ -89,7 +100,7 @@ export function AdminLayout({
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/50 hover:text-red-400 hover:bg-red-600/10 transition-colors"
           >
             <LogOut size={18} />
-            Logout
+            {t("logout")}
           </button>
         </div>
       </aside>
@@ -112,9 +123,10 @@ export function AdminLayout({
           >
             <Menu size={20} />
           </button>
-          <h1 className="text-white font-semibold capitalize">
+          <h1 className="text-white font-semibold capitalize flex-1">
             {navItems.find((n) => n.id === activeTab)?.label ?? "Admin"}
           </h1>
+          <LanguageToggle />
         </header>
 
         {/* Page content */}

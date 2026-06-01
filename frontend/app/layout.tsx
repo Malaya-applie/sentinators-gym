@@ -4,6 +4,8 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ConditionalNavbar } from "@/components/conditional-navbar";
 import { ReduxProvider } from "@/components/redux-provider";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -18,19 +20,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <ReduxProvider>
-          <ConditionalNavbar />
-          {children}
-          {process.env.NODE_ENV === "production" && <Analytics />}
-        </ReduxProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ReduxProvider>
+            <ConditionalNavbar />
+            {children}
+            {process.env.NODE_ENV === "production" && <Analytics />}
+          </ReduxProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

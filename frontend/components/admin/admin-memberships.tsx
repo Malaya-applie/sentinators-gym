@@ -22,6 +22,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import axios from "axios";
+import { useTranslations } from "next-intl";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -1346,6 +1347,7 @@ export function AdminMemberships() {
   const [notesMap, setNotesMap] = useState<Record<number, string>>({});
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("ALL");
   const [renewTarget, setRenewTarget] = useState<AdminMembership | null>(null);
+  const t = useTranslations("admin.memberships");
 
   useEffect(() => {
     dispatch(fetchAdminMemberships(filter === "ALL" ? undefined : filter));
@@ -1429,7 +1431,7 @@ export function AdminMemberships() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
           <CreditCard size={20} className="text-green-400" />
-          Membership Purchases
+          {t("title")}
           <span className="text-sm font-normal text-white/40">
             ({filtered.length})
           </span>
@@ -1442,7 +1444,7 @@ export function AdminMemberships() {
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
           <div className="flex items-center gap-2 text-white/50 text-xs font-medium uppercase tracking-widest">
             <Filter size={12} />
-            Filters
+            {t("filters")}
           </div>
           {(filter !== "ALL" ||
             frequencyFilter !== "ALL" ||
@@ -1463,7 +1465,7 @@ export function AdminMemberships() {
               }}
               className="text-xs text-red-400/70 hover:text-red-400 transition-colors flex items-center gap-1"
             >
-              <X size={11} /> Clear all
+              <X size={11} /> {t("clearAll")}
             </button>
           )}
         </div>
@@ -1474,7 +1476,7 @@ export function AdminMemberships() {
             {/* Status */}
             <div className="space-y-2">
               <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium">
-                Status
+                {t("status")}
               </p>
               <div className="flex gap-1.5 flex-wrap">
                 {STATUS_FILTERS.map((f) => (
@@ -1493,7 +1495,13 @@ export function AdminMemberships() {
                         : "bg-transparent text-white/35 border-white/8 hover:border-white/20 hover:text-white/70"
                     }`}
                   >
-                    {f}
+                    {t(
+                      f.toLowerCase() as
+                        | "all"
+                        | "pending"
+                        | "approved"
+                        | "rejected",
+                    )}
                   </button>
                 ))}
               </div>
@@ -1502,7 +1510,7 @@ export function AdminMemberships() {
             {/* Frequency */}
             <div className="space-y-2">
               <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium">
-                Payment Frequency
+                {t("paymentFrequency")}
               </p>
               <div className="flex gap-1.5 flex-wrap">
                 {FREQUENCY_FILTERS.map((f) => (
@@ -1516,8 +1524,13 @@ export function AdminMemberships() {
                     }`}
                   >
                     {f === "ALL"
-                      ? "All"
-                      : f.charAt(0) + f.slice(1).toLowerCase()}
+                      ? t("all")
+                      : t(
+                          f.toLowerCase() as
+                            | "monthly"
+                            | "quarterly"
+                            | "annually",
+                        )}
                   </button>
                 ))}
               </div>
@@ -1531,7 +1544,7 @@ export function AdminMemberships() {
           <div className="space-y-2">
             <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium flex items-center gap-1.5">
               <Clock size={10} />
-              Subscription Expiry
+              {t("subscriptionExpiry")}
             </p>
             <div className="flex gap-1.5 flex-wrap">
               <button
@@ -1553,7 +1566,7 @@ export function AdminMemberships() {
                 }`}
               >
                 <Clock size={11} />
-                Expiring This Month
+                {t("expiringThisMonth")}
               </button>
               <button
                 onClick={() => setExpiryFilter("EXPIRED")}
@@ -1564,7 +1577,7 @@ export function AdminMemberships() {
                 }`}
               >
                 <AlertCircle size={11} />
-                Expired
+                {t("expired")}
               </button>
             </div>
           </div>
@@ -1577,7 +1590,7 @@ export function AdminMemberships() {
             {/* User search */}
             <div className="space-y-1.5">
               <label className="text-[10px] text-white/30 uppercase tracking-widest font-medium">
-                Member
+                {t("member")}
               </label>
               <div className="relative">
                 <Search
@@ -1586,7 +1599,7 @@ export function AdminMemberships() {
                 />
                 <input
                   type="text"
-                  placeholder="Name or email…"
+                  placeholder={t("searchPlaceholder")}
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   className="w-full bg-[#161616] border border-white/8 text-white text-xs rounded-xl pl-8 pr-3 py-2 placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors"
@@ -1597,7 +1610,7 @@ export function AdminMemberships() {
             {/* Plan dropdown */}
             <div className="space-y-1.5">
               <label className="text-[10px] text-white/30 uppercase tracking-widest font-medium">
-                Plan
+                {t("plan")}
               </label>
               <div className="relative">
                 <select
@@ -1605,7 +1618,7 @@ export function AdminMemberships() {
                   onChange={(e) => setPlanSearch(e.target.value)}
                   className="w-full appearance-none bg-[#161616] border border-white/8 text-white text-xs rounded-xl px-3 pr-8 py-2 focus:outline-none focus:border-white/25 transition-colors scheme-dark"
                 >
-                  <option value="">All plans</option>
+                  <option value="">{t("allPlans")}</option>
                   {planOptions.map((name) => (
                     <option key={name} value={name}>
                       {name}
@@ -1622,7 +1635,7 @@ export function AdminMemberships() {
             {/* Start date from */}
             <div className="space-y-1.5">
               <label className="text-[10px] text-white/30 uppercase tracking-widest font-medium">
-                Start date from
+                {t("startDateFrom")}
               </label>
               <input
                 type="date"
@@ -1635,7 +1648,7 @@ export function AdminMemberships() {
             {/* Start date to */}
             <div className="space-y-1.5">
               <label className="text-[10px] text-white/30 uppercase tracking-widest font-medium">
-                Start date to
+                {t("startDateTo")}
               </label>
               <input
                 type="date"
@@ -1649,10 +1662,10 @@ export function AdminMemberships() {
       </div>
 
       {loading ? (
-        <div className="text-white/40 text-sm">Loading...</div>
+        <div className="text-white/40 text-sm">{t("loading")}</div>
       ) : filtered.length === 0 ? (
         <div className="bg-[#111] border border-white/5 rounded-xl p-10 text-center text-white/30">
-          No membership records found.
+          {t("noRecords")}
         </div>
       ) : (
         <div className="space-y-3">
@@ -1852,7 +1865,7 @@ export function AdminMemberships() {
                 <div className="flex flex-col gap-2 min-w-50">
                   <input
                     type="text"
-                    placeholder="Optional admin note..."
+                    placeholder={t("adminNotePlaceholder")}
                     value={notesMap[m.id] || ""}
                     onChange={(e) =>
                       setNotesMap({ ...notesMap, [m.id]: e.target.value })
@@ -1865,14 +1878,14 @@ export function AdminMemberships() {
                       onClick={() => handleAction(m.id, "APPROVED")}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/20 text-xs py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
-                      <Check size={13} /> Approve
+                      <Check size={13} /> {t("approve")}
                     </button>
                     <button
                       disabled={actionLoading}
                       onClick={() => handleAction(m.id, "REJECTED")}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/20 text-xs py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
-                      <X size={13} /> Reject
+                      <X size={13} /> {t("reject")}
                     </button>
                   </div>
                 </div>
@@ -1888,7 +1901,7 @@ export function AdminMemberships() {
                       onClick={() => setRenewTarget(m)}
                       className="flex items-center justify-center gap-1.5 bg-green-600/15 hover:bg-green-600/25 text-green-400 border border-green-600/25 text-xs py-2 px-3 rounded-lg transition-colors font-medium"
                     >
-                      <RefreshCw size={13} /> Renew Contract
+                      <RefreshCw size={13} /> {t("renewContract")}
                     </button>
                   </div>
                 )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import LinkExtension from "@tiptap/extension-link";
@@ -403,6 +404,7 @@ function DeleteConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations("admin.content");
   return (
     <AlertDialog open={open}>
       <AlertDialogContent className="bg-[#111] border border-white/10 max-w-sm">
@@ -412,11 +414,11 @@ function DeleteConfirmDialog({
               <AlertTriangle size={18} className="text-red-400" />
             </div>
             <AlertDialogTitle className="text-white text-base">
-              {title ?? "Delete this item?"}
+              {title ?? t("deleteItemTitle")}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="text-white/50 text-sm pl-[52px]">
-            {description ?? "This action cannot be undone."}
+            {description ?? t("deleteItemDesc")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="mt-2">
@@ -426,14 +428,14 @@ function DeleteConfirmDialog({
             onClick={onCancel}
             className="border-white/10 text-white/60 hover:text-white"
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             size="sm"
             onClick={onConfirm}
             className="bg-red-700 hover:bg-red-600 text-white"
           >
-            Delete
+            {t("delete")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -446,6 +448,7 @@ function DeleteConfirmDialog({
 type TextRow = { id: number; key: string; value: string; section: string };
 
 function TextContentPanel() {
+  const t = useTranslations("admin.content");
   const [rows, setRows] = useState<TextRow[]>([]);
   const [editing, setEditing] = useState<Record<number, string>>({});
   const [saved, setSaved] = useState<Record<number, boolean>>({});
@@ -474,7 +477,7 @@ function TextContentPanel() {
 
   return (
     <div>
-      <SectionHeader title="Text & Headings" />
+      <SectionHeader title={t("textHeadings")} />
       {sections.map((sec) => (
         <div key={sec} className="mb-6">
           <p className="text-white/40 text-xs font-mono uppercase tracking-widest mb-2">
@@ -509,7 +512,7 @@ function TextContentPanel() {
                               : "bg-red-700 hover:bg-red-600 text-white"
                           }
                         >
-                          {saved[row.id] ? <Check size={14} /> : "Save"}
+                          {saved[row.id] ? <Check size={14} /> : t("save")}
                         </Button>
                       </div>
                       {(editing[row.id] ?? row.value) && (
@@ -535,7 +538,7 @@ function TextContentPanel() {
                               title="Reset to original default image"
                             >
                               <RotateCcw size={12} />
-                              Reset to default
+                              {t("resetToDefault")}
                             </button>
                           )}
                         </div>
@@ -575,7 +578,7 @@ function TextContentPanel() {
                             : "bg-red-700 hover:bg-red-600 text-white"
                         }
                       >
-                        {saved[row.id] ? <Check size={14} /> : "Save"}
+                        {saved[row.id] ? <Check size={14} /> : t("save")}
                       </Button>
                     </div>
                   )}
@@ -607,6 +610,7 @@ function CrudPanel<T extends { id: number }>({
   cols: ColDef<T>[];
   emptyForm: Omit<T, "id">;
 }) {
+  const t = useTranslations("admin.content");
   const [items, setItems] = useState<T[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<T>>({});
@@ -705,7 +709,7 @@ function CrudPanel<T extends { id: number }>({
       {/* Add form */}
       {showAdd && (
         <div className="bg-[#111] border border-white/10 rounded-lg p-4 mb-4 space-y-3">
-          <p className="text-white/50 text-xs mb-2">New item</p>
+          <p className="text-white/50 text-xs mb-2">{t("newItem")}</p>
           {cols.map((col) => (
             <div key={String(col.key)}>
               <Label className="text-white/50 text-xs mb-1 block">
@@ -731,7 +735,7 @@ function CrudPanel<T extends { id: number }>({
               onClick={() => setShowAdd(false)}
               className="border-white/10 text-white/60 hover:text-white"
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               size="sm"
@@ -739,7 +743,7 @@ function CrudPanel<T extends { id: number }>({
               onClick={handleAdd}
               className="bg-green-700 hover:bg-green-600 text-white"
             >
-              {saving ? "Saving…" : "Create"}
+              {saving ? t("saving") : t("create")}
             </Button>
           </div>
         </div>
@@ -911,6 +915,7 @@ function PlanForm({
   onChange: (key: string, value: string | number | boolean | null) => void;
   categories: PlanCategoryItem[];
 }) {
+  const t = useTranslations("admin.content");
   const durationOptions = Array.from({ length: 36 }, (_, i) => {
     const months = i + 1;
     return {
@@ -923,23 +928,27 @@ function PlanForm({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="text-white/50 text-xs mb-1 block">Name</Label>
+          <Label className="text-white/50 text-xs mb-1 block">
+            {t("planName")}
+          </Label>
           <Input
             value={String(form.name ?? "")}
             onChange={(e) => onChange("name", e.target.value)}
-            placeholder="Annual Membership"
+            placeholder={t("planNamePlaceholder")}
             className="bg-[#1a1a1a] border-white/10 text-white text-sm"
           />
         </div>
         <div>
-          <Label className="text-white/50 text-xs mb-1 block">Duration</Label>
+          <Label className="text-white/50 text-xs mb-1 block">
+            {t("planDuration")}
+          </Label>
           <select
             value={String(form.duration ?? "")}
             onChange={(e) => onChange("duration", e.target.value)}
             className="w-full bg-[#1a1a1a] border border-white/10 text-white text-sm rounded-md px-3 py-2"
           >
             <option value="" disabled>
-              Select duration
+              {t("selectDuration")}
             </option>
             {durationOptions.map((duration) => (
               <option key={duration.value} value={duration.value}>
@@ -952,7 +961,7 @@ function PlanForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-white/50 text-xs mb-1 block">
-            Price (number)
+            {t("planPrice")}
           </Label>
           <Input
             type="number"
@@ -965,7 +974,9 @@ function PlanForm({
           />
         </div>
         <div>
-          <Label className="text-white/50 text-xs mb-1 block">Currency</Label>
+          <Label className="text-white/50 text-xs mb-1 block">
+            {t("planCurrency")}
+          </Label>
           <Input
             value={String(form.currency ?? "CHF")}
             onChange={(e) => onChange("currency", e.target.value)}
@@ -976,8 +987,8 @@ function PlanForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-white/50 text-xs mb-1 block">
-            Monthly Price{" "}
-            <span className="text-white/30 font-normal">(optional)</span>
+            {t("planMonthlyPrice")}{" "}
+            <span className="text-white/30 font-normal">{t("optional")}</span>
           </Label>
           <Input
             type="number"
@@ -999,13 +1010,13 @@ function PlanForm({
             className="bg-[#1a1a1a] border-white/10 text-white text-sm"
           />
           <p className="text-white/25 text-[10px] mt-0.5">
-            Per month if paying monthly. Leave blank to auto-calculate.
+            {t("planMonthlyHint")}
           </p>
         </div>
         <div>
           <Label className="text-white/50 text-xs mb-1 block">
-            Quarterly Price{" "}
-            <span className="text-white/30 font-normal">(optional)</span>
+            {t("planQuarterlyPrice")}{" "}
+            <span className="text-white/30 font-normal">{t("optional")}</span>
           </Label>
           <Input
             type="number"
@@ -1027,12 +1038,14 @@ function PlanForm({
             className="bg-[#1a1a1a] border-white/10 text-white text-sm"
           />
           <p className="text-white/25 text-[10px] mt-0.5">
-            Per quarter if paying quarterly. Leave blank to auto-calculate.
+            {t("planQuarterlyHint")}
           </p>
         </div>
       </div>
       <div>
-        <Label className="text-white/50 text-xs mb-1 block">Category</Label>
+        <Label className="text-white/50 text-xs mb-1 block">
+          {t("planCategory")}
+        </Label>
         <select
           value={String(form.category ?? categories[0]?.name ?? "")}
           onChange={(e) => onChange("category", e.target.value)}
@@ -1047,12 +1060,12 @@ function PlanForm({
       </div>
       <div>
         <Label className="text-white/50 text-xs mb-1 block">
-          Features (comma-separated)
+          {t("planFeatures")}
         </Label>
         <Textarea
           value={String(form.features ?? "")}
           onChange={(e) => onChange("features", e.target.value)}
-          placeholder="Full gym access, Modern equipment, Locker room"
+          placeholder={t("planFeaturesPlaceholder")}
           className="bg-[#1a1a1a] border-white/10 text-white text-sm min-h-[70px]"
         />
       </div>
@@ -1068,7 +1081,7 @@ function PlanForm({
           htmlFor="plan-active"
           className="text-white/70 text-sm cursor-pointer"
         >
-          Active (visible on the frontend)
+          {t("planActive")}
         </Label>
       </div>
     </div>
@@ -1076,6 +1089,7 @@ function PlanForm({
 }
 
 function MembershipPlansPanel() {
+  const t = useTranslations("admin.content");
   // ── plan categories state ──
   const [categories, setCategories] = useState<PlanCategoryItem[]>([]);
   const [showCatPanel, setShowCatPanel] = useState(false);
@@ -1217,8 +1231,8 @@ function MembershipPlansPanel() {
       {/* Plan delete confirm */}
       <DeleteConfirmDialog
         open={deleteTargetId !== null}
-        title="Delete this plan?"
-        description="This plan will be permanently removed. Plans with existing purchases cannot be deleted — deactivate them instead."
+        title={t("deletePlanTitle")}
+        description={t("deletePlanDesc")}
         onConfirm={() =>
           deleteTargetId !== null && handleDelete(deleteTargetId)
         }
@@ -1228,7 +1242,7 @@ function MembershipPlansPanel() {
         <AlertDialogContent className="bg-[#111] border border-white/10 max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white text-base">
-              Cannot Delete
+              {t("cannotDelete")}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-white/50 text-sm">
               {deleteError}
@@ -1240,7 +1254,7 @@ function MembershipPlansPanel() {
               onClick={() => setDeleteError(null)}
               className="bg-red-700 hover:bg-red-600 text-white"
             >
-              OK
+              {t("ok")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1249,8 +1263,8 @@ function MembershipPlansPanel() {
       {/* Category delete confirm */}
       <DeleteConfirmDialog
         open={catDeleteTargetId !== null}
-        title="Delete this category?"
-        description="The category will be removed. You must first reassign or remove all plans in this category."
+        title={t("deleteCategoryTitle")}
+        description={t("deleteCategoryDesc")}
         onConfirm={() =>
           catDeleteTargetId !== null && handleCatDelete(catDeleteTargetId)
         }
@@ -1260,7 +1274,7 @@ function MembershipPlansPanel() {
         <AlertDialogContent className="bg-[#111] border border-white/10 max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white text-base">
-              Cannot Delete
+              {t("cannotDelete")}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-white/50 text-sm">
               {catDeleteError}
@@ -1272,7 +1286,7 @@ function MembershipPlansPanel() {
               onClick={() => setCatDeleteError(null)}
               className="bg-red-700 hover:bg-red-600 text-white"
             >
-              OK
+              {t("ok")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1281,13 +1295,15 @@ function MembershipPlansPanel() {
       {/* ── Plan Categories management ── */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
-          <h3 className="text-white font-bold text-lg">Plan Categories</h3>
+          <h3 className="text-white font-bold text-lg">
+            {t("planCategories")}
+          </h3>
           <Button
             size="sm"
             onClick={() => setShowCatPanel((v) => !v)}
             className="bg-white/10 hover:bg-white/20 text-white border border-white/10"
           >
-            {showCatPanel ? "Close" : "Manage Categories"}
+            {showCatPanel ? t("close") : t("manageCategories")}
           </Button>
         </div>
 
@@ -1309,7 +1325,7 @@ function MembershipPlansPanel() {
                       onChange={(e) =>
                         setCatEditForm({ label: e.target.value })
                       }
-                      placeholder="Category label"
+                      placeholder={t("categoryLabelPlaceholder")}
                       className="bg-[#1a1a1a] border-white/10 text-white text-sm flex-1"
                     />
                     <Button
@@ -1369,7 +1385,7 @@ function MembershipPlansPanel() {
               <Input
                 value={catAddForm.label}
                 onChange={(e) => setCatAddForm({ label: e.target.value })}
-                placeholder="New category name, e.g. Premium"
+                placeholder={t("newCategoryPlaceholder")}
                 className="bg-[#1a1a1a] border-white/10 text-white text-sm flex-1"
                 onKeyDown={(e) => e.key === "Enter" && handleCatAdd()}
               />
@@ -1379,7 +1395,7 @@ function MembershipPlansPanel() {
                 onClick={handleCatAdd}
                 className="bg-red-700 hover:bg-red-600 text-white shrink-0"
               >
-                <Plus size={14} className="mr-1" /> Add
+                <Plus size={14} className="mr-1" /> {t("add")}
               </Button>
             </div>
           </div>
@@ -1388,19 +1404,19 @@ function MembershipPlansPanel() {
 
       {/* ── Plans ── */}
       <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
-        <SectionHeader title="Membership Plans" />
+        <SectionHeader title={t("membershipPlansTitle")} />
         <Button
           size="sm"
           onClick={() => setShowAdd((v) => !v)}
           className="bg-red-700 hover:bg-red-600 text-white"
         >
-          <Plus size={14} className="mr-1" /> Add Plan
+          <Plus size={14} className="mr-1" /> {t("addPlan")}
         </Button>
       </div>
 
       {showAdd && (
         <div className="bg-[#111] border border-white/10 rounded-lg p-4 mb-6 space-y-3">
-          <p className="text-white/50 text-xs mb-2">New plan</p>
+          <p className="text-white/50 text-xs mb-2">{t("newPlan")}</p>
           <PlanForm
             form={addForm}
             onChange={(k, v) => setAddForm((prev) => ({ ...prev, [k]: v }))}
@@ -1416,7 +1432,7 @@ function MembershipPlansPanel() {
               }}
               className="border-white/10 text-white/60 hover:text-white"
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               size="sm"
@@ -1424,7 +1440,7 @@ function MembershipPlansPanel() {
               onClick={handleAdd}
               className="bg-green-700 hover:bg-green-600 text-white"
             >
-              {saving ? "Saving…" : "Create"}
+              {saving ? t("saving") : t("create")}
             </Button>
           </div>
         </div>
@@ -1437,7 +1453,9 @@ function MembershipPlansPanel() {
           </p>
 
           {items.length === 0 && (
-            <p className="text-white/20 text-sm italic ml-2">No plans yet</p>
+            <p className="text-white/20 text-sm italic ml-2">
+              {t("noPlansYet")}
+            </p>
           )}
 
           <div className="space-y-3">
@@ -1547,6 +1565,7 @@ const FOOTER_DEFAULTS = {
 type FooterData = typeof FOOTER_DEFAULTS;
 
 function FooterPanel() {
+  const t = useTranslations("admin.content");
   const [form, setForm] = useState<FooterData>({ ...FOOTER_DEFAULTS });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1615,17 +1634,17 @@ function FooterPanel() {
 
   return (
     <div>
-      <SectionHeader title="Footer" />
+      <SectionHeader title={t("footerTitle")} />
 
       {/* About / Description */}
       <div className="bg-[#111] border border-white/5 rounded-lg p-4 mb-4 space-y-3">
         <p className="text-white/40 text-xs font-mono uppercase tracking-widest mb-1">
           [About]
         </p>
-        {field("footer_description", "Description", "textarea")}
+        {field("footer_description", t("footerDescription"), "textarea")}
         <div className="grid grid-cols-2 gap-3">
-          {field("footer_facebook_url", "Facebook URL")}
-          {field("footer_instagram_url", "Instagram URL")}
+          {field("footer_facebook_url", t("facebookUrl"))}
+          {field("footer_instagram_url", t("instagramUrl"))}
         </div>
       </div>
 
@@ -1650,9 +1669,9 @@ function FooterPanel() {
         <p className="text-white/40 text-xs font-mono uppercase tracking-widest mb-1">
           [Contact]
         </p>
-        {field("footer_address", "Address")}
-        {field("footer_phone", "Phone")}
-        {field("footer_email", "Email")}
+        {field("footer_address", t("address"))}
+        {field("footer_phone", t("phone"))}
+        {field("footer_email", t("email"))}
       </div>
 
       {/* Copyright */}
@@ -1660,7 +1679,7 @@ function FooterPanel() {
         <p className="text-white/40 text-xs font-mono uppercase tracking-widest mb-2">
           [Copyright]
         </p>
-        {field("footer_copyright", "Copyright Text")}
+        {field("footer_copyright", t("copyrightText"))}
       </div>
 
       <div className="flex justify-end">
@@ -1674,13 +1693,13 @@ function FooterPanel() {
           }
         >
           {saving ? (
-            "Saving…"
+            t("saving")
           ) : saved ? (
             <>
-              <Check size={14} className="mr-1" /> Saved
+              <Check size={14} className="mr-1" /> {t("saved")}
             </>
           ) : (
-            "Save All"
+            t("saveAll")
           )}
         </Button>
       </div>
@@ -1710,6 +1729,7 @@ const REGISTRATION_DEFAULTS = {
 type RegistrationSettings = typeof REGISTRATION_DEFAULTS;
 
 function RegistrationSettingsPanel() {
+  const t = useTranslations("admin.content");
   const [form, setForm] = useState<RegistrationSettings>({
     ...REGISTRATION_DEFAULTS,
   });
@@ -1786,31 +1806,27 @@ function RegistrationSettingsPanel() {
 
   return (
     <div>
-      <SectionHeader title="Registration Form Settings" />
+      <SectionHeader title={t("registrationSettingsTitle")} />
       <div className="bg-[#111] border border-white/5 rounded-lg p-4 space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          {field("registration_fee", "Fixed Registration Fee", "number")}
-          {field("registration_currency", "Currency")}
+          {field("registration_fee", t("regFee"), "number")}
+          {field("registration_currency", t("currency"))}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {field(
-            "discount_amount",
-            "Discount Amount (set 0 to disable)",
-            "number",
-          )}
-          {field("discount_label", "Discount Label")}
+          {field("discount_amount", t("discountAmount"), "number")}
+          {field("discount_label", t("discountLabel"))}
         </div>
-        {field("agreement_text", "Agreement Text", "textarea")}
+        {field("agreement_text", t("agreementText"), "textarea")}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {field("agreement_checkbox_1", "Agreement Checkbox 1")}
-          {field("agreement_checkbox_2", "Agreement Checkbox 2")}
+          {field("agreement_checkbox_1", t("agreementCheckbox1"))}
+          {field("agreement_checkbox_2", t("agreementCheckbox2"))}
         </div>
-        {field("terms_text", "Terms & Conditions Text", "textarea")}
+        {field("terms_text", t("termsText"), "textarea")}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {field("terms_checkbox_1", "Terms Checkbox 1")}
-          {field("terms_checkbox_2", "Terms Checkbox 2")}
+          {field("terms_checkbox_1", t("termsCheckbox1"))}
+          {field("terms_checkbox_2", t("termsCheckbox2"))}
         </div>
-        {field("terms_final_checkbox", "Signature Confirmation")}
+        {field("terms_final_checkbox", t("signatureConfirmation"))}
         <div className="flex justify-end pt-2">
           <Button
             onClick={saveAll}
@@ -1822,13 +1838,13 @@ function RegistrationSettingsPanel() {
             }
           >
             {saving ? (
-              "Saving..."
+              t("saving")
             ) : saved ? (
               <>
-                <Check size={14} className="mr-1" /> Saved
+                <Check size={14} className="mr-1" /> {t("saved")}
               </>
             ) : (
-              "Save Registration Settings"
+              t("saveRegistration")
             )}
           </Button>
         </div>
@@ -1863,30 +1879,48 @@ type Tab = (typeof TABS)[number];
 // ── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
 export function AdminContent() {
+  const t = useTranslations("admin.content");
   const [tab, setTab] = useState<Tab>("Text");
+
+  const TAB_LABELS: Record<Tab, string> = {
+    Text: t("tabText"),
+    Stats: t("tabStats"),
+    Trainers: t("tabTrainers"),
+    Testimonials: t("tabTestimonials"),
+    Blog: t("tabBlog"),
+    Gallery: t("tabGallery"),
+    Achievements: t("tabAchievements"),
+    "Why Choose Us": t("tabWhyChooseUs"),
+    Events: t("tabEvents"),
+    "Training Zones": t("tabTrainingZones"),
+    "Membership Plans": t("tabMembershipPlans"),
+    Registration: t("tabRegistration"),
+    FAQ: t("tabFaq"),
+    "Shop Products": t("tabShopProducts"),
+    "Shop Categories": t("tabShopCategories"),
+    Footer: t("tabFooter"),
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Website Content</h1>
-        <p className="text-white/40 text-sm">
-          Edit everything that appears on your website.
-        </p>
+        <h1 className="text-2xl font-bold text-white mb-1">{t("title")}</h1>
+        <p className="text-white/40 text-sm">{t("subtitle")}</p>
       </div>
 
       {/* Tab bar */}
       <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
-        {TABS.map((t) => (
+        {TABS.map((tabKey) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              tab === t
+              tab === tabKey
                 ? "bg-red-700 text-white"
                 : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"
             }`}
           >
-            {t}
+            {TAB_LABELS[tabKey]}
           </button>
         ))}
       </div>
@@ -1897,12 +1931,12 @@ export function AdminContent() {
 
         {tab === "Stats" && (
           <CrudPanel
-            title="Stats Bar"
+            title={t("titleStatsBar")}
             endpoint="stats"
             cols={[
-              { key: "value" as never, label: "Value", type: "text" },
-              { key: "label" as never, label: "Label", type: "text" },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "value" as never, label: t("colValue"), type: "text" },
+              { key: "label" as never, label: t("colLabel"), type: "text" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={{ value: "", label: "", order: 0 } as never}
           />
@@ -1910,18 +1944,18 @@ export function AdminContent() {
 
         {tab === "Trainers" && (
           <CrudPanel
-            title="Trainers"
+            title={t("titleTrainers")}
             endpoint="trainers"
             cols={[
-              { key: "image" as never, label: "Image", type: "image" },
-              { key: "name" as never, label: "Name", type: "text" },
-              { key: "role" as never, label: "Role", type: "text" },
+              { key: "image" as never, label: t("colImage"), type: "image" },
+              { key: "name" as never, label: t("colName"), type: "text" },
+              { key: "role" as never, label: t("colRole"), type: "text" },
               {
                 key: "description" as never,
-                label: "Description",
+                label: t("colDescription"),
                 type: "textarea",
               },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={
               {
@@ -1937,15 +1971,19 @@ export function AdminContent() {
 
         {tab === "Testimonials" && (
           <CrudPanel
-            title="Testimonials"
+            title={t("titleTestimonials")}
             endpoint="testimonials"
             cols={[
-              { key: "image" as never, label: "Image", type: "image" },
-              { key: "name" as never, label: "Name", type: "text" },
-              { key: "role" as never, label: "Role", type: "text" },
-              { key: "rating" as never, label: "Rating (1-5)", type: "number" },
-              { key: "content" as never, label: "Content", type: "textarea" },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "image" as never, label: t("colImage"), type: "image" },
+              { key: "name" as never, label: t("colName"), type: "text" },
+              { key: "role" as never, label: t("colRole"), type: "text" },
+              { key: "rating" as never, label: t("colRating"), type: "number" },
+              {
+                key: "content" as never,
+                label: t("colContent"),
+                type: "textarea",
+              },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={
               {
@@ -1962,15 +2000,19 @@ export function AdminContent() {
 
         {tab === "Blog" && (
           <CrudPanel
-            title="Blog Posts"
+            title={t("titleBlogPosts")}
             endpoint="blog"
             cols={[
-              { key: "image" as never, label: "Image", type: "image" },
-              { key: "title" as never, label: "Title", type: "text" },
-              { key: "excerpt" as never, label: "Excerpt", type: "richtext" },
+              { key: "image" as never, label: t("colImage"), type: "image" },
+              { key: "title" as never, label: t("colTitle"), type: "text" },
+              {
+                key: "excerpt" as never,
+                label: t("colExcerpt"),
+                type: "richtext",
+              },
               {
                 key: "content" as never,
-                label: "Full Content",
+                label: t("colFullContent"),
                 type: "richtext",
               },
             ]}
@@ -1982,23 +2024,27 @@ export function AdminContent() {
 
         {tab === "Gallery" && (
           <CrudPanel
-            title="Gallery Images"
+            title={t("titleGalleryImages")}
             endpoint="gallery"
             cols={[
-              { key: "src" as never, label: "Image", type: "image" },
-              { key: "alt" as never, label: "Alt Text", type: "text" },
-              { key: "category" as never, label: "Category", type: "text" },
+              { key: "src" as never, label: t("colImage"), type: "image" },
+              { key: "alt" as never, label: t("colAltText"), type: "text" },
+              {
+                key: "category" as never,
+                label: t("colCategory"),
+                type: "text",
+              },
               {
                 key: "gridCol" as never,
-                label: "Grid Column (CSS)",
+                label: t("colGridCol"),
                 type: "text",
               },
               {
                 key: "gridRow" as never,
-                label: "Grid Row (CSS)",
+                label: t("colGridRow"),
                 type: "text",
               },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={
               {
@@ -2015,16 +2061,16 @@ export function AdminContent() {
 
         {tab === "Achievements" && (
           <CrudPanel
-            title="Achievements & Certifications"
+            title={t("titleAchievements")}
             endpoint="achievements"
             cols={[
-              { key: "image" as never, label: "Image", type: "image" },
+              { key: "image" as never, label: t("colImage"), type: "image" },
               {
                 key: "title" as never,
-                label: "Title / Caption",
+                label: t("colTitleCaption"),
                 type: "textarea",
               },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={{ title: "", image: "", order: 0 } as never}
           />
@@ -2032,21 +2078,21 @@ export function AdminContent() {
 
         {tab === "Why Choose Us" && (
           <CrudPanel
-            title="Why Choose Us Features"
+            title={t("titleWhyChooseUs")}
             endpoint="why-features"
             cols={[
               {
                 key: "icon" as never,
-                label: "Icon Name (lucide)",
+                label: t("colIconName"),
                 type: "text",
               },
-              { key: "title" as never, label: "Title", type: "text" },
+              { key: "title" as never, label: t("colTitle"), type: "text" },
               {
                 key: "description" as never,
-                label: "Description",
+                label: t("colDescription"),
                 type: "textarea",
               },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={
               {
@@ -2061,22 +2107,22 @@ export function AdminContent() {
 
         {tab === "Events" && (
           <CrudPanel
-            title="Event Highlights"
+            title={t("titleEvents")}
             endpoint="event-highlights"
             cols={[
-              { key: "image" as never, label: "Image", type: "image" },
-              { key: "title" as never, label: "Title", type: "text" },
+              { key: "image" as never, label: t("colImage"), type: "image" },
+              { key: "title" as never, label: t("colTitle"), type: "text" },
               {
                 key: "description" as never,
-                label: "Description",
+                label: t("colDescription"),
                 type: "textarea",
               },
               {
                 key: "videoUrl" as never,
-                label: "Video Embed URL",
+                label: t("colVideoUrl"),
                 type: "text",
               },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={
               {
@@ -2092,12 +2138,12 @@ export function AdminContent() {
 
         {tab === "Training Zones" && (
           <CrudPanel
-            title="Training Zone Images"
+            title={t("titleTrainingZones")}
             endpoint="training-zones"
             cols={[
-              { key: "image" as never, label: "Image", type: "image" },
-              { key: "alt" as never, label: "Alt Text", type: "text" },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "image" as never, label: t("colImage"), type: "image" },
+              { key: "alt" as never, label: t("colAltText"), type: "text" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={{ image: "", alt: "", order: 0 } as never}
           />
@@ -2109,20 +2155,24 @@ export function AdminContent() {
 
         {tab === "Shop Products" && (
           <CrudPanel
-            title="Shop Products"
+            title={t("titleShopProducts")}
             endpoint="products"
             cols={[
-              { key: "image" as never, label: "Image", type: "image" },
-              { key: "name" as never, label: "Name", type: "text" },
-              { key: "price" as never, label: "Price (CHF)", type: "number" },
-              { key: "currency" as never, label: "Currency", type: "text" },
-              { key: "category" as never, label: "Category", type: "text" },
+              { key: "image" as never, label: t("colImage"), type: "image" },
+              { key: "name" as never, label: t("colName"), type: "text" },
+              { key: "price" as never, label: t("colPrice"), type: "number" },
+              { key: "currency" as never, label: t("currency"), type: "text" },
+              {
+                key: "category" as never,
+                label: t("colCategory"),
+                type: "text",
+              },
               {
                 key: "features" as never,
-                label: "Features (comma-separated)",
+                label: t("colFeatures"),
                 type: "textarea",
               },
-              { key: "stock" as never, label: "Stock", type: "number" },
+              { key: "stock" as never, label: t("colStock"), type: "number" },
             ]}
             emptyForm={
               {
@@ -2140,11 +2190,15 @@ export function AdminContent() {
 
         {tab === "Shop Categories" && (
           <CrudPanel
-            title="Shop Category Tabs"
+            title={t("titleShopCategories")}
             endpoint="product-categories"
             cols={[
-              { key: "name" as never, label: "Category Name", type: "text" },
-              { key: "order" as never, label: "Order", type: "number" },
+              {
+                key: "name" as never,
+                label: t("colCategoryName"),
+                type: "text",
+              },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={{ name: "", order: 0 } as never}
           />
@@ -2152,20 +2206,20 @@ export function AdminContent() {
 
         {tab === "FAQ" && (
           <CrudPanel
-            title="FAQ Items"
+            title={t("titleFaq")}
             endpoint="faqs"
             cols={[
               {
                 key: "question" as never,
-                label: "Question",
+                label: t("colQuestion"),
                 type: "textarea",
               },
               {
                 key: "answer" as never,
-                label: "Answer",
+                label: t("colAnswer"),
                 type: "textarea",
               },
-              { key: "order" as never, label: "Order", type: "number" },
+              { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
             emptyForm={{ question: "", answer: "", order: 0 } as never}
           />

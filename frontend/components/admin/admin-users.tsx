@@ -5,11 +5,13 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAdminUsers } from "@/store/slices/adminSlice";
 import { AdminUserDetail } from "./admin-user-detail";
 import { Users, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function AdminUsers() {
   const dispatch = useAppDispatch();
   const { users, loading } = useAppSelector((s) => s.admin);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const t = useTranslations("admin.users");
 
   useEffect(() => {
     dispatch(fetchAdminUsers());
@@ -34,15 +36,15 @@ export function AdminUsers() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
           <Users size={20} className="text-blue-400" />
-          All Customers ({users.length})
+          {t("title")} ({users.length})
         </h2>
       </div>
 
       {loading ? (
-        <div className="text-white/40 text-sm">Loading...</div>
+        <div className="text-white/40 text-sm">{t("loading")}</div>
       ) : users.length === 0 ? (
         <div className="bg-[#111] border border-white/5 rounded-xl p-10 text-center text-white/30">
-          No customers registered yet.
+          {t("noUsers")}
         </div>
       ) : (
         <div className="bg-[#111] border border-white/5 rounded-xl overflow-hidden">
@@ -50,18 +52,36 @@ export function AdminUsers() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 text-white/40">
-                  <th className="text-left px-4 py-3 font-medium">#</th>
-                  <th className="text-left px-4 py-3 font-medium">Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Email</th>
-                  <th className="text-left px-4 py-3 font-medium">Phone</th>
-                  <th className="text-left px-4 py-3 font-medium">Age</th>
-                  <th className="text-left px-4 py-3 font-medium">Gender</th>
-                  <th className="text-left px-4 py-3 font-medium">Goal</th>
                   <th className="text-left px-4 py-3 font-medium">
-                    Memberships
+                    {t("colNum")}
                   </th>
-                  <th className="text-left px-4 py-3 font-medium">Orders</th>
-                  <th className="text-left px-4 py-3 font-medium">Joined</th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colName")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colEmail")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colPhone")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colAge")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colGender")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colGoal")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colMemberships")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colOrders")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium">
+                    {t("colJoined")}
+                  </th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>

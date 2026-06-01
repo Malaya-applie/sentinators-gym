@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslations } from "next-intl";
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -46,8 +47,6 @@ type RegistrationContent = {
   terms_checkbox_2?: string;
   terms_final_checkbox?: string;
 };
-
-const STEPS = ["Personal Details", "Plans", "Agreement", "Terms & Conditions"];
 
 const DEFAULT_CONTENT: Required<RegistrationContent> = {
   registration_fee: "99",
@@ -198,6 +197,13 @@ export function StepperRegistrationForm({
   const [customerNumber] = useState(
     () => "CUS-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
   );
+  const t = useTranslations("registration");
+  const STEPS = [
+    t("steps.personal"),
+    t("steps.plans"),
+    t("steps.agreement"),
+    t("steps.terms"),
+  ];
 
   // Restore state after returning from the contract page.
   // Uses pageshow so it also fires when Next.js restores a cached page on router.back().
@@ -541,37 +547,35 @@ export function StepperRegistrationForm({
         !form.password ||
         !form.phone
       ) {
-        setLocalError(
-          "First name, last name, email, password, and phone are required.",
-        );
+        setLocalError(t("errors.requiredFields"));
         return false;
       }
       if (form.password.length < 6) {
-        setLocalError("Password must be at least 6 characters.");
+        setLocalError(t("errors.passwordLength"));
         return false;
       }
     }
     if (current === 1) {
       if (!selectedPlan) {
-        setLocalError("Please select a membership plan.");
+        setLocalError(t("errors.selectPlan"));
         return false;
       }
       if (!membershipStartDate) {
-        setLocalError("Please select a start date for your membership.");
+        setLocalError(t("errors.selectStartDate"));
         return false;
       }
     }
     if (current === 2 && agreementChecks.some((checked) => !checked)) {
-      setLocalError("Please accept both agreement confirmations.");
+      setLocalError(t("errors.acceptAgreement"));
       return false;
     }
     if (current === 3) {
       if (termChecks.some((checked) => !checked)) {
-        setLocalError("Please accept all terms and confirmations.");
+        setLocalError(t("errors.acceptTerms"));
         return false;
       }
       if (!signatureDataUrl) {
-        setLocalError("Please draw your signature.");
+        setLocalError(t("errors.drawSignature"));
         return false;
       }
     }
@@ -780,9 +784,7 @@ export function StepperRegistrationForm({
         })
         .catch((err) => console.error("Agreement email error:", err));
 
-      setSuccess(
-        "Registration submitted successfully. Awaiting admin approval.",
-      );
+      setSuccess(t("success"));
       setTimeout(() => onComplete?.(), 1400);
     }
   }
@@ -796,7 +798,7 @@ export function StepperRegistrationForm({
     >
       <div className="sticky top-0 z-10 bg-[#08010a] px-2 sm:px-4 md:px-6 lg:px-8 pt-4 pb-3 text-center border-b border-white/5">
         <h2 className="text-xl font-bold tracking-wide sm:text-2xl">
-          Membership Registration
+          {t("title")}
         </h2>
         <div className="mx-auto mt-2 grid max-w-3xl grid-cols-4 gap-2">
           {STEPS.map((label, index) => {
@@ -849,21 +851,21 @@ export function StepperRegistrationForm({
             <div className="flex flex-col justify-center w-full md:w-auto">
               <div className="space-y-1 w-full max-w-md mx-auto md:w-[80%] md:mx-5">
                 <Field
-                  label="First Name"
+                  label={t("fields.firstName")}
                   name="firstName"
                   value={form.firstName}
                   onChange={updateForm}
                   required
                 />
                 <Field
-                  label="Last Name"
+                  label={t("fields.lastName")}
                   name="lastName"
                   value={form.lastName}
                   onChange={updateForm}
                   required
                 />
                 <Field
-                  label="Email"
+                  label={t("fields.email")}
                   name="email"
                   type="email"
                   value={form.email}
@@ -871,7 +873,7 @@ export function StepperRegistrationForm({
                   required
                 />
                 <Field
-                  label="Password"
+                  label={t("fields.password")}
                   name="password"
                   type="password"
                   value={form.password}
@@ -879,7 +881,7 @@ export function StepperRegistrationForm({
                   required
                 />
                 <Field
-                  label="Phone"
+                  label={t("fields.phone")}
                   name="phone"
                   type="tel"
                   value={form.phone}
@@ -888,7 +890,7 @@ export function StepperRegistrationForm({
                 />
                 <div>
                   <Label className="mb-1 block text-white/70">
-                    Date of Birth
+                    {t("fields.dateOfBirth")}
                   </Label>
                   <input
                     name="dateOfBirth"
@@ -900,21 +902,25 @@ export function StepperRegistrationForm({
                   />
                 </div>
                 <div>
-                  <Label className="mb-1 block text-white/70">Gender</Label>
+                  <Label className="mb-1 block text-white/70">
+                    {t("fields.gender")}
+                  </Label>
                   <select
                     name="gender"
                     value={form.gender}
                     onChange={updateForm}
                     className="h-8 py-0.5 w-full rounded-md border border-white/10 bg-[#18181b] px-3 pr-8 text-sm shadow-xs text-white appearance-none bg-[url('data:image/svg+xml,%3Csvg width='16' height='16' fill='none' stroke='white' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E')] bg-no-repeat bg-right bg-[length:1.25em_1.25em] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                   >
-                    <option value="">Select</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
+                    <option value="">{t("fields.genderSelect")}</option>
+                    <option value="male">{t("fields.genderMale")}</option>
+                    <option value="female">{t("fields.genderFemale")}</option>
+                    <option value="other">{t("fields.genderOther")}</option>
                   </select>
                 </div>
                 <div>
-                  <Label className="mb-1 block text-white/70">Street</Label>
+                  <Label className="mb-1 block text-white/70">
+                    {t("fields.street")}
+                  </Label>
                   <input
                     name="street"
                     type="text"
@@ -924,7 +930,9 @@ export function StepperRegistrationForm({
                   />
                 </div>
                 <div className="mt-2">
-                  <Label className="mb-1 block text-white/70">Location</Label>
+                  <Label className="mb-1 block text-white/70">
+                    {t("fields.location")}
+                  </Label>
                   <input
                     name="location"
                     type="text"
@@ -935,7 +943,7 @@ export function StepperRegistrationForm({
                 </div>
                 <div className="mt-2">
                   <Label className="mb-1 block text-white/70">
-                    Postal Code
+                    {t("fields.postalCode")}
                   </Label>
                   <input
                     name="postalCode"
@@ -955,11 +963,12 @@ export function StepperRegistrationForm({
             <div className="space-y-4 min-w-0">
               {plansLoading ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-white/60">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading plans
+                  <Loader2 className="h-4 w-4 animate-spin" />{" "}
+                  {t("plan.loadingPlans")}
                 </div>
               ) : groupedPlans.every((group) => group.items.length === 0) ? (
                 <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60">
-                  No active plans are available right now.
+                  {t("plan.noPlans")}
                 </div>
               ) : (
                 <div>
@@ -990,10 +999,10 @@ export function StepperRegistrationForm({
                   </div>
 
                   <h3 className="mb-4 text-center text-base font-semibold sm:text-lg">
-                    {selectedPlanGroup?.title ?? "Select a Plan"}
+                    {selectedPlanGroup?.title ?? t("plan.selectPlan")}
                     {activePlanCategory === "ADDITIONAL" && (
                       <span className="ml-2 text-sm font-normal text-white/40">
-                        (optional — select multiple)
+                        ({t("plan.optional")})
                       </span>
                     )}
                   </h3>
@@ -1001,7 +1010,7 @@ export function StepperRegistrationForm({
                   {!selectedPlanGroup ||
                   selectedPlanGroup.items.length === 0 ? (
                     <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center text-white/60">
-                      No plans available in this category.
+                      {t("plan.noPlansCategory")}
                     </div>
                   ) : activePlanCategory === "ADDITIONAL" ? (
                     /* Additional tab — multi-select */
@@ -1093,7 +1102,7 @@ export function StepperRegistrationForm({
                               >
                                 <div>
                                   <p className="mb-1 text-xs text-white/50">
-                                    Start Date *
+                                    {t("fields.startDate")} *
                                   </p>
                                   <input
                                     type="date"
@@ -1108,7 +1117,7 @@ export function StepperRegistrationForm({
                                 </div>
                                 <div>
                                   <p className="mb-1 text-xs text-white/50">
-                                    End Date
+                                    {t("fields.endDate")}
                                   </p>
                                   <p
                                     className={`h-8 flex items-center rounded-md border border-white/10 bg-black/40 px-3 text-sm ${
@@ -1119,7 +1128,7 @@ export function StepperRegistrationForm({
                                   >
                                     {membershipEndDate
                                       ? formatDate(membershipEndDate)
-                                      : "Pick a start date"}
+                                      : t("plan.pickStartDate")}
                                   </p>
                                 </div>
                               </div>
@@ -1148,7 +1157,7 @@ export function StepperRegistrationForm({
               {/* Payment Frequency Selector */}
               <div className="rounded-lg border border-white/10 bg-[#120817] p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Payment Frequency
+                  {t("plan.paymentFrequency")}
                 </p>
                 <div className="flex flex-col gap-1.5">
                   {[
@@ -1237,14 +1246,14 @@ export function StepperRegistrationForm({
                   }
                   className="border-white/15 bg-transparent text-white hover:bg-white/10"
                 >
-                  Back
+                  {t("back")}
                 </Button>
                 <Button
                   type="button"
                   onClick={goNext}
                   className="btn-gradient text-white"
                 >
-                  Next
+                  {t("next")}
                 </Button>
               </div>
             </div>
@@ -1744,7 +1753,7 @@ export function StepperRegistrationForm({
               onClick={() => setStep((prev) => Math.max(prev - 1, 0) as Step)}
               className="border-white/15 bg-transparent text-white hover:bg-white/10"
             >
-              Back
+              {t("back")}
             </Button>
           )}
           {step < 3 ? (
@@ -1753,7 +1762,7 @@ export function StepperRegistrationForm({
               onClick={goNext}
               className="btn-gradient text-white"
             >
-              Next
+              {t("next")}
             </Button>
           ) : (
             <Button
@@ -1762,7 +1771,7 @@ export function StepperRegistrationForm({
               disabled={isBusy || !!success}
               className="btn-gradient text-white"
             >
-              {isBusy ? "Submitting..." : "Sign & Confirm"}
+              {isBusy ? t("submitting") : t("signConfirm")}
             </Button>
           )}
         </div>

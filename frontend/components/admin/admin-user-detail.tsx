@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchAdminUserDetail,
@@ -53,17 +54,26 @@ const statusConfig: Record<
 };
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("admin.userDetail");
   const cfg = statusConfig[status] ?? {
     label: status,
     icon: null,
     className: "bg-white/5 text-white/40",
   };
+  const label =
+    status === "APPROVED"
+      ? t("statusApproved")
+      : status === "PENDING"
+        ? t("statusPending")
+        : status === "REJECTED"
+          ? t("statusRejected")
+          : cfg.label;
   return (
     <span
       className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${cfg.className}`}
     >
       {cfg.icon}
-      {cfg.label}
+      {label}
     </span>
   );
 }
@@ -90,90 +100,109 @@ function InfoItem({
 }
 
 export function AdminUserDetail({ userId, onBack }: Props) {
+  const t = useTranslations("admin.userDetail");
   const dispatch = useAppDispatch();
   const { selectedUser, loading } = useAppSelector((s) => s.admin);
 
-   useEffect(() => {
-     dispatch(fetchAdminUserDetail(userId));
-     return () => {
-       dispatch(clearSelectedUser());
-     };
-   }, [dispatch, userId]);
-
-   const [downloadLoading, setDownloadLoading] = useState(false);
-
-    const handleDownloadContract = async () => {
-      setDownloadLoading(true);
-      try {
-        const res = await adminApi().get(`/admin/users/${userId}/contract/download`, {
-          responseType: "blob",
-        });
-        const url = window.URL.createObjectURL(new Blob([res.data]));
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", `contract-${userId}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        link.parentNode?.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      } catch (err: unknown) {
-        let message = 'Failed to download contract';
-        if (err && typeof err === 'object' && 'response' in err) {
-          const resp = (err as any).response;
-          if (resp && resp.data && resp.data.error) {
-            message = resp.data.error;
-          }
-        }
-        toast.error(message);
-      } finally {
-        setDownloadLoading(false);
-      }
+  useEffect(() => {
+    dispatch(fetchAdminUserDetail(userId));
+    return () => {
+      dispatch(clearSelectedUser());
     };
+  }, [dispatch, userId]);
 
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
-   const genderLabel = (g?: string | null) => {
-     if (!g) return null;
-     return g.charAt(0) + g.slice(1).toLowerCase();
-   };
+  const handleDownloadContract = async () => {
+    setDownloadLoading(true);
+    try {
+      const res = await adminApi().get(
+        `/admin/users/${userId}/contract/download`,
+        {
+          responseType: "blob",
+        },
+      );
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `contract-${userId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      let message = "Failed to download contract";
+      if (err && typeof err === "object" && "response" in err) {
+        const resp = (err as any).response;
+        if (resp && resp.data && resp.data.error) {
+          message = resp.data.error;
+        }
+      }
+      toast.error(message);
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  const genderLabel = (g?: string | null) => {
+    if (!g) return null;
+    return g.charAt(0) + g.slice(1).toLowerCase();
+  };
 
   return (
     <div className="space-y-6">
-       {/* Header */}
-       <div className="flex items-center gap-3">
-         <button
-           onClick={onBack}
-           className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
-         >
-           <ArrowLeft size={16} />
-           Back to Customers
-         </button>
-          <button
-            onClick={handleDownloadContract}
-            disabled={loading || !selectedUser || downloadLoading}
-            className={`flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors ${
-              loading || !selectedUser || downloadLoading ? "opacity-50" : ""
-            }`}
-          >
-           {downloadLoading ? (
-             <>
-               <span className="mr-2">Downloading...</span>
-               <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-               </svg>
-             </>
-           ) : (
-             <>
-               <ArrowDown size={16} />
-               Download Contract
-             </>
-           )}
-         </button>
-       </div>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
+        >
+          <ArrowLeft size={16} />
+          {t("backToCustomers")}
+        </button>
+        <button
+          onClick={handleDownloadContract}
+          disabled={loading || !selectedUser || downloadLoading}
+          className={`flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors ${
+            loading || !selectedUser || downloadLoading ? "opacity-50" : ""
+          }`}
+        >
+          {downloadLoading ? (
+            <>
+              <span className="mr-2">{t("downloading")}</span>
+              <svg
+                className="animate-spin -ml-1 mr-3 h-4 w-4 text-white/50"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8z"
+                ></path>
+              </svg>
+            </>
+          ) : (
+            <>
+              <ArrowDown size={16} />
+              {t("downloadContract")}
+            </>
+          )}
+        </button>
+      </div>
 
       {loading || !selectedUser ? (
         <div className="text-white/40 text-sm py-10 text-center">
-          {loading ? "Loading user details…" : "User not found."}
+          {loading ? t("loading") : t("notFound")}
         </div>
       ) : (
         <>
@@ -189,7 +218,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                 </h2>
                 <p className="text-sm text-white/40">{selectedUser.email}</p>
                 <p className="text-xs text-white/25 mt-1">
-                  Member since{" "}
+                  {t("memberSince")}{" "}
                   {new Date(selectedUser.createdAt).toLocaleDateString(
                     undefined,
                     { year: "numeric", month: "long", day: "numeric" },
@@ -212,24 +241,24 @@ export function AdminUserDetail({ userId, onBack }: Props) {
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               <InfoItem
                 icon={<Phone size={14} />}
-                label="Phone"
+                label={t("phone")}
                 value={selectedUser.phone}
               />
               <InfoItem
                 icon={<Calendar size={14} />}
-                label="Age"
+                label={t("age")}
                 value={
                   selectedUser.age != null ? `${selectedUser.age} yrs` : null
                 }
               />
               <InfoItem
                 icon={<User size={14} />}
-                label="Gender"
+                label={t("gender")}
                 value={genderLabel(selectedUser.gender)}
               />
               <InfoItem
                 icon={<Weight size={14} />}
-                label="Weight"
+                label={t("weight")}
                 value={
                   selectedUser.weight != null
                     ? `${selectedUser.weight} kg`
@@ -238,7 +267,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
               />
               <InfoItem
                 icon={<Ruler size={14} />}
-                label="Height"
+                label={t("height")}
                 value={
                   selectedUser.height != null
                     ? `${selectedUser.height} cm`
@@ -247,12 +276,12 @@ export function AdminUserDetail({ userId, onBack }: Props) {
               />
               <InfoItem
                 icon={<Target size={14} />}
-                label="Goal"
+                label={t("goal")}
                 value={selectedUser.goal}
               />
               <InfoItem
                 icon={<Activity size={14} />}
-                label="Experience"
+                label={t("experience")}
                 value={selectedUser.experience}
               />
             </div>
@@ -262,12 +291,12 @@ export function AdminUserDetail({ userId, onBack }: Props) {
           <div>
             <h3 className="text-sm font-semibold text-white/60 flex items-center gap-2 mb-3">
               <CreditCard size={15} className="text-blue-400" />
-              Membership Plans ({selectedUser.memberships.length})
+              {t("membershipPlans")} ({selectedUser.memberships.length})
             </h3>
 
             {selectedUser.memberships.length === 0 ? (
               <div className="bg-[#111] border border-white/5 rounded-xl p-6 text-center text-white/30 text-sm">
-                No membership purchases yet.
+                {t("noMemberships")}
               </div>
             ) : (
               <div className="space-y-3">
@@ -306,7 +335,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                     <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                       {m.totalAmount != null && (
                         <div>
-                          <p className="text-white/30">Total Paid</p>
+                          <p className="text-white/30">{t("totalPaid")}</p>
                           <p className="text-white mt-0.5">
                             {m.plan.currency} {m.totalAmount.toFixed(2)}
                           </p>
@@ -314,7 +343,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                       )}
                       {m.registrationFee != null && m.registrationFee > 0 && (
                         <div>
-                          <p className="text-white/30">Reg. Fee</p>
+                          <p className="text-white/30">{t("regFee")}</p>
                           <p className="text-white mt-0.5">
                             {m.plan.currency}{" "}
                             {(m.registrationFee as number).toFixed(2)}
@@ -323,7 +352,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                       )}
                       {m.startDate && (
                         <div>
-                          <p className="text-white/30">Start Date</p>
+                          <p className="text-white/30">{t("startDate")}</p>
                           <p className="text-white mt-0.5">
                             {new Date(m.startDate).toLocaleDateString()}
                           </p>
@@ -331,7 +360,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                       )}
                       {m.endDate && (
                         <div>
-                          <p className="text-white/30">End Date</p>
+                          <p className="text-white/30">{t("endDate")}</p>
                           <p
                             className={`mt-0.5 font-medium ${new Date(m.endDate) < new Date() ? "text-red-400" : "text-green-400"}`}
                           >
@@ -342,7 +371,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                       {(m.registrationDetails as Record<string, unknown>)
                         ?.contractNumber && (
                         <div>
-                          <p className="text-white/30">Contract No.</p>
+                          <p className="text-white/30">{t("contractNo")}</p>
                           <p className="text-blue-300 mt-0.5 font-mono text-xs">
                             {String(
                               (m.registrationDetails as Record<string, unknown>)
@@ -354,7 +383,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                       {(m.registrationDetails as Record<string, unknown>)
                         ?.customerNumber && (
                         <div>
-                          <p className="text-white/30">Customer No.</p>
+                          <p className="text-white/30">{t("customerNo")}</p>
                           <p className="text-purple-300 mt-0.5 font-mono text-xs">
                             {String(
                               (m.registrationDetails as Record<string, unknown>)
@@ -364,7 +393,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                         </div>
                       )}
                       <div>
-                        <p className="text-white/30">Applied On</p>
+                        <p className="text-white/30">{t("appliedOn")}</p>
                         <p className="text-white mt-0.5">
                           {new Date(m.createdAt).toLocaleDateString()}
                         </p>
@@ -373,7 +402,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
 
                     {m.address && (
                       <div className="mt-3">
-                        <p className="text-xs text-white/30">Address</p>
+                        <p className="text-xs text-white/30">{t("address")}</p>
                         <p className="text-xs text-white/60 mt-0.5">
                           {m.address}
                         </p>
@@ -382,7 +411,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                     {m.emergencyContact && (
                       <div className="mt-2">
                         <p className="text-xs text-white/30">
-                          Emergency Contact
+                          {t("emergencyContact")}
                         </p>
                         <p className="text-xs text-white/60 mt-0.5">
                           {m.emergencyContact}
@@ -391,7 +420,9 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                     )}
                     {m.notes && (
                       <div className="mt-2 bg-white/3 border border-white/5 rounded-lg px-3 py-2">
-                        <p className="text-xs text-white/30">Admin Notes</p>
+                        <p className="text-xs text-white/30">
+                          {t("adminNotes")}
+                        </p>
                         <p className="text-xs text-white/60 mt-0.5">
                           {m.notes}
                         </p>
@@ -407,12 +438,12 @@ export function AdminUserDetail({ userId, onBack }: Props) {
           <div>
             <h3 className="text-sm font-semibold text-white/60 flex items-center gap-2 mb-3">
               <ShoppingBag size={15} className="text-purple-400" />
-              Shop Orders ({selectedUser.orders.length})
+              {t("shopOrders")} ({selectedUser.orders.length})
             </h3>
 
             {selectedUser.orders.length === 0 ? (
               <div className="bg-[#111] border border-white/5 rounded-xl p-6 text-center text-white/30 text-sm">
-                No shop orders yet.
+                {t("noOrders")}
               </div>
             ) : (
               <div className="space-y-3">
@@ -424,7 +455,7 @@ export function AdminUserDetail({ userId, onBack }: Props) {
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div>
                         <p className="text-sm font-medium text-white">
-                          Order #{o.id}
+                          {t("order")} #{o.id}
                         </p>
                         <p className="text-xs text-white/40 mt-0.5">
                           {new Date(o.createdAt).toLocaleDateString(undefined, {
@@ -460,7 +491,9 @@ export function AdminUserDetail({ userId, onBack }: Props) {
 
                     {o.notes && (
                       <div className="mt-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2">
-                        <p className="text-xs text-white/30">Admin Notes</p>
+                        <p className="text-xs text-white/30">
+                          {t("adminNotes")}
+                        </p>
                         <p className="text-xs text-white/60 mt-0.5">
                           {o.notes}
                         </p>
