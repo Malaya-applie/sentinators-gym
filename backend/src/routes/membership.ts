@@ -20,11 +20,11 @@ function parseDurationToMonths(duration: string): number {
   const match = duration
     .toLowerCase()
     .trim()
-    .match(/^(\d+)\s*(month|year|day|week)/);
+    .match(/^(\d+)\s*(monat|month|year|day|week)/);
   if (!match) return 0;
   const num = parseInt(match[1]);
   const unit = match[2];
-  if (unit === "month") return num;
+  if (unit === "monat" || unit === "month") return num;
   if (unit === "year") return num * 12;
   if (unit === "week") return Math.round((num * 7) / 30.44);
   if (unit === "day") return Math.round(num / 30.44);

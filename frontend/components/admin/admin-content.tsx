@@ -919,7 +919,7 @@ function PlanForm({
   const durationOptions = Array.from({ length: 36 }, (_, i) => {
     const months = i + 1;
     return {
-      value: `${months} ${months === 1 ? "Month" : "Months"}`,
+      value: `${months} ${months === 1 ? "Monat" : "Monate"}`,
       label: `${months} ${months === 1 ? "Monat" : "Monate"}`,
     };
   });
