@@ -913,7 +913,10 @@ function PlanForm({
 }) {
   const durationOptions = Array.from({ length: 36 }, (_, i) => {
     const months = i + 1;
-    return `${months} ${months === 1 ? "Month" : "Months"}`;
+    return {
+      value: `${months} ${months === 1 ? "Month" : "Months"}`,
+      label: `${months} ${months === 1 ? "Monat" : "Monate"}`,
+    };
   });
 
   return (
@@ -939,8 +942,8 @@ function PlanForm({
               Select duration
             </option>
             {durationOptions.map((duration) => (
-              <option key={duration} value={duration}>
-                {duration}
+              <option key={duration.value} value={duration.value}>
+                {duration.label}
               </option>
             ))}
           </select>
