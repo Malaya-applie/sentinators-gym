@@ -205,6 +205,8 @@ The frontend will run on **http://localhost:3000**.
 | PATCH  | `/memberships/:id` | Admin | Approve or reject a membership (`{status, notes}`)     |
 | GET    | `/orders`          | Admin | List shop orders (optional `?status=PENDING`)          |
 | PATCH  | `/orders/:id`      | Admin | Approve or reject an order (`{status, notes}`)         |
+| GET    | `/settings`        | Admin | Get quarterly/monthly surcharge percentages            |
+| PUT    | `/settings`        | Admin | Update quarterly/monthly surcharge percentages         |
 
 ---
 
@@ -246,24 +248,12 @@ The frontend will run on **http://localhost:3000**.
 - **Customers**: Full table of all registered members with profile details
 - **Memberships**: Filter by status, approve/reject purchase requests with optional admin notes
 - **Shop Orders**: Filter by status, approve/reject orders with optional admin notes
+- **Website Content**: CMS for all site content (hero, plans, trainers, testimonials, FAQ, etc.)
+- **Settings**: Configure quarterly and monthly instalment surcharge percentages with a live preview
 
 ---
 
 ## Pricing & Payment Calculation Logic
-
-### Plan Price Fields
-
-Each `MembershipPlan` has three price fields:
-
-| Field            | Type   | Purpose                                                    |
-| ---------------- | ------ | ---------------------------------------------------------- |
-| `price`          | Float  | Base upfront price for the plan (always required)          |
-| `monthlyPrice`   | Float? | Per-month charge when member selects Monthly frequency     |
-| `quarterlyPrice` | Float? | Per-quarter charge when member selects Quarterly frequency |
-
-> If `monthlyPrice` / `quarterlyPrice` are `null` or `0`, the frequency total falls back to the base upfront `price`.
-
----
 
 ### Payment Frequencies
 
@@ -272,40 +262,34 @@ A member can choose one of three payment frequencies during registration:
 | Frequency | Value       | Description                                     |
 | --------- | ----------- | ----------------------------------------------- |
 | Yearly    | `UPFRONT`   | Pay the full amount once at the time of joining |
-| Monthly   | `MONTHLY`   | Pay a fixed amount every month                  |
-| Quarterly | `QUARTERLY` | Pay a fixed amount every 3 months               |
+| Quarterly | `QUARTERLY` | Pay every 3 months (surcharge applied)          |
+| Monthly   | `MONTHLY`   | Pay every month (surcharge applied)             |
+
+---
+
+### Instalment Surcharge (configurable in Admin → Settings)
+
+Quarterly and monthly billing incur a processing surcharge to cover administration and payment costs. The default surcharges are:
+
+| Frequency | Default Surcharge |
+| --------- | ----------------- |
+| Quarterly | **+5 %**          |
+| Monthly   | **+10 %**         |
+
+Admins can change these percentages any time from **Admin Panel → Settings** tab. The new values apply across the entire frontend immediately.
 
 ---
 
 ### Total Amount Formula
 
-```
-Total = Plan Charge + Add-on Total + Registration Fee − Discount
-```
-
-Where **Plan Charge** depends on the selected frequency:
-
-| Frequency   | Plan Charge Calculation                                        |
-| ----------- | -------------------------------------------------------------- |
-| `UPFRONT`   | `plan.price`                                                   |
-| `MONTHLY`   | `plan.monthlyPrice × totalPlanMonths` (if monthlyPrice is set) |
-| `QUARTERLY` | `plan.quarterlyPrice × floor(totalPlanMonths / 3)` (if set)    |
-
-**Full formula:**
+The surcharge is applied to the **full yearly total** (plan price + add-ons + registration fee − discount):
 
 ```
-UPFRONT (displayed as "Yearly" — pay full amount at once):
-  total = plan.price + additionalTotal + registrationFee − discountAmount
+yearly_total = plan.price + additionalTotal + registrationFee − discountAmount
 
-MONTHLY (when monthlyPrice is set):
-  total = (plan.monthlyPrice × totalPlanMonths) + additionalTotal + registrationFee − discountAmount
-
-QUARTERLY (when quarterlyPrice is set):
-  quarters = floor(totalPlanMonths / 3)
-  total = (plan.quarterlyPrice × quarters) + additionalTotal + registrationFee − discountAmount
-
-Fallback (MONTHLY/QUARTERLY without explicit price set):
-  total = plan.price + additionalTotal + registrationFee − discountAmount
+UPFRONT / Yearly:  total = yearly_total
+QUARTERLY:         total = yearly_total × (1 + quarterlyFeePercent / 100)
+MONTHLY:           total = yearly_total × (1 + monthlyFeePercent / 100)
 ```
 
 > The result is always clamped to `≥ 0`.
@@ -314,35 +298,46 @@ Fallback (MONTHLY/QUARTERLY without explicit price set):
 
 ### Per-Period Amount (shown in contract / email)
 
-This is the installment amount shown on the signed contract and in the confirmation email.
-
-| Frequency   | Per-period amount                                                    |
-| ----------- | -------------------------------------------------------------------- |
-| `UPFRONT`   | `null` — no periodic payments, shown as lump sum (labelled "Yearly") |
-| `MONTHLY`   | `plan.monthlyPrice` (if set), else `plan.price / totalPlanMonths`    |
-| `QUARTERLY` | `plan.quarterlyPrice` (if set), else `plan.price / floor(months/3)`  |
+| Frequency   | Per-period amount                                                          |
+| ----------- | -------------------------------------------------------------------------- |
+| `UPFRONT`   | `null` — no periodic payments, shown as lump sum (labelled "Yearly")       |
+| `MONTHLY`   | `yearly_total × (1 + monthlyFeePercent / 100) ÷ totalPlanMonths`           |
+| `QUARTERLY` | `yearly_total × (1 + quarterlyFeePercent / 100) ÷ ceil(totalPlanMonths/3)` |
 
 ---
 
 ### Example
 
-**Plan:** 6-Month Gym Membership  
-`price = CHF 388`, `monthlyPrice = CHF 70`, `quarterlyPrice = CHF 200`  
-Add-ons: CHF 0 | Registration fee: CHF 30 | Discount: CHF 0
+**Plan:** 12-Month Gym Membership — `price = CHF 840`  
+Add-ons: CHF 0 | Registration fee: CHF 99 | Discount: CHF 49  
+Surcharges: Quarterly +5 %, Monthly +10 %
 
-| Frequency          | Calculation               | Total   | Per-period   |
-| ------------------ | ------------------------- | ------- | ------------ |
-| Yearly (= UPFRONT) | 388 + 30                  | CHF 418 | —            |
-| Monthly            | (70 × 6) + 30 = 420 + 30  | CHF 450 | CHF 70 /mo   |
-| Quarterly          | (200 × 2) + 30 = 400 + 30 | CHF 430 | CHF 200 /qtr |
+```
+yearly_total = 840 + 0 + 99 − 49 = CHF 890
+```
+
+| Frequency | Total calculation | Total      | Per-period calculation | Per-period      |
+| --------- | ----------------- | ---------- | ---------------------- | --------------- |
+| Yearly    | 890               | CHF 890    | —                      | —               |
+| Quarterly | 890 × 1.05        | CHF 934.50 | 934.50 ÷ 4             | CHF 233.63 /qtr |
+| Monthly   | 890 × 1.10        | CHF 979.00 | 979.00 ÷ 12            | CHF 81.58 /mo   |
+
+> Surcharges apply to the **full yearly total** (including add-ons, registration fee, and discount).
+
+---
+
+### Configuring Surcharges
+
+1. Log in to the admin panel at `/admin`
+2. Click **Settings** in the left sidebar
+3. Set **Quarterly Payment Surcharge (%)** and **Monthly Payment Surcharge (%)**
+4. Click **Save Settings** — changes take effect immediately on the frontend
 
 ---
 
 ### Auto-reset Rules
 
 - If a plan duration is **less than 3 months**, Quarterly is not available — the frequency is auto-reset to **Yearly** (UPFRONT).
-- Prices are validated server-side: `monthlyPrice` and `quarterlyPrice` cannot be negative (`Math.max(0, value)`).
-- If `monthlyPrice` / `quarterlyPrice` is saved as `0` in the admin panel, it is stored as `null` (treated as "not set").
 
 ---
 

@@ -878,8 +878,6 @@ type MembershipPlan = {
   name: string;
   duration: string;
   price: number;
-  monthlyPrice: number | null;
-  quarterlyPrice: number | null;
   currency: string;
   features: string; // comma-separated
   category: string;
@@ -897,8 +895,6 @@ const emptyPlan: Omit<MembershipPlan, "id"> = {
   name: "",
   duration: "",
   price: 0,
-  monthlyPrice: null,
-  quarterlyPrice: null,
   currency: "CHF",
   features: "",
   category: "MEMBERSHIP",
@@ -1003,66 +999,7 @@ function PlanForm({
           />
         </div>
       </div>
-      {!isAdditional && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-white/50 text-xs mb-1 block">
-              {t("planMonthlyPrice")}{" "}
-              <span className="text-white/30 font-normal">{t("optional")}</span>
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              value={
-                form.monthlyPrice != null && form.monthlyPrice > 0
-                  ? String(form.monthlyPrice)
-                  : ""
-              }
-              onChange={(e) =>
-                onChange(
-                  "monthlyPrice",
-                  e.target.value === ""
-                    ? null
-                    : Math.max(0, Number(e.target.value)),
-                )
-              }
-              placeholder="e.g. 70"
-              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
-            />
-            <p className="text-white/25 text-[10px] mt-0.5">
-              {t("planMonthlyHint")}
-            </p>
-          </div>
-          <div>
-            <Label className="text-white/50 text-xs mb-1 block">
-              {t("planQuarterlyPrice")}{" "}
-              <span className="text-white/30 font-normal">{t("optional")}</span>
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              value={
-                form.quarterlyPrice != null && form.quarterlyPrice > 0
-                  ? String(form.quarterlyPrice)
-                  : ""
-              }
-              onChange={(e) =>
-                onChange(
-                  "quarterlyPrice",
-                  e.target.value === ""
-                    ? null
-                    : Math.max(0, Number(e.target.value)),
-                )
-              }
-              placeholder="e.g. 105"
-              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
-            />
-            <p className="text-white/25 text-[10px] mt-0.5">
-              {t("planQuarterlyHint")}
-            </p>
-          </div>
-        </div>
-      )}
+
       <div>
         <Label className="text-white/50 text-xs mb-1 block">
           {t("planCategory")}

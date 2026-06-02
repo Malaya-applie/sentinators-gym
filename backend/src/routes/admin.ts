@@ -1958,4 +1958,65 @@ router.get(
   },
 );
 
+// ─── GET /api/admin/settings ────────────────────────────
+router.get(
+  "/settings",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.siteContent.findMany({
+        where: { section: "settings" },
+      });
+      const map: Record<string, string> = {};
+      rows.forEach((r) => (map[r.key] = r.value));
+      res.json({
+        quarterlyFeePercent: parseFloat(map["quarterly_fee_percent"] ?? "5"),
+        monthlyFeePercent: parseFloat(map["monthly_fee_percent"] ?? "10"),
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch settings" });
+    }
+  },
+);
+
+// ─── PUT /api/admin/settings ────────────────────────────
+router.put(
+  "/settings",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { quarterlyFeePercent, monthlyFeePercent } = req.body;
+      const qPct = Math.max(0, parseFloat(quarterlyFeePercent) || 0);
+      const mPct = Math.max(0, parseFloat(monthlyFeePercent) || 0);
+
+      await Promise.all([
+        prisma.siteContent.upsert({
+          where: { key: "quarterly_fee_percent" },
+          update: { value: String(qPct) },
+          create: {
+            key: "quarterly_fee_percent",
+            value: String(qPct),
+            section: "settings",
+          },
+        }),
+        prisma.siteContent.upsert({
+          where: { key: "monthly_fee_percent" },
+          update: { value: String(mPct) },
+          create: {
+            key: "monthly_fee_percent",
+            value: String(mPct),
+            section: "settings",
+          },
+        }),
+      ]);
+
+      res.json({ quarterlyFeePercent: qPct, monthlyFeePercent: mPct });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to update settings" });
+    }
+  },
+);
+
 export default router;

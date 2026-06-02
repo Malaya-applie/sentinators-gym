@@ -11,12 +11,19 @@ import {
   Menu,
   X,
   Layout,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "@/components/language-toggle";
 
-type AdminTab = "dashboard" | "users" | "memberships" | "orders" | "content";
+type AdminTab =
+  | "dashboard"
+  | "users"
+  | "memberships"
+  | "orders"
+  | "content"
+  | "settings";
 
 interface AdminLayoutProps {
   activeTab: AdminTab;
@@ -48,6 +55,7 @@ export function AdminLayout({
     },
     { id: "orders", label: t("nav.orders"), icon: <ShoppingBag size={18} /> },
     { id: "content", label: t("nav.content"), icon: <Layout size={18} /> },
+    { id: "settings", label: t("nav.settings"), icon: <Settings size={18} /> },
   ];
 
   return (

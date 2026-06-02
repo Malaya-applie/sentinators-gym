@@ -305,4 +305,23 @@ router.get(
   },
 );
 
+// ─── GET /api/content/settings ─────────────────────────
+// Returns instalment fee percentages (public, read-only)
+router.get("/settings", async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const rows = await prisma.siteContent.findMany({
+      where: { section: "settings" },
+    });
+    const map: Record<string, string> = {};
+    rows.forEach((r) => (map[r.key] = r.value));
+    res.json({
+      quarterlyFeePercent: parseFloat(map["quarterly_fee_percent"] ?? "5"),
+      monthlyFeePercent: parseFloat(map["monthly_fee_percent"] ?? "10"),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch settings" });
+  }
+});
+
 export default router;

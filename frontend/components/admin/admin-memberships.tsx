@@ -182,6 +182,8 @@ function RenewModal({
   const [notes, setNotes] = useState("");
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [error, setError] = useState("");
+  const [quarterlyFeePercent, setQuarterlyFeePercent] = useState<number>(5);
+  const [monthlyFeePercent, setMonthlyFeePercent] = useState<number>(10);
 
   // Contract step state
   const [modalStep, setModalStep] = useState<"plan" | "contract">("plan");
@@ -305,10 +307,13 @@ function RenewModal({
     Promise.all([
       adminApi().get("/membership/plans"),
       adminApi().get("/content/plan-categories"),
+      adminApi().get("/content/settings"),
     ])
-      .then(([plansRes, catsRes]) => {
+      .then(([plansRes, catsRes, settingsRes]) => {
         setPlans(plansRes.data.plans ?? []);
         setPlanCategories(catsRes.data ?? []);
+        setQuarterlyFeePercent(settingsRes.data.quarterlyFeePercent ?? 5);
+        setMonthlyFeePercent(settingsRes.data.monthlyFeePercent ?? 10);
       })
       .catch(() => {})
       .finally(() => setLoadingPlans(false));
@@ -364,53 +369,48 @@ function RenewModal({
   const additionalTotal = additionalPlans.reduce((s, p) => s + p.price, 0);
   const subtotal = (selectedPlan?.price ?? 0) + additionalTotal;
 
-  // Frequency-adjusted total — identical to stepper logic
+  // Frequency-adjusted total — uses surcharge percentages on full subtotal
   const frequencyAdjustedTotal = useMemo(() => {
-    if (!selectedPlan || totalPlanMonths <= 0 || frequency === "UPFRONT")
+    if (
+      !selectedPlan ||
+      totalPlanMonths <= 0 ||
+      frequency === "UPFRONT" ||
+      frequency === "YEARLY"
+    )
       return subtotal;
-    if (
-      frequency === "MONTHLY" &&
-      selectedPlan.monthlyPrice != null &&
-      selectedPlan.monthlyPrice > 0
-    ) {
-      return selectedPlan.monthlyPrice * totalPlanMonths + additionalTotal;
+    if (frequency === "MONTHLY") {
+      return subtotal * (1 + monthlyFeePercent / 100);
     }
-    if (
-      frequency === "QUARTERLY" &&
-      selectedPlan.quarterlyPrice != null &&
-      selectedPlan.quarterlyPrice > 0
-    ) {
-      const quarters = Math.floor(totalPlanMonths / 3);
-      return selectedPlan.quarterlyPrice * quarters + additionalTotal;
+    if (frequency === "QUARTERLY") {
+      return subtotal * (1 + quarterlyFeePercent / 100);
     }
     return subtotal;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPlan, totalPlanMonths, frequency, additionalTotal]);
+  }, [
+    selectedPlan,
+    totalPlanMonths,
+    frequency,
+    additionalTotal,
+    quarterlyFeePercent,
+    monthlyFeePercent,
+  ]);
 
-  // Per-period amount — identical to stepper
+  // Per-period amount — uses surcharge percentages on full subtotal
   function calcPerPeriod(
     freq: "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT",
   ): number | null {
     if (freq === "UPFRONT" || totalPlanMonths <= 0 || !selectedPlan)
       return null;
-    const membershipNetCost = subtotal;
-    const fallbackMonthly = membershipNetCost / totalPlanMonths;
     if (freq === "MONTHLY") {
-      if (selectedPlan.monthlyPrice != null && selectedPlan.monthlyPrice > 0)
-        return selectedPlan.monthlyPrice;
-      return fallbackMonthly;
+      return (subtotal * (1 + monthlyFeePercent / 100)) / totalPlanMonths;
     }
     if (freq === "QUARTERLY") {
       if (totalPlanMonths < 3) return null;
-      if (
-        selectedPlan.quarterlyPrice != null &&
-        selectedPlan.quarterlyPrice > 0
-      )
-        return selectedPlan.quarterlyPrice;
-      return fallbackMonthly * 3;
+      const quarters = Math.ceil(totalPlanMonths / 3);
+      return (subtotal * (1 + quarterlyFeePercent / 100)) / quarters;
     }
     if (totalPlanMonths < 12) return null;
-    return fallbackMonthly * 12;
+    return subtotal / (totalPlanMonths / 12);
   }
 
   // Auto-reset frequency if duration becomes too short — identical to stepper

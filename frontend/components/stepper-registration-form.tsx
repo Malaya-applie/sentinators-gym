@@ -184,6 +184,8 @@ export function StepperRegistrationForm({
   const [paymentFrequency, setPaymentFrequency] = useState<
     "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT"
   >("UPFRONT");
+  const [quarterlyFeePercent, setQuarterlyFeePercent] = useState<number>(5);
+  const [monthlyFeePercent, setMonthlyFeePercent] = useState<number>(10);
   const [contractMemberSig, setContractMemberSig] = useState("");
   const [guardianSig, setGuardianSig] = useState("");
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -290,6 +292,13 @@ export function StepperRegistrationForm({
     api
       .get("/content/plan-categories")
       .then((res) => setPlanCategories(res.data))
+      .catch(() => {});
+    api
+      .get("/content/settings")
+      .then((res) => {
+        setQuarterlyFeePercent(res.data.quarterlyFeePercent ?? 5);
+        setMonthlyFeePercent(res.data.monthlyFeePercent ?? 10);
+      })
       .catch(() => {});
     return () => {
       dispatch(clearError());
@@ -413,37 +422,21 @@ export function StepperRegistrationForm({
   // Membership cost (excluding registration fee, after discount)
   const membershipNetCost = Math.max(0, total - registrationFee);
 
-  // Frequency-adjusted total: if admin set explicit monthly/quarterly prices,
-  // the real total the user pays is different (higher) than the upfront price.
+  // Frequency-adjusted total: apply surcharge percentage for monthly/quarterly billing.
+  // Yearly (upfront) has no surcharge; quarterly adds quarterlyFeePercent%; monthly adds monthlyFeePercent%.
   const frequencyAdjustedTotal = (() => {
-    if (!selectedPlan || totalPlanMonths <= 0 || paymentFrequency === "UPFRONT")
+    if (
+      !selectedPlan ||
+      totalPlanMonths <= 0 ||
+      paymentFrequency === "UPFRONT" ||
+      paymentFrequency === "YEARLY"
+    )
       return total;
-    if (
-      paymentFrequency === "MONTHLY" &&
-      selectedPlan.monthlyPrice != null &&
-      selectedPlan.monthlyPrice > 0
-    ) {
-      return Math.max(
-        0,
-        selectedPlan.monthlyPrice * totalPlanMonths +
-          additionalTotal +
-          registrationFee -
-          discountAmount,
-      );
+    if (paymentFrequency === "MONTHLY") {
+      return Math.max(0, total * (1 + monthlyFeePercent / 100));
     }
-    if (
-      paymentFrequency === "QUARTERLY" &&
-      selectedPlan.quarterlyPrice != null &&
-      selectedPlan.quarterlyPrice > 0
-    ) {
-      const quarters = Math.floor(totalPlanMonths / 3);
-      return Math.max(
-        0,
-        selectedPlan.quarterlyPrice * quarters +
-          additionalTotal +
-          registrationFee -
-          discountAmount,
-      );
+    if (paymentFrequency === "QUARTERLY") {
+      return Math.max(0, total * (1 + quarterlyFeePercent / 100));
     }
     return total;
   })();
@@ -466,33 +459,24 @@ export function StepperRegistrationForm({
     }
   }, [totalPlanMonths, paymentFrequency]);
 
-  // Per-period payment amount based on frequency and total months
+  // Per-period payment amount based on frequency.
+  // Monthly/quarterly apply surcharge to base plan price; yearly has no surcharge.
   function calcPerPeriod(
     freq: "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT",
   ): number | null {
     if (freq === "UPFRONT" || totalPlanMonths <= 0 || !selectedPlan)
       return null;
-    const fallbackMonthly = membershipNetCost / totalPlanMonths;
-
     if (freq === "MONTHLY") {
-      // Use plan's explicit monthly price if set by admin
-      if (selectedPlan.monthlyPrice != null && selectedPlan.monthlyPrice > 0)
-        return selectedPlan.monthlyPrice;
-      return fallbackMonthly;
+      return (total * (1 + monthlyFeePercent / 100)) / totalPlanMonths;
     }
     if (freq === "QUARTERLY") {
       if (totalPlanMonths < 3) return null;
-      // Use plan's explicit quarterly price if set by admin
-      if (
-        selectedPlan.quarterlyPrice != null &&
-        selectedPlan.quarterlyPrice > 0
-      )
-        return selectedPlan.quarterlyPrice;
-      return fallbackMonthly * 3;
+      const quarters = Math.ceil(totalPlanMonths / 3);
+      return (total * (1 + quarterlyFeePercent / 100)) / quarters;
     }
-    // YEARLY
+    // YEARLY — no surcharge
     if (totalPlanMonths < 12) return null;
-    return fallbackMonthly * 12;
+    return total / (totalPlanMonths / 12);
   }
 
   const isBusy = authLoading || purchaseLoading;
@@ -1857,9 +1841,7 @@ function TotalBox({
   paymentFrequency?: "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT";
   totalPlanMonths?: number;
 }) {
-  const membershipNet = Math.max(0, total - registrationFee);
   const months = totalPlanMonths ?? 0;
-  const monthlyRate = months > 0 && plan ? membershipNet / months : null;
 
   const freqLabel =
     paymentFrequency === "MONTHLY"
@@ -1875,27 +1857,25 @@ function TotalBox({
       : paymentFrequency === "QUARTERLY"
         ? "/qtr"
         : "/yr";
-  const freqMultiplier =
-    paymentFrequency === "MONTHLY"
-      ? 1
-      : paymentFrequency === "QUARTERLY"
-        ? 3
-        : 12;
+
+  // Per-period amount derived from the frequency-adjusted total (already includes surcharge)
   const periodAmount = (() => {
-    if (monthlyRate === null || !paymentFrequency || !plan) return null;
     if (
-      paymentFrequency === "MONTHLY" &&
-      plan.monthlyPrice != null &&
-      plan.monthlyPrice > 0
+      !paymentFrequency ||
+      paymentFrequency === "UPFRONT" ||
+      paymentFrequency === "YEARLY" ||
+      months === 0 ||
+      !plan
     )
-      return plan.monthlyPrice;
-    if (
-      paymentFrequency === "QUARTERLY" &&
-      plan.quarterlyPrice != null &&
-      plan.quarterlyPrice > 0
-    )
-      return plan.quarterlyPrice;
-    return monthlyRate * freqMultiplier;
+      return null;
+    if (paymentFrequency === "MONTHLY") {
+      return total / months;
+    }
+    if (paymentFrequency === "QUARTERLY") {
+      if (months < 3) return null;
+      return total / Math.ceil(months / 3);
+    }
+    return null;
   })();
 
   // Detect if frequency-adjusted total differs from upfront
@@ -1907,7 +1887,7 @@ function TotalBox({
     if (paymentFrequency === "MONTHLY")
       return `${months} monthly payment${months !== 1 ? "s" : ""}`;
     if (paymentFrequency === "QUARTERLY") {
-      const q = Math.floor(months / 3);
+      const q = Math.ceil(months / 3);
       return `${q} quarterly payment${q !== 1 ? "s" : ""}`;
     }
     return null;

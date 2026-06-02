@@ -9,8 +9,15 @@ import { AdminUsers } from "@/components/admin/admin-users";
 import { AdminMemberships } from "@/components/admin/admin-memberships";
 import { AdminOrders } from "@/components/admin/admin-orders";
 import { AdminContent } from "@/components/admin/admin-content";
+import { AdminSettings } from "@/components/admin/admin-settings";
 
-type AdminTab = "dashboard" | "users" | "memberships" | "orders" | "content";
+type AdminTab =
+  | "dashboard"
+  | "users"
+  | "memberships"
+  | "orders"
+  | "content"
+  | "settings";
 
 export default function AdminPage() {
   const { admin } = useAppSelector((s) => s.admin);
@@ -32,6 +39,8 @@ export default function AdminPage() {
         return <AdminOrders />;
       case "content":
         return <AdminContent />;
+      case "settings":
+        return <AdminSettings />;
       default:
         return <AdminDashboard />;
     }

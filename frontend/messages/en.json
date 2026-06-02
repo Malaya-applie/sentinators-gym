@@ -93,7 +93,8 @@
       "users": "Customers",
       "memberships": "Memberships",
       "orders": "Shop Orders",
-      "content": "Website Content"
+      "content": "Website Content",
+      "settings": "Settings"
     },
     "login": {
       "title": "Admin Panel",
