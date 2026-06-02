@@ -1036,13 +1036,14 @@ export function StepperRegistrationForm({
                               </span>
                             )}
                             <p className="text-base font-semibold pr-6">
-                              {plan.duration}
-                            </p>
-                            <p className="text-sm text-white/55">
                               {planTitle(plan)}
                             </p>
-                            <p className="mt-2 text-lg font-bold">
-                              {money(plan.currency, plan.price)}
+                            <p
+                              className={`mt-2 text-lg font-bold ${plan.price < 0 ? "text-green-400" : ""}`}
+                            >
+                              {plan.price < 0
+                                ? `- ${money(plan.currency, Math.abs(plan.price))}`
+                                : money(plan.currency, plan.price)}
                             </p>
                             <ul className="mt-3 space-y-1 text-sm text-white/65">
                               {plan.features.slice(0, 3).map((feature) => (
@@ -1921,10 +1922,16 @@ function TotalBox({
       {additionalPlans.map((ap) => (
         <div
           key={ap.id}
-          className="mt-2 flex items-center justify-between gap-4 text-sm text-white/65"
+          className={`mt-2 flex items-center justify-between gap-4 text-sm ${ap.price < 0 ? "text-green-400" : "text-white/65"}`}
         >
-          <span>+ {planTitle(ap)}</span>
-          <span>{money(ap.currency, ap.price)}</span>
+          <span>
+            {ap.price < 0 ? "−" : "+"} {planTitle(ap)}
+          </span>
+          <span>
+            {ap.price < 0
+              ? `- ${money(ap.currency, Math.abs(ap.price))}`
+              : money(ap.currency, ap.price)}
+          </span>
         </div>
       ))}
       <div className="mt-2 flex items-center justify-between gap-4 text-sm text-white/65">

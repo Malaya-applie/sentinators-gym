@@ -70,8 +70,8 @@ router.post(
       const row = await prisma.membershipPlan.create({
         data: {
           name: name || "New Plan",
-          duration: duration || "1 Month",
-          price: Math.max(0, Number(price) || 0),
+          duration: category === "ADDITIONAL" ? "" : duration || "1 Month",
+          price: Number(price) || 0,
           monthlyPrice:
             monthlyPrice != null && Number(monthlyPrice) > 0
               ? Number(monthlyPrice)
@@ -105,13 +105,22 @@ router.put(
         monthlyPrice,
         quarterlyPrice,
         isActive,
+        duration: rawDuration,
+        category,
         ...rest
       } = req.body;
       const row = await prisma.membershipPlan.update({
         where: { id: Number(req.params.id) },
         data: {
           ...rest,
-          ...(price !== undefined ? { price: Math.max(0, Number(price)) } : {}),
+          ...(category !== undefined ? { category } : {}),
+          ...(rawDuration !== undefined || category !== undefined
+            ? {
+                duration:
+                  category === "ADDITIONAL" ? "" : rawDuration || "1 Month",
+              }
+            : {}),
+          ...(price !== undefined ? { price: Number(price) } : {}),
           ...(monthlyPrice !== undefined
             ? {
                 monthlyPrice:
@@ -225,11 +234,9 @@ router.delete(
         where: { category: cat.name },
       });
       if (count > 0) {
-        res
-          .status(400)
-          .json({
-            error: `Cannot delete: ${count} plan(s) are assigned to this category. Reassign them first.`,
-          });
+        res.status(400).json({
+          error: `Cannot delete: ${count} plan(s) are assigned to this category. Reassign them first.`,
+        });
         return;
       }
       await prisma.planCategoryItem.delete({ where: { id } });
@@ -251,11 +258,9 @@ router.delete(
         where: { planId: id },
       });
       if (count > 0) {
-        res
-          .status(400)
-          .json({
-            error: `Cannot delete: this plan has ${count} purchase(s). Deactivate it instead.`,
-          });
+        res.status(400).json({
+          error: `Cannot delete: this plan has ${count} purchase(s). Deactivate it instead.`,
+        });
         return;
       }
       await prisma.membershipPlan.delete({ where: { id } });
@@ -1628,12 +1633,10 @@ router.delete(
         where: { productId: Number(req.params.id) },
       });
       if (count > 0) {
-        res
-          .status(400)
-          .json({
-            error:
-              "Cannot delete product with existing orders. Deactivate it instead.",
-          });
+        res.status(400).json({
+          error:
+            "Cannot delete product with existing orders. Deactivate it instead.",
+        });
         return;
       }
       await prisma.product.delete({ where: { id: Number(req.params.id) } });

@@ -677,7 +677,6 @@ function CrudPanel<T extends { id: number }>({
     return (
       <Input
         type={col.type === "number" ? "number" : "text"}
-        min={col.type === "number" ? 0 : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="bg-[#1a1a1a] border-white/10 text-white text-sm"
@@ -916,6 +915,7 @@ function PlanForm({
   categories: PlanCategoryItem[];
 }) {
   const t = useTranslations("admin.content");
+  const isAdditional = form.category === "ADDITIONAL";
   const durationOptions = Array.from({ length: 36 }, (_, i) => {
     const months = i + 1;
     return {
@@ -926,7 +926,9 @@ function PlanForm({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div
+        className={`grid gap-3 ${isAdditional ? "grid-cols-1" : "grid-cols-2"}`}
+      >
         <div>
           <Label className="text-white/50 text-xs mb-1 block">
             {t("planName")}
@@ -938,25 +940,27 @@ function PlanForm({
             className="bg-[#1a1a1a] border-white/10 text-white text-sm"
           />
         </div>
-        <div>
-          <Label className="text-white/50 text-xs mb-1 block">
-            {t("planDuration")}
-          </Label>
-          <select
-            value={String(form.duration ?? "")}
-            onChange={(e) => onChange("duration", e.target.value)}
-            className="w-full bg-[#1a1a1a] border border-white/10 text-white text-sm rounded-md px-3 py-2"
-          >
-            <option value="" disabled>
-              {t("selectDuration")}
-            </option>
-            {durationOptions.map((duration) => (
-              <option key={duration.value} value={duration.value}>
-                {duration.label}
+        {!isAdditional && (
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">
+              {t("planDuration")}
+            </Label>
+            <select
+              value={String(form.duration ?? "")}
+              onChange={(e) => onChange("duration", e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-white/10 text-white text-sm rounded-md px-3 py-2"
+            >
+              <option value="" disabled>
+                {t("selectDuration")}
               </option>
-            ))}
-          </select>
-        </div>
+              {durationOptions.map((duration) => (
+                <option key={duration.value} value={duration.value}>
+                  {duration.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -964,14 +968,29 @@ function PlanForm({
             {t("planPrice")}
           </Label>
           <Input
-            type="number"
-            min={0}
+            type="text"
+            inputMode="numeric"
             value={String(form.price ?? "")}
-            onChange={(e) =>
-              onChange("price", Math.max(0, Number(e.target.value)))
-            }
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || val === "-") {
+                onChange("price", val as any);
+              } else {
+                const n = Number(val);
+                if (!isNaN(n)) onChange("price", n);
+              }
+            }}
+            onBlur={(e) => {
+              const n = Number(e.target.value);
+              onChange("price", isNaN(n) ? 0 : n);
+            }}
             className="bg-[#1a1a1a] border-white/10 text-white text-sm"
           />
+          {isAdditional && (
+            <p className="text-white/25 text-[10px] mt-0.5">
+              Negative value = discount (e.g. -50)
+            </p>
+          )}
         </div>
         <div>
           <Label className="text-white/50 text-xs mb-1 block">
@@ -984,64 +1003,66 @@ function PlanForm({
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label className="text-white/50 text-xs mb-1 block">
-            {t("planMonthlyPrice")}{" "}
-            <span className="text-white/30 font-normal">{t("optional")}</span>
-          </Label>
-          <Input
-            type="number"
-            min={0}
-            value={
-              form.monthlyPrice != null && form.monthlyPrice > 0
-                ? String(form.monthlyPrice)
-                : ""
-            }
-            onChange={(e) =>
-              onChange(
-                "monthlyPrice",
-                e.target.value === ""
-                  ? null
-                  : Math.max(0, Number(e.target.value)),
-              )
-            }
-            placeholder="e.g. 70"
-            className="bg-[#1a1a1a] border-white/10 text-white text-sm"
-          />
-          <p className="text-white/25 text-[10px] mt-0.5">
-            {t("planMonthlyHint")}
-          </p>
+      {!isAdditional && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">
+              {t("planMonthlyPrice")}{" "}
+              <span className="text-white/30 font-normal">{t("optional")}</span>
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              value={
+                form.monthlyPrice != null && form.monthlyPrice > 0
+                  ? String(form.monthlyPrice)
+                  : ""
+              }
+              onChange={(e) =>
+                onChange(
+                  "monthlyPrice",
+                  e.target.value === ""
+                    ? null
+                    : Math.max(0, Number(e.target.value)),
+                )
+              }
+              placeholder="e.g. 70"
+              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+            />
+            <p className="text-white/25 text-[10px] mt-0.5">
+              {t("planMonthlyHint")}
+            </p>
+          </div>
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">
+              {t("planQuarterlyPrice")}{" "}
+              <span className="text-white/30 font-normal">{t("optional")}</span>
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              value={
+                form.quarterlyPrice != null && form.quarterlyPrice > 0
+                  ? String(form.quarterlyPrice)
+                  : ""
+              }
+              onChange={(e) =>
+                onChange(
+                  "quarterlyPrice",
+                  e.target.value === ""
+                    ? null
+                    : Math.max(0, Number(e.target.value)),
+                )
+              }
+              placeholder="e.g. 105"
+              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+            />
+            <p className="text-white/25 text-[10px] mt-0.5">
+              {t("planQuarterlyHint")}
+            </p>
+          </div>
         </div>
-        <div>
-          <Label className="text-white/50 text-xs mb-1 block">
-            {t("planQuarterlyPrice")}{" "}
-            <span className="text-white/30 font-normal">{t("optional")}</span>
-          </Label>
-          <Input
-            type="number"
-            min={0}
-            value={
-              form.quarterlyPrice != null && form.quarterlyPrice > 0
-                ? String(form.quarterlyPrice)
-                : ""
-            }
-            onChange={(e) =>
-              onChange(
-                "quarterlyPrice",
-                e.target.value === ""
-                  ? null
-                  : Math.max(0, Number(e.target.value)),
-              )
-            }
-            placeholder="e.g. 105"
-            className="bg-[#1a1a1a] border-white/10 text-white text-sm"
-          />
-          <p className="text-white/25 text-[10px] mt-0.5">
-            {t("planQuarterlyHint")}
-          </p>
-        </div>
-      </div>
+      )}
       <div>
         <Label className="text-white/50 text-xs mb-1 block">
           {t("planCategory")}
