@@ -60,7 +60,8 @@ type RegState = {
 };
 
 function money(currency: string, amount: number) {
-  return `${currency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const rounded = Math.round(amount * 10) / 10;
+  return `${currency} ${rounded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function planTitle(plan: PlanInfo) {

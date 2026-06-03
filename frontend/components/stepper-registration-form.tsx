@@ -86,9 +86,8 @@ const initialForm = {
 };
 
 function money(currency: string, amount: number) {
-  return `${currency} ${amount.toLocaleString(undefined, {
-    maximumFractionDigits: 2,
-  })}`;
+  const rounded = Math.round(amount * 10) / 10;
+  return `${currency} ${rounded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function planTitle(plan: MembershipPlan) {
@@ -422,8 +421,33 @@ export function StepperRegistrationForm({
   // Membership cost (excluding registration fee, after discount)
   const membershipNetCost = Math.max(0, total - registrationFee);
 
-  // Frequency-adjusted total: apply surcharge percentage for monthly/quarterly billing.
-  // Yearly (upfront) has no surcharge; quarterly adds quarterlyFeePercent%; monthly adds monthlyFeePercent%.
+  const roundTenth = (n: number) => Math.round(n * 10) / 10;
+
+  // Per-period payment amount based on frequency.
+  // Monthly/quarterly apply surcharge to base plan price; yearly has no surcharge.
+  // Always round per-period FIRST, then derive total from it (so total = exactly what gets collected).
+  function calcPerPeriod(
+    freq: "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT",
+  ): number | null {
+    if (freq === "UPFRONT" || totalPlanMonths <= 0 || !selectedPlan)
+      return null;
+    if (freq === "MONTHLY") {
+      return roundTenth(
+        (total * (1 + monthlyFeePercent / 100)) / totalPlanMonths,
+      );
+    }
+    if (freq === "QUARTERLY") {
+      if (totalPlanMonths < 3) return null;
+      const quarters = Math.ceil(totalPlanMonths / 3);
+      return roundTenth((total * (1 + quarterlyFeePercent / 100)) / quarters);
+    }
+    // YEARLY — no surcharge
+    if (totalPlanMonths < 12) return null;
+    return roundTenth(total / (totalPlanMonths / 12));
+  }
+
+  // Frequency-adjusted total: per_period × periods so total = exactly what gets collected.
+  // Upfront/Yearly has no surcharge.
   const frequencyAdjustedTotal = (() => {
     if (
       !selectedPlan ||
@@ -431,53 +455,37 @@ export function StepperRegistrationForm({
       paymentFrequency === "UPFRONT" ||
       paymentFrequency === "YEARLY"
     )
-      return total;
+      return roundTenth(total);
     if (paymentFrequency === "MONTHLY") {
-      return Math.max(0, total * (1 + monthlyFeePercent / 100));
+      const perMonth = calcPerPeriod("MONTHLY");
+      return perMonth !== null ? perMonth * totalPlanMonths : roundTenth(total);
     }
     if (paymentFrequency === "QUARTERLY") {
-      return Math.max(0, total * (1 + quarterlyFeePercent / 100));
+      const perQuarter = calcPerPeriod("QUARTERLY");
+      const quarters = Math.ceil(totalPlanMonths / 3);
+      return perQuarter !== null ? perQuarter * quarters : roundTenth(total);
     }
-    return total;
+    return roundTenth(total);
   })();
 
   // Auto-reset payment frequency if it becomes invalid for the current duration
   useEffect(() => {
     if (
       totalPlanMonths > 0 &&
-      totalPlanMonths < 3 &&
-      paymentFrequency !== "MONTHLY" &&
+      totalPlanMonths < 2 &&
       paymentFrequency !== "UPFRONT"
     ) {
+      // 1-month plan: only UPFRONT allowed
       setPaymentFrequency("UPFRONT");
     } else if (
-      totalPlanMonths >= 3 &&
+      totalPlanMonths >= 2 &&
       totalPlanMonths < 12 &&
-      paymentFrequency === "YEARLY"
+      paymentFrequency === "QUARTERLY"
     ) {
-      setPaymentFrequency("QUARTERLY");
+      // 2–11 month plans: quarterly not allowed
+      setPaymentFrequency("UPFRONT");
     }
   }, [totalPlanMonths, paymentFrequency]);
-
-  // Per-period payment amount based on frequency.
-  // Monthly/quarterly apply surcharge to base plan price; yearly has no surcharge.
-  function calcPerPeriod(
-    freq: "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT",
-  ): number | null {
-    if (freq === "UPFRONT" || totalPlanMonths <= 0 || !selectedPlan)
-      return null;
-    if (freq === "MONTHLY") {
-      return (total * (1 + monthlyFeePercent / 100)) / totalPlanMonths;
-    }
-    if (freq === "QUARTERLY") {
-      if (totalPlanMonths < 3) return null;
-      const quarters = Math.ceil(totalPlanMonths / 3);
-      return (total * (1 + quarterlyFeePercent / 100)) / quarters;
-    }
-    // YEARLY — no surcharge
-    if (totalPlanMonths < 12) return null;
-    return total / (totalPlanMonths / 12);
-  }
 
   const isBusy = authLoading || purchaseLoading;
 
@@ -1138,6 +1146,7 @@ export function StepperRegistrationForm({
                 upfrontTotal={total}
                 paymentFrequency={paymentFrequency}
                 totalPlanMonths={totalPlanMonths}
+                periodicAmount={calcPerPeriod(paymentFrequency)}
               />
               {/* Payment Frequency Selector */}
               <div className="rounded-lg border border-white/10 bg-[#120817] p-3">
@@ -1148,7 +1157,10 @@ export function StepperRegistrationForm({
                   {[
                     {
                       value: "UPFRONT" as const,
-                      label: "Yearly",
+                      label:
+                        totalPlanMonths > 0 && totalPlanMonths < 12
+                          ? "Yearly (Upfront)"
+                          : "Yearly",
                       unit: "" as const,
                       minMonths: 1,
                     },
@@ -1156,13 +1168,13 @@ export function StepperRegistrationForm({
                       value: "MONTHLY" as const,
                       label: "Monthly",
                       unit: "/mo" as const,
-                      minMonths: 1,
+                      minMonths: 2,
                     },
                     {
                       value: "QUARTERLY" as const,
                       label: "Quarterly",
                       unit: "/qtr" as const,
-                      minMonths: 3,
+                      minMonths: 12,
                     },
                   ]
                     .filter(
@@ -1313,6 +1325,7 @@ export function StepperRegistrationForm({
                 upfrontTotal={total}
                 paymentFrequency={paymentFrequency}
                 totalPlanMonths={totalPlanMonths}
+                periodicAmount={calcPerPeriod(paymentFrequency)}
               />
             </div>
           </div>
@@ -1722,6 +1735,7 @@ export function StepperRegistrationForm({
                 upfrontTotal={total}
                 paymentFrequency={paymentFrequency}
                 totalPlanMonths={totalPlanMonths}
+                periodicAmount={calcPerPeriod(paymentFrequency)}
               />
             </div>
           </div>
@@ -1829,6 +1843,7 @@ function TotalBox({
   upfrontTotal,
   paymentFrequency,
   totalPlanMonths,
+  periodicAmount,
 }: {
   currency: string;
   plan: MembershipPlan | null;
@@ -1840,6 +1855,7 @@ function TotalBox({
   upfrontTotal?: number;
   paymentFrequency?: "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT";
   totalPlanMonths?: number;
+  periodicAmount?: number | null;
 }) {
   const months = totalPlanMonths ?? 0;
 
@@ -1858,25 +1874,8 @@ function TotalBox({
         ? "/qtr"
         : "/yr";
 
-  // Per-period amount derived from the frequency-adjusted total (already includes surcharge)
-  const periodAmount = (() => {
-    if (
-      !paymentFrequency ||
-      paymentFrequency === "UPFRONT" ||
-      paymentFrequency === "YEARLY" ||
-      months === 0 ||
-      !plan
-    )
-      return null;
-    if (paymentFrequency === "MONTHLY") {
-      return total / months;
-    }
-    if (paymentFrequency === "QUARTERLY") {
-      if (months < 3) return null;
-      return total / Math.ceil(months / 3);
-    }
-    return null;
-  })();
+  // Use periodicAmount passed from parent (calcPerPeriod) to avoid double-rounding float issues
+  const periodAmount = periodicAmount ?? null;
 
   // Detect if frequency-adjusted total differs from upfront
   const hasFrequencyPremium =
