@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { BlogPost, SiteText, getImageUrl } from "@/lib/content";
 
@@ -54,26 +55,102 @@ const DEFAULT_POSTS: BlogPost[] = [
 ];
 
 export function BlogSection() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [debouncedQuery, setDebouncedQuery] = useState(
+    searchParams.get("q") ?? "",
+  );
   const [posts, setPosts] = useState<BlogPost[]>(DEFAULT_POSTS);
   const [text, setText] = useState<SiteText>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/content/blog`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => data && data.length && setPosts(data))
-      .catch(() => {});
-    fetch(`${API}/content/text/blog`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => data && setText(data))
-      .catch(() => {});
+    const controller = new AbortController();
+
+    const loadContent = async () => {
+      setIsLoading(true);
+      setHasError(false);
+
+      try {
+        const [postsRes, textRes] = await Promise.all([
+          fetch(`${API}/content/blog`, { signal: controller.signal }),
+          fetch(`${API}/content/text/blog`, { signal: controller.signal }),
+        ]);
+
+        if (!postsRes.ok) {
+          throw new Error("Failed to load blog posts");
+        }
+
+        const [postsData, textData] = await Promise.all([
+          postsRes.json(),
+          textRes.ok ? textRes.json() : Promise.resolve(null),
+        ]);
+
+        if (Array.isArray(postsData) && postsData.length) {
+          setPosts(postsData);
+        }
+
+        if (textData) {
+          setText(textData);
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setHasError(true);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadContent();
+
+    return () => controller.abort();
   }, []);
 
-  const filtered = posts.filter(
-    (p) =>
-      p.title.toLowerCase().includes(query.toLowerCase()) ||
-      p.excerpt.toLowerCase().includes(query.toLowerCase()),
-  );
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    const currentQueryParam = searchParams.get("q") ?? "";
+    if (currentQueryParam === debouncedQuery) return;
+
+    const currentParams = new URLSearchParams(searchParams.toString());
+
+    if (debouncedQuery) {
+      currentParams.set("q", debouncedQuery);
+    } else {
+      currentParams.delete("q");
+    }
+
+    router.replace(
+      currentParams.toString()
+        ? `${pathname}?${currentParams.toString()}`
+        : pathname,
+      { scroll: false },
+    );
+  }, [debouncedQuery, pathname, router, searchParams]);
+
+  const filtered = useMemo(() => {
+    if (!debouncedQuery) return posts;
+
+    const term = debouncedQuery.toLowerCase();
+
+    return posts.filter((post) => {
+      const title = post.title?.toLowerCase() ?? "";
+      const excerpt = post.excerpt?.toLowerCase() ?? "";
+
+      return title.includes(term) || excerpt.includes(term);
+    });
+  }, [debouncedQuery, posts]);
 
   return (
     <section className="py-20 bg-transparent">
@@ -96,6 +173,7 @@ export function BlogSection() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search blog posts"
               placeholder="Search"
               className="w-full rounded-full bg-white text-black placeholder-gray-400 px-5 py-3 pr-12 text-sm outline-none"
             />
@@ -111,7 +189,7 @@ export function BlogSection() {
           {filtered.map((post) => (
             <div key={post.id} className="flex flex-col">
               {/* Image */}
-              <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-4">
+              <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden mb-4">
                 <Image
                   src={getImageUrl(post.image) || "/training-zone-1.png"}
                   alt={post.title}
@@ -136,6 +214,24 @@ export function BlogSection() {
             </div>
           ))}
         </div>
+
+        {!isLoading && hasError ? (
+          <p className="text-center text-red-200 text-sm mt-8">
+            Unable to refresh blog posts. Showing available content.
+          </p>
+        ) : null}
+
+        {!isLoading && !filtered.length ? (
+          <p className="text-center text-white/70 text-sm mt-8">
+            No blog posts matched "{debouncedQuery}".
+          </p>
+        ) : null}
+
+        {isLoading ? (
+          <p className="text-center text-white/70 text-sm mt-8">
+            Loading blog posts...
+          </p>
+        ) : null}
       </div>
     </section>
   );
