@@ -10,6 +10,8 @@ type PlanInfo = {
   name: string;
   duration: string;
   price: number;
+  monthlyPrice?: number | null;
+  quarterlyPrice?: number | null;
   currency: string;
   features: string[];
   category: string;
@@ -542,6 +544,17 @@ export default function MembershipContractPage() {
     selectedPlanId,
   } = state;
 
+  const selectedPlanPrice = (() => {
+    if (!selectedPlan) return null;
+    if (paymentFrequency === "MONTHLY") {
+      return selectedPlan.monthlyPrice ?? selectedPlan.price;
+    }
+    if (paymentFrequency === "QUARTERLY") {
+      return selectedPlan.quarterlyPrice ?? selectedPlan.price;
+    }
+    return selectedPlan.price;
+  })();
+
   return (
     <div className="min-h-screen bg-[#08010a] py-6 px-4">
       {/* Print-mode CSS: hide interactive elements and force colors when saving as PDF */}
@@ -697,7 +710,9 @@ export default function MembershipContractPage() {
                       {selectedPlan ? planTitle(selectedPlan) : "Plan"}
                     </span>
                     <span className="font-semibold text-gray-900">
-                      {selectedPlan ? money(currency, selectedPlan.price) : "-"}
+                      {selectedPlanPrice != null
+                        ? money(currency, selectedPlanPrice)
+                        : "-"}
                     </span>
                   </div>
                   {selectedAdditionalPlans.map((ap) => (
@@ -727,7 +742,7 @@ export default function MembershipContractPage() {
                     <span>{money(currency, total)}</span>
                   </div>
                   <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-3">
-                    {(["UPFRONT", "MONTHLY", "QUARTERLY"] as const).map((f) => (
+                    {(["YEARLY", "MONTHLY", "QUARTERLY"] as const).map((f) => (
                       <label
                         key={f}
                         className="flex items-center gap-1.5 cursor-default text-gray-900"
@@ -735,30 +750,37 @@ export default function MembershipContractPage() {
                         <input
                           type="checkbox"
                           readOnly
-                          checked={paymentFrequency === f}
+                          checked={
+                            f === "YEARLY"
+                              ? paymentFrequency === "YEARLY" ||
+                                paymentFrequency === "UPFRONT"
+                              : paymentFrequency === f
+                          }
                           className="accent-red-700 w-3 h-3"
                         />
                         <span>
-                          {f === "UPFRONT"
-                            ? "Yearly"
+                          {f === "YEARLY"
+                            ? "Yearly (Upfront)"
                             : f.charAt(0) + f.slice(1).toLowerCase()}
                         </span>
                       </label>
                     ))}
                   </div>
-                  {periodicAmount != null && paymentFrequency !== "UPFRONT" && (
-                    <div className="flex justify-between font-semibold pt-1 text-red-700">
-                      <span>
-                        Due per{" "}
-                        {paymentFrequency === "MONTHLY"
-                          ? "month"
-                          : paymentFrequency === "QUARTERLY"
-                            ? "quarter"
-                            : "year"}
-                      </span>
-                      <span>{money(currency, periodicAmount)}</span>
-                    </div>
-                  )}
+                  {periodicAmount != null &&
+                    paymentFrequency !== "UPFRONT" &&
+                    paymentFrequency !== "YEARLY" && (
+                      <div className="flex justify-between font-semibold pt-1 text-red-700">
+                        <span>
+                          Due per{" "}
+                          {paymentFrequency === "MONTHLY"
+                            ? "month"
+                            : paymentFrequency === "QUARTERLY"
+                              ? "quarter"
+                              : "year"}
+                        </span>
+                        <span>{money(currency, periodicAmount)}</span>
+                      </div>
+                    )}
                 </div>
               </div>
 
