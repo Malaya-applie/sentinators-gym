@@ -592,7 +592,7 @@ function RenewModal({
                     Fitness Membership Contract
                   </p>
                   <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
-                    Membership Renewal
+                    Membership Agreement
                   </p>
                 </div>
                 <div className="text-right text-xs space-y-1 min-w-[160px]">
@@ -721,7 +721,7 @@ function RenewModal({
                         </span>
                       </div>
                       <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-3">
-                        {(["UPFRONT", "MONTHLY", "QUARTERLY"] as const).map(
+                        {(["YEARLY", "MONTHLY", "QUARTERLY"] as const).map(
                           (f) => (
                             <label
                               key={f}
@@ -730,12 +730,17 @@ function RenewModal({
                               <input
                                 type="checkbox"
                                 readOnly
-                                checked={frequency === f}
+                                checked={
+                                  f === "YEARLY"
+                                    ? frequency === "YEARLY" ||
+                                      frequency === "UPFRONT"
+                                    : frequency === f
+                                }
                                 className="accent-red-700 w-3 h-3"
                               />
                               <span>
-                                {f === "UPFRONT"
-                                  ? "Yearly"
+                                {f === "YEARLY"
+                                  ? "Yearly (Upfront)"
                                   : f.charAt(0) + f.slice(1).toLowerCase()}
                               </span>
                             </label>
@@ -1429,10 +1434,13 @@ function ContractViewModal({
         )
         .join("");
 
-      const freqChecks = (["UPFRONT", "MONTHLY", "QUARTERLY"] as const)
+      const freqChecks = (["YEARLY", "MONTHLY", "QUARTERLY"] as const)
         .map((f) => {
-          const checked = freq === f || (f === "UPFRONT" && freq === "YEARLY");
-          return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#111827;"><input type="checkbox" ${checked ? "checked" : ""} readonly style="accent-color:#b91c1c;width:12px;height:12px;" /><span>${f === "UPFRONT" ? "Yearly" : f.charAt(0) + f.slice(1).toLowerCase()}</span></label>`;
+          const checked =
+            f === "YEARLY"
+              ? freq === "YEARLY" || freq === "UPFRONT"
+              : freq === f;
+          return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#111827;"><input type="checkbox" ${checked ? "checked" : ""} readonly style="accent-color:#b91c1c;width:12px;height:12px;" /><span>${f === "YEARLY" ? "Yearly (Upfront)" : f.charAt(0) + f.slice(1).toLowerCase()}</span></label>`;
         })
         .join("");
 
@@ -1803,7 +1811,7 @@ body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
                       </span>
                     </div>
                     <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-3">
-                      {(["UPFRONT", "MONTHLY", "QUARTERLY"] as const).map(
+                      {(["YEARLY", "MONTHLY", "QUARTERLY"] as const).map(
                         (f) => (
                           <label
                             key={f}
@@ -1813,17 +1821,19 @@ body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
                               type="checkbox"
                               readOnly
                               checked={
-                                membership.paymentFrequency?.toUpperCase() ===
-                                  f ||
-                                (f === "UPFRONT" &&
-                                  membership.paymentFrequency?.toUpperCase() ===
-                                    "YEARLY")
+                                f === "YEARLY"
+                                  ? membership.paymentFrequency?.toUpperCase() ===
+                                      "YEARLY" ||
+                                    membership.paymentFrequency?.toUpperCase() ===
+                                      "UPFRONT"
+                                  : membership.paymentFrequency?.toUpperCase() ===
+                                    f
                               }
                               className="accent-red-700 w-3 h-3"
                             />
                             <span>
-                              {f === "UPFRONT"
-                                ? "Yearly"
+                              {f === "YEARLY"
+                                ? "Yearly (Upfront)"
                                 : f.charAt(0) + f.slice(1).toLowerCase()}
                             </span>
                           </label>
