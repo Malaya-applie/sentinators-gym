@@ -66,11 +66,11 @@ function parseDurationToMonths(duration: string): number {
   const match = duration
     .toLowerCase()
     .trim()
-    .match(/^(\d+)\s*(month|year|day|week)/);
+    .match(/^(\d+)\s*(monat|month|year|day|week)/);
   if (!match) return 0;
   const num = parseInt(match[1]);
   const unit = match[2];
-  if (unit === "month") return num;
+  if (unit === "monat" || unit === "month") return num;
   if (unit === "year") return num * 12;
   if (unit === "week") return Math.round((num * 7) / 30.44);
   if (unit === "day") return Math.round(num / 30.44);
@@ -192,7 +192,7 @@ function RenewModal({
     () => `CNT-${Date.now().toString(36).toUpperCase().slice(-6)}`,
   );
   const [customerNumber] = useState(
-    () => `MBR-${Math.floor(Math.random() * 90000 + 10000)}`,
+    () => `CUS-${Math.floor(Math.random() * 90000 + 10000)}`,
   );
 
   // Contract signature canvas (dark ink on white — matches web contract page)
@@ -369,7 +369,10 @@ function RenewModal({
   const additionalTotal = additionalPlans.reduce((s, p) => s + p.price, 0);
   const subtotal = (selectedPlan?.price ?? 0) + additionalTotal;
 
-  // Frequency-adjusted total — uses surcharge percentages on full subtotal
+  const roundTenth = (n: number) => Math.round(n * 10) / 10;
+
+  // Frequency-adjusted total — same collection logic as stepper:
+  // per-period amount is rounded first, then multiplied by number of periods.
   const frequencyAdjustedTotal = useMemo(() => {
     if (
       !selectedPlan ||
@@ -377,14 +380,19 @@ function RenewModal({
       frequency === "UPFRONT" ||
       frequency === "YEARLY"
     )
-      return subtotal;
+      return roundTenth(subtotal);
     if (frequency === "MONTHLY") {
-      return subtotal * (1 + monthlyFeePercent / 100);
+      const perMonth = calcPerPeriod("MONTHLY");
+      return perMonth !== null
+        ? perMonth * totalPlanMonths
+        : roundTenth(subtotal);
     }
     if (frequency === "QUARTERLY") {
-      return subtotal * (1 + quarterlyFeePercent / 100);
+      const perQuarter = calcPerPeriod("QUARTERLY");
+      const quarters = Math.ceil(totalPlanMonths / 3);
+      return perQuarter !== null ? perQuarter * quarters : roundTenth(subtotal);
     }
-    return subtotal;
+    return roundTenth(subtotal);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedPlan,
@@ -402,32 +410,31 @@ function RenewModal({
     if (freq === "UPFRONT" || totalPlanMonths <= 0 || !selectedPlan)
       return null;
     if (freq === "MONTHLY") {
-      return (subtotal * (1 + monthlyFeePercent / 100)) / totalPlanMonths;
+      return roundTenth(
+        (subtotal * (1 + monthlyFeePercent / 100)) / totalPlanMonths,
+      );
     }
     if (freq === "QUARTERLY") {
       if (totalPlanMonths < 3) return null;
       const quarters = Math.ceil(totalPlanMonths / 3);
-      return (subtotal * (1 + quarterlyFeePercent / 100)) / quarters;
+      return roundTenth(
+        (subtotal * (1 + quarterlyFeePercent / 100)) / quarters,
+      );
     }
     if (totalPlanMonths < 12) return null;
-    return subtotal / (totalPlanMonths / 12);
+    return roundTenth(subtotal / (totalPlanMonths / 12));
   }
 
-  // Auto-reset frequency if duration becomes too short — identical to stepper
+  // Auto-reset frequency if duration becomes invalid — identical to stepper
   useEffect(() => {
-    if (
-      totalPlanMonths > 0 &&
-      totalPlanMonths < 3 &&
-      frequency !== "MONTHLY" &&
-      frequency !== "UPFRONT"
-    ) {
+    if (totalPlanMonths > 0 && totalPlanMonths < 2 && frequency !== "UPFRONT") {
       setFrequency("UPFRONT");
     } else if (
-      totalPlanMonths >= 3 &&
+      totalPlanMonths >= 2 &&
       totalPlanMonths < 12 &&
-      frequency === "YEARLY"
+      frequency === "QUARTERLY"
     ) {
-      setFrequency("QUARTERLY");
+      setFrequency("UPFRONT");
     }
   }, [totalPlanMonths, frequency]);
 
@@ -502,10 +509,15 @@ function RenewModal({
           planId: selectedPlanId,
           additionalPlanIds,
           startDate,
+          endDate,
           paymentFrequency: frequency,
           totalAmount: frequencyAdjustedTotal,
           notes,
           signatureDataUrl: latestContractSig,
+          registrationDetails: {
+            contractNumber,
+            customerNumber,
+          },
         }),
       ).unwrap();
       onRenewed();

@@ -567,11 +567,13 @@ router.post(
         planId,
         additionalPlanIds = [],
         startDate,
+        endDate,
         paymentFrequency = "MONTHLY",
         registrationFee = 0,
         totalAmount,
         notes,
         signatureDataUrl,
+        registrationDetails,
       } = req.body;
 
       if (!userId || !planId) {
@@ -616,11 +618,11 @@ router.post(
           const m = p.duration
             .toLowerCase()
             .trim()
-            .match(/^(\d+)\s*(month|year|day|week)/);
+            .match(/^(\d+)\s*(monat|month|year|day|week)/);
           if (!m) return sum;
           const num = parseInt(m[1]);
           const unit = m[2];
-          if (unit === "month") return sum + num;
+          if (unit === "monat" || unit === "month") return sum + num;
           if (unit === "year") return sum + num * 12;
           if (unit === "week") return sum + Math.round((num * 7) / 30.44);
           if (unit === "day") return sum + Math.round(num / 30.44);
@@ -634,10 +636,36 @@ router.post(
         }
       }
 
+      if (typeof endDate === "string") {
+        const explicitEnd = new Date(endDate);
+        if (!Number.isNaN(explicitEnd.getTime())) {
+          parsedEnd = explicitEnd;
+        }
+      }
+
+      const normalizedFrequency =
+        typeof paymentFrequency === "string" &&
+        ["MONTHLY", "QUARTERLY", "YEARLY", "UPFRONT"].includes(paymentFrequency)
+          ? paymentFrequency
+          : "UPFRONT";
+
+      const details =
+        registrationDetails &&
+        typeof registrationDetails === "object" &&
+        !Array.isArray(registrationDetails)
+          ? (registrationDetails as Record<string, unknown>)
+          : {};
+
       const contractNumber =
-        "CNT-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+        typeof details.contractNumber === "string" &&
+        details.contractNumber.trim().length > 0
+          ? details.contractNumber.trim()
+          : "CNT-" + Math.random().toString(36).substring(2, 8).toUpperCase();
       const customerNumber =
-        "CUS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+        typeof details.customerNumber === "string" &&
+        details.customerNumber.trim().length > 0
+          ? details.customerNumber.trim()
+          : "CUS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
       const purchase = await prisma.membershipPurchase.create({
         data: {
@@ -651,12 +679,13 @@ router.post(
           totalAmount: totalAmount != null ? Number(totalAmount) : null,
           startDate: parsedStart,
           endDate: parsedEnd,
-          paymentFrequency,
+          paymentFrequency: normalizedFrequency,
           notes: notes || null,
           signatureDataUrl: signatureDataUrl || null,
           acceptedAgreement: true,
           acceptedTerms: true,
           registrationDetails: {
+            ...details,
             contractNumber,
             customerNumber,
             renewedByAdmin: true,

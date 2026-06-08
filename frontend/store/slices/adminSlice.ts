@@ -256,11 +256,13 @@ export const renewMembership = createAsyncThunk(
       planId: number;
       additionalPlanIds?: number[];
       startDate?: string;
+      endDate?: string;
       paymentFrequency?: string;
       registrationFee?: number;
       totalAmount?: number;
       notes?: string;
       signatureDataUrl?: string;
+      registrationDetails?: Record<string, unknown>;
     },
     { rejectWithValue },
   ) => {
