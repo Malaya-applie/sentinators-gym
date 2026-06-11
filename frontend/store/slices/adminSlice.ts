@@ -69,7 +69,7 @@ export interface AdminOrder {
   totalAmount: number;
   notes?: string;
   createdAt: string;
-  user: { id: number; name: string; email: string };
+  user: { id: number; firstName: string; lastName: string; email: string };
   items: {
     quantity: number;
     unitPrice: number;
