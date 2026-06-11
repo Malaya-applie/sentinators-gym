@@ -16,8 +16,7 @@ export default function Home() {
       <div
         className="fixed inset-0 z-0 pointer-events-none"
         style={{
-          backgroundImage:
-            "url('/gym-bg-texture.png')",
+          backgroundImage: "url('/gym-bg-texture.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundAttachment: "fixed",
@@ -34,7 +33,7 @@ export default function Home() {
         <TestimonialsSection />
         <EventsSection />
         <CTASection />
-        <NewsletterSection />
+        {/* <NewsletterSection /> */}
         <Footer />
       </div>
     </main>

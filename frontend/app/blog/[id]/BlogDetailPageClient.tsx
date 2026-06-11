@@ -42,7 +42,7 @@ export default function BlogDetailPageClient() {
         <>
           <BlogDetailHero post={post} />
           <BlogDetailContent post={post} />
-          <NewsletterSection />
+          {/* <NewsletterSection /> */}
         </>
       )}
     </div>

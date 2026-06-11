@@ -25,7 +25,7 @@ export default function EventsPage() {
           <EventsHero />
           <EventScheduleSection />
           <CTASection />
-          <NewsletterSection />
+          {/* <NewsletterSection /> */}
           <Footer />
         </div>
       </div>

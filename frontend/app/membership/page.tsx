@@ -28,7 +28,7 @@ export default function MembershipPage() {
           <FaqSection />
           <TestimonialsSection />
           <CTASection />
-          <NewsletterSection />
+          {/* <NewsletterSection /> */}
           <Footer />
         </div>
       </div>

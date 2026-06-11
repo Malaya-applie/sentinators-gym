@@ -22,7 +22,7 @@ export default function EventDetailPage() {
         <div className="pt-16">
           <EventDetailHero />
           <EventDetailContent />
-          <NewsletterSection />
+          {/* <NewsletterSection /> */}
           <Footer />
         </div>
       </div>

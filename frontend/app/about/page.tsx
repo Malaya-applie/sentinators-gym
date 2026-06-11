@@ -33,7 +33,7 @@ export default function AboutPage() {
         <OurTrainersSection />
         <TestimonialsSection />
         <CTASection />
-        <NewsletterSection />
+        {/* <NewsletterSection /> */}
         <Footer />
       </div>
     </main>
