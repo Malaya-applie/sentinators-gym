@@ -1,15 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchPlans,
-  purchaseMembership,
   clearMembershipMessages,
 } from "@/store/slices/membershipSlice";
-import { openLoginModal } from "@/store/slices/authSlice";
+import {
+  openRegistrationModal,
+  closeRegistrationModal,
+  clearError,
+} from "@/store/slices/authSlice";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { StepperRegistrationForm } from "@/components/stepper-registration-form";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -17,15 +21,12 @@ type PlanCategory = { id: number; name: string; label: string; order: number };
 
 export function PricingSection() {
   const dispatch = useAppDispatch();
-  const { plans, purchaseLoading, successMessage, error } = useAppSelector(
-    (s) => s.membership,
-  );
-  const { user } = useAppSelector((s) => s.auth);
+  const { plans, successMessage, error } = useAppSelector((s) => s.membership);
+  const { registrationModalOpen } = useAppSelector((s) => s.auth);
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
   } | null>(null);
-  const [showLoginAlert, setShowLoginAlert] = useState(false);
   const [categories, setCategories] = useState<PlanCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("");
 
@@ -59,12 +60,15 @@ export function PricingSection() {
     }
   }, [successMessage, error, dispatch]);
 
-  const handleGetStarted = (planId: number) => {
-    if (!user) {
-      setShowLoginAlert(true);
-      return;
+  const handleGetStarted = (_planId: number) => {
+    dispatch(openRegistrationModal());
+  };
+
+  const handleModalOpenChange = (val: boolean) => {
+    if (!val) {
+      dispatch(closeRegistrationModal());
+      dispatch(clearError());
     }
-    dispatch(purchaseMembership(planId));
   };
 
   const activePlansForCategory = plans.filter(
@@ -76,58 +80,17 @@ export function PricingSection() {
 
   return (
     <section id="membership" className="mb-10 bg-transparent">
-      {/* Login Alert Dialog */}
-      {showLoginAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowLoginAlert(false)}
+      {/* Registration Stepper Modal */}
+      <Dialog open={registrationModalOpen} onOpenChange={handleModalOpenChange}>
+        <DialogContent
+          className="max-h-[96vh] w-[94vw] !max-w-[1220px] overflow-y-auto bg-[#08010a] p-0 shadow-[0_24px_90px_rgba(0,0,0,0.75)] sm:!max-w-[1220px] sm:p-0 lg:w-[88vw]"
+          style={{ border: "2px solid #733EA6" }}
+        >
+          <StepperRegistrationForm
+            onComplete={() => dispatch(closeRegistrationModal())}
           />
-          <div
-            className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 p-8 flex flex-col gap-5"
-            style={{ background: "#0d0014cc" }}
-          >
-            {/* Logo */}
-            <div className="flex justify-center mb-1">
-              <Image
-                src="/gym-logo.png"
-                alt="Sentinators"
-                width={64}
-                height={64}
-                className="object-contain"
-              />
-            </div>
-            <h3 className="text-xl font-extrabold text-white tracking-wide text-center">
-              LOGIN REQUIRED
-            </h3>
-            <div
-              className="w-full h-px"
-              style={{
-                background:
-                  "linear-gradient(90deg, transparent, #7C3AED88, transparent)",
-              }}
-            />
-            <p className="text-white/70 text-sm leading-relaxed text-center">
-              Please log in first to purchase a membership.
-            </p>
-            <button
-              onClick={() => {
-                setShowLoginAlert(false);
-                dispatch(openLoginModal());
-              }}
-              className="w-full py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-colors"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => setShowLoginAlert(false)}
-              className="w-full py-2.5 rounded-lg border border-white/20 text-white/70 hover:text-white hover:bg-white/10 font-semibold text-sm transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Toast notification */}
       {toast && (
@@ -260,10 +223,10 @@ export function PricingSection() {
                     </ul>
                     <Button
                       className="w-full bg-red-600 hover:bg-red-700 text-white btn-gradient"
-                      disabled={purchaseLoading || plan.id === 0}
+                      disabled={plan.id === 0}
                       onClick={() => plan.id !== 0 && handleGetStarted(plan.id)}
                     >
-                      {purchaseLoading ? "Processing..." : "Get Started"}
+                      Get Started
                     </Button>
                   </div>
                 </div>
