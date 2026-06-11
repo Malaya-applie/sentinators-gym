@@ -830,6 +830,29 @@ async function main() {
     console.log("ℹ️  FAQ items already exist, skipping.");
   }
 
+  // ─── CMS: Pricing Section Text (always upsert) ─────────
+  await Promise.all([
+    prisma.siteContent.upsert({
+      where: { key: "pricing_section_title" },
+      update: {},
+      create: {
+        key: "pricing_section_title",
+        value: "OUR PLANS & PRICING",
+        section: "pricing",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "pricing_section_subtitle" },
+      update: {},
+      create: {
+        key: "pricing_section_subtitle",
+        value: "Choose a membership that fits your goals",
+        section: "pricing",
+      },
+    }),
+  ]);
+  console.log("✅ Pricing section text upserted");
+
   console.log("🎉 Seeding complete!");
 }
 

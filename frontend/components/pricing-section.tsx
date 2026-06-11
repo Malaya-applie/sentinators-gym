@@ -19,6 +19,11 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 type PlanCategory = { id: number; name: string; label: string; order: number };
 
+const PRICING_TEXT_DEFAULTS = {
+  pricing_section_title: "OUR PLANS & PRICING",
+  pricing_section_subtitle: "Choose a membership that fits your goals",
+};
+
 export function PricingSection() {
   const dispatch = useAppDispatch();
   const { plans, successMessage, error } = useAppSelector((s) => s.membership);
@@ -29,6 +34,7 @@ export function PricingSection() {
   } | null>(null);
   const [categories, setCategories] = useState<PlanCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("");
+  const [pricingText, setPricingText] = useState(PRICING_TEXT_DEFAULTS);
 
   useEffect(() => {
     dispatch(fetchPlans());
@@ -38,6 +44,10 @@ export function PricingSection() {
         setCategories(cats);
         if (cats.length > 0) setActiveCategory(cats[0].name);
       })
+      .catch(() => {});
+    fetch(`${API}/content/text/pricing`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => data && setPricingText((prev) => ({ ...prev, ...data })))
       .catch(() => {});
   }, [dispatch]);
 
@@ -107,10 +117,10 @@ export function PricingSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
         <div className="text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            OUR PLANS & PRICING
+            {pricingText.pricing_section_title}
           </h2>
           <p className="text-white/60 mb-5">
-            Choose a membership that fits your goals
+            {pricingText.pricing_section_subtitle}
           </p>
         </div>
 
