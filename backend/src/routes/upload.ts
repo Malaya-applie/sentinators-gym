@@ -29,8 +29,9 @@ const fileFilter = (
   file: Express.Multer.File,
   cb: multer.FileFilterCallback,
 ) => {
-  const allowed = /\.(jpg|jpeg|png|webp|gif|svg)$/i;
-  if (allowed.test(file.originalname)) {
+  const allowedMime = /^image\/(jpeg|jpg|png|webp|gif|svg\+xml)$/i;
+  const allowedExt = /\.(jpg|jpeg|png|webp|gif|svg)$/i;
+  if (allowedMime.test(file.mimetype) || allowedExt.test(file.originalname)) {
     cb(null, true);
   } else {
     cb(new Error("Only image files are allowed"));

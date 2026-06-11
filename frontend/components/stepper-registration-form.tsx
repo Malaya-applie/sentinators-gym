@@ -34,6 +34,8 @@ type PlanCategoryItem = {
   order: number;
 };
 
+type TermsSection = { title: string; content: string };
+
 type RegistrationContent = {
   registration_fee?: string;
   registration_currency?: string;
@@ -46,9 +48,114 @@ type RegistrationContent = {
   terms_checkbox_1?: string;
   terms_checkbox_2?: string;
   terms_final_checkbox?: string;
+  membership_terms_sections?: string;
+  gym_rules_sections?: string;
 };
 
-const DEFAULT_CONTENT: Required<RegistrationContent> = {
+const DEFAULT_MEMBERSHIP_TERMS: TermsSection[] = [
+  {
+    title: "1. Membership Agreement",
+    content:
+      "By joining, you enter into a binding membership agreement with the gym. The membership starts from your selected start date and remains valid for the agreed duration. Membership fees are non-refundable once the membership period begins.",
+  },
+  {
+    title: "2. Payment Terms",
+    content:
+      "All fees must be paid in advance according to the selected payment frequency (monthly, quarterly, or yearly). Failure to pay may result in suspension or termination of membership. Late payments may incur additional charges.",
+  },
+  {
+    title: "3. Gym Rules & House Rules",
+    content:
+      "Members must conduct themselves respectfully at all times. Proper gym attire and footwear are required. Equipment must be returned to its designated place after use. Aggressive or unsafe behaviour will result in immediate termination of membership without refund.",
+  },
+  {
+    title: "4. Health & Safety Responsibility",
+    content:
+      "You confirm that you are in good physical health and have consulted a medical professional if required before commencing any exercise program. The gym will not be held liable for any injury, illness, or loss of personal property during your use of the facilities. You exercise at your own risk.",
+  },
+  {
+    title: "5. Cancellation Policy",
+    content:
+      "Memberships may be cancelled with a written notice of at least 30 days before the next billing cycle. Early termination fees may apply. Monthly memberships cannot be cancelled mid-cycle; cancellation takes effect at the end of the current period.",
+  },
+  {
+    title: "6. Freeze & Suspension",
+    content:
+      "Members may request a membership freeze for medical reasons with valid documentation. Freeze periods extend the membership end date accordingly. Abuse of freeze requests may result in membership termination.",
+  },
+  {
+    title: "7. Guest Policy",
+    content:
+      "Guests are only permitted when accompanied by an active member and subject to a guest fee. Guest visits are limited per month and guests must register at reception. Members are responsible for the behaviour of their guests.",
+  },
+  {
+    title: "8. Privacy & Data",
+    content:
+      "Your personal data will be processed in accordance with our Privacy Policy. We collect and store data necessary to manage your membership and may contact you with relevant information about your account or facility updates.",
+  },
+  {
+    title: "9. Amendments",
+    content:
+      "The gym reserves the right to amend these terms at any time. Members will be notified of significant changes with reasonable notice. Continued use of the facilities after notification constitutes acceptance of the updated terms.",
+  },
+];
+
+const DEFAULT_GYM_RULES: TermsSection[] = [
+  {
+    title: "1. General Conduct",
+    content:
+      "All members must treat staff, fellow members, and equipment with respect at all times. Harassment, aggressive behaviour, or intimidation of any kind will result in immediate termination of membership without refund.",
+  },
+  {
+    title: "2. Dress Code & Hygiene",
+    content:
+      "Appropriate gym attire and closed-toe athletic footwear must be worn at all times on the gym floor. Members are expected to maintain personal hygiene. Use of a personal towel during workouts is mandatory.",
+  },
+  {
+    title: "3. Equipment Use",
+    content:
+      "All equipment must be used for its intended purpose and returned to its designated place after use. Weights must be re-racked after every set. Dropping weights carelessly is not permitted. Members must wipe down equipment with the provided disinfectant spray after each use.",
+  },
+  {
+    title: "4. Time Limits & Sharing",
+    content:
+      "During peak hours, members may be asked to share equipment or limit their time on a single machine to 30 minutes. Reserving equipment while not actively using it is not permitted.",
+  },
+  {
+    title: "5. Mobile Phones & Photography",
+    content:
+      "Phone calls should be taken outside the workout areas. Photography or video recording of other members without their explicit consent is strictly prohibited and may result in membership termination.",
+  },
+  {
+    title: "6. Health Responsibility",
+    content:
+      "Members are responsible for their own health and safety during gym use. By accepting this policy, you confirm that you are in a suitable physical condition to participate in exercise and have consulted a qualified medical professional if you have any pre-existing medical conditions, injuries, or health concerns.",
+  },
+  {
+    title: "7. Liability Waiver",
+    content:
+      "The gym and its staff shall not be held liable for any injury, illness, accident, or loss of personal property sustained during your use of the facilities. You voluntarily assume all risks associated with gym participation. Members exercise entirely at their own risk.",
+  },
+  {
+    title: "8. Emergency Procedures",
+    content:
+      "In case of a medical emergency, notify gym staff immediately. Do not attempt to move an injured person unless trained to do so. First-aid kits and defibrillators are located at the front desk. Emergency exits are clearly marked throughout the facility.",
+  },
+  {
+    title: "9. Prohibited Substances",
+    content:
+      "The use of illegal performance-enhancing drugs or any controlled substances on gym premises is strictly prohibited. Members found in violation of this rule will have their membership revoked immediately and the incident may be reported to relevant authorities.",
+  },
+  {
+    title: "10. Compliance",
+    content:
+      "All members are expected to follow the instructions of gym staff at all times. Failure to comply with these rules may result in a warning, suspension, or permanent termination of membership at the discretion of management.",
+  },
+];
+
+const DEFAULT_CONTENT: Required<
+  Omit<RegistrationContent, "membership_terms_sections" | "gym_rules_sections">
+> = {
   registration_fee: "99",
   registration_currency: "CHF",
   discount_amount: "0",
@@ -64,6 +171,20 @@ const DEFAULT_CONTENT: Required<RegistrationContent> = {
   terms_checkbox_2: "I accept the gym rules and health responsibility policy.",
   terms_final_checkbox: "I confirm this signature is mine.",
 };
+
+function parseSections(
+  json: string | undefined,
+  fallback: TermsSection[],
+): TermsSection[] {
+  if (!json) return fallback;
+  try {
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed)) return parsed as TermsSection[];
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
 
 const initialForm = {
   firstName: "",
@@ -169,7 +290,19 @@ export function StepperRegistrationForm({
     useState<string>("MEMBERSHIP");
   const [planCategories, setPlanCategories] = useState<PlanCategoryItem[]>([]);
   const [content, setContent] =
-    useState<Required<RegistrationContent>>(DEFAULT_CONTENT);
+    useState<
+      Required<
+        Omit<
+          RegistrationContent,
+          "membership_terms_sections" | "gym_rules_sections"
+        >
+      >
+    >(DEFAULT_CONTENT);
+  const [termsSections, setTermsSections] = useState<TermsSection[]>(
+    DEFAULT_MEMBERSHIP_TERMS,
+  );
+  const [gymRulesSections, setGymRulesSections] =
+    useState<TermsSection[]>(DEFAULT_GYM_RULES);
   const [agreementChecks, setAgreementChecks] = useState([false, false]);
   const [termChecks, setTermChecks] = useState([false, false, false]);
   const [signatureDataUrl, setSignatureDataUrl] = useState("");
@@ -202,8 +335,8 @@ export function StepperRegistrationForm({
   const STEPS = [
     t("steps.personal"),
     t("steps.plans"),
-    t("steps.agreement"),
     t("steps.terms"),
+    t("steps.agreement"),
   ];
 
   // Restore state after returning from the contract page.
@@ -286,7 +419,17 @@ export function StepperRegistrationForm({
     dispatch(fetchPlans());
     api
       .get("/content/text/registration")
-      .then((res) => setContent({ ...DEFAULT_CONTENT, ...res.data }))
+      .then((res) => {
+        const { membership_terms_sections, gym_rules_sections, ...rest } =
+          res.data as RegistrationContent;
+        setContent({ ...DEFAULT_CONTENT, ...rest });
+        setTermsSections(
+          parseSections(membership_terms_sections, DEFAULT_MEMBERSHIP_TERMS),
+        );
+        setGymRulesSections(
+          parseSections(gym_rules_sections, DEFAULT_GYM_RULES),
+        );
+      })
       .catch(() => {});
     api
       .get("/content/plan-categories")
@@ -557,17 +700,23 @@ export function StepperRegistrationForm({
         return false;
       }
     }
-    if (current === 2 && agreementChecks.some((checked) => !checked)) {
-      setLocalError(t("errors.acceptAgreement"));
-      return false;
+    if (current === 2) {
+      if (termChecks.slice(0, 2).some((checked) => !checked)) {
+        setLocalError(t("errors.acceptTerms"));
+        return false;
+      }
     }
     if (current === 3) {
-      if (termChecks.some((checked) => !checked)) {
-        setLocalError(t("errors.acceptTerms"));
+      if (agreementChecks.some((checked) => !checked)) {
+        setLocalError(t("errors.acceptAgreement"));
         return false;
       }
       if (!signatureDataUrl) {
         setLocalError(t("errors.drawSignature"));
+        return false;
+      }
+      if (!termChecks[2]) {
+        setLocalError(t("errors.acceptTerms"));
         return false;
       }
     }
@@ -1261,7 +1410,7 @@ export function StepperRegistrationForm({
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_320px] w-full max-w-4xl mx-auto">
             {/* Left: agreement */}
             <div className="rounded-lg bg-white/5 p-5">
@@ -1315,6 +1464,43 @@ export function StepperRegistrationForm({
                   }
                 />
               </div>
+              {/* Signature display */}
+              <div className="mt-4">
+                {signatureDataUrl ? (
+                  <div>
+                    <Label className="text-white/70 mb-2 block">
+                      Your Signature{" "}
+                      <span className="text-green-400 text-xs">
+                        (signed via contract)
+                      </span>
+                    </Label>
+                    <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] overflow-hidden flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={signatureDataUrl}
+                        alt="Your signature"
+                        className="h-full w-full object-contain"
+                        style={{ filter: "invert(1)" }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] flex items-center justify-center text-white/30 text-sm">
+                    No signature found — please complete the contract step.
+                  </div>
+                )}
+                <div className="mt-4 rounded-md bg-white/10 p-3">
+                  <CheckRow
+                    label={content.terms_final_checkbox}
+                    checked={termChecks[2]}
+                    onCheckedChange={(checked) =>
+                      setTermChecks((prev) =>
+                        prev.map((item, i) => (i === 2 ? checked : item)),
+                      )
+                    }
+                  />
+                </div>
+              </div>
             </div>
             {/* Right: total */}
             <div className="flex flex-col justify-start">
@@ -1344,122 +1530,14 @@ export function StepperRegistrationForm({
                 </DialogTitle>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    1. General Conduct
-                  </h3>
-                  <p>
-                    All members must treat staff, fellow members, and equipment
-                    with respect at all times. Harassment, aggressive behaviour,
-                    or intimidation of any kind will result in immediate
-                    termination of membership without refund.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    2. Dress Code &amp; Hygiene
-                  </h3>
-                  <p>
-                    Appropriate gym attire and closed-toe athletic footwear must
-                    be worn at all times on the gym floor. Members are expected
-                    to maintain personal hygiene. Use of a personal towel during
-                    workouts is mandatory.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    3. Equipment Use
-                  </h3>
-                  <p>
-                    All equipment must be used for its intended purpose and
-                    returned to its designated place after use. Weights must be
-                    re-racked after every set. Dropping weights carelessly is
-                    not permitted. Members must wipe down equipment with the
-                    provided disinfectant spray after each use.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    4. Time Limits &amp; Sharing
-                  </h3>
-                  <p>
-                    During peak hours, members may be asked to share equipment
-                    or limit their time on a single machine to 30 minutes.
-                    Reserving equipment while not actively using it is not
-                    permitted.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    5. Mobile Phones &amp; Photography
-                  </h3>
-                  <p>
-                    Phone calls should be taken outside the workout areas.
-                    Photography or video recording of other members without
-                    their explicit consent is strictly prohibited and may result
-                    in membership termination.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    6. Health Responsibility
-                  </h3>
-                  <p>
-                    Members are responsible for their own health and safety
-                    during gym use. By accepting this policy, you confirm that
-                    you are in a suitable physical condition to participate in
-                    exercise and have consulted a qualified medical professional
-                    if you have any pre-existing medical conditions, injuries,
-                    or health concerns.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    7. Liability Waiver
-                  </h3>
-                  <p>
-                    The gym and its staff shall not be held liable for any
-                    injury, illness, accident, or loss of personal property
-                    sustained during your use of the facilities. You voluntarily
-                    assume all risks associated with gym participation. Members
-                    exercise entirely at their own risk.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    8. Emergency Procedures
-                  </h3>
-                  <p>
-                    In case of a medical emergency, notify gym staff
-                    immediately. Do not attempt to move an injured person unless
-                    trained to do so. First-aid kits and defibrillators are
-                    located at the front desk. Emergency exits are clearly
-                    marked throughout the facility.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    9. Prohibited Substances
-                  </h3>
-                  <p>
-                    The use of illegal performance-enhancing drugs or any
-                    controlled substances on gym premises is strictly
-                    prohibited. Members found in violation of this rule will
-                    have their membership revoked immediately and the incident
-                    may be reported to relevant authorities.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    10. Compliance
-                  </h3>
-                  <p>
-                    All members are expected to follow the instructions of gym
-                    staff at all times. Failure to comply with these rules may
-                    result in a warning, suspension, or permanent termination of
-                    membership at the discretion of management.
-                  </p>
-                </section>
+                {gymRulesSections.map((sec, i) => (
+                  <section key={i}>
+                    <h3 className="font-semibold text-white mb-1">
+                      {sec.title}
+                    </h3>
+                    <p>{sec.content}</p>
+                  </section>
+                ))}
               </div>
               <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center gap-3">
                 <Button
@@ -1496,109 +1574,14 @@ export function StepperRegistrationForm({
                 </DialogTitle>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    1. Membership Agreement
-                  </h3>
-                  <p>
-                    By joining, you enter into a binding membership agreement
-                    with the gym. The membership starts from your selected start
-                    date and remains valid for the agreed duration. Membership
-                    fees are non-refundable once the membership period begins.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    2. Payment Terms
-                  </h3>
-                  <p>
-                    All fees must be paid in advance according to the selected
-                    payment frequency (monthly, quarterly, or yearly). Failure
-                    to pay may result in suspension or termination of
-                    membership. Late payments may incur additional charges.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    3. Gym Rules &amp; House Rules
-                  </h3>
-                  <p>
-                    Members must conduct themselves respectfully at all times.
-                    Proper gym attire and footwear are required. Equipment must
-                    be returned to its designated place after use. Aggressive or
-                    unsafe behaviour will result in immediate termination of
-                    membership without refund.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    4. Health &amp; Safety Responsibility
-                  </h3>
-                  <p>
-                    You confirm that you are in good physical health and have
-                    consulted a medical professional if required before
-                    commencing any exercise program. The gym will not be held
-                    liable for any injury, illness, or loss of personal property
-                    during your use of the facilities. You exercise at your own
-                    risk.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    5. Cancellation Policy
-                  </h3>
-                  <p>
-                    Memberships may be cancelled with a written notice of at
-                    least 30 days before the next billing cycle. Early
-                    termination fees may apply. Monthly memberships cannot be
-                    cancelled mid-cycle; cancellation takes effect at the end of
-                    the current period.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    6. Freeze &amp; Suspension
-                  </h3>
-                  <p>
-                    Members may request a membership freeze for medical reasons
-                    with valid documentation. Freeze periods extend the
-                    membership end date accordingly. Abuse of freeze requests
-                    may result in membership termination.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    7. Guest Policy
-                  </h3>
-                  <p>
-                    Guests are only permitted when accompanied by an active
-                    member and subject to a guest fee. Guest visits are limited
-                    per month and guests must register at reception. Members are
-                    responsible for the behaviour of their guests.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    8. Privacy &amp; Data
-                  </h3>
-                  <p>
-                    Your personal data will be processed in accordance with our
-                    Privacy Policy. We collect and store data necessary to
-                    manage your membership and may contact you with relevant
-                    information about your account or facility updates.
-                  </p>
-                </section>
-                <section>
-                  <h3 className="font-semibold text-white mb-1">
-                    9. Amendments
-                  </h3>
-                  <p>
-                    The gym reserves the right to amend these terms at any time.
-                    Members will be notified of significant changes with
-                    reasonable notice. Continued use of the facilities after
-                    notification constitutes acceptance of the updated terms.
-                  </p>
-                </section>
+                {termsSections.map((sec, i) => (
+                  <section key={i}>
+                    <h3 className="font-semibold text-white mb-1">
+                      {sec.title}
+                    </h3>
+                    <p>{sec.content}</p>
+                  </section>
+                ))}
               </div>
               <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center gap-3">
                 <Button
@@ -1626,7 +1609,7 @@ export function StepperRegistrationForm({
           </Dialog>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_320px] w-full max-w-4xl mx-auto">
             {/* Left: terms + signature */}
             <div className="space-y-4">
@@ -1687,42 +1670,6 @@ export function StepperRegistrationForm({
                       </button>
                     </span>
                   </label>
-                </div>
-              </div>
-              <div className="rounded-lg bg-white/5 p-4">
-                {signatureDataUrl ? (
-                  <div>
-                    <Label className="text-white/70 mb-2 block">
-                      Your Signature{" "}
-                      <span className="text-green-400 text-xs">
-                        (signed via contract)
-                      </span>
-                    </Label>
-                    <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] overflow-hidden flex items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={signatureDataUrl}
-                        alt="Your signature"
-                        className="h-full w-full object-contain"
-                        style={{ filter: "invert(1)" }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] flex items-center justify-center text-white/30 text-sm">
-                    No signature found — please complete the contract step.
-                  </div>
-                )}
-                <div className="mt-4 rounded-md bg-white/10 p-3">
-                  <CheckRow
-                    label={content.terms_final_checkbox}
-                    checked={termChecks[2]}
-                    onCheckedChange={(checked) =>
-                      setTermChecks((prev) =>
-                        prev.map((item, i) => (i === 2 ? checked : item)),
-                      )
-                    }
-                  />
                 </div>
               </div>
             </div>

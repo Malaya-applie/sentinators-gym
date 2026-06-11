@@ -1665,7 +1665,289 @@ function FooterPanel() {
   );
 }
 
+// ── TERMS SECTIONS EDITOR ─────────────────────────────────────────────────
+
+type TermsSection = { title: string; content: string };
+
+function TermsSectionsEditor({
+  label,
+  dbKey,
+  defaultSections,
+}: {
+  label: string;
+  dbKey: string;
+  defaultSections: TermsSection[];
+}) {
+  const [sections, setSections] = useState<TermsSection[]>(defaultSections);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/admin/content/text")
+      .then((rows: { key: string; value: string }[]) => {
+        const row = rows.find((r) => r.key === dbKey);
+        if (row) {
+          try {
+            const parsed = JSON.parse(row.value);
+            if (Array.isArray(parsed)) setSections(parsed as TermsSection[]);
+          } catch {
+            /* ignore */
+          }
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [dbKey]);
+
+  function updateSection(
+    index: number,
+    field: keyof TermsSection,
+    value: string,
+  ) {
+    setSections((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)),
+    );
+  }
+
+  function addSection() {
+    setSections((prev) => [
+      ...prev,
+      { title: `${prev.length + 1}. New Section`, content: "" },
+    ]);
+  }
+
+  function removeSection(index: number) {
+    setSections((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function moveSection(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= sections.length) return;
+    setSections((prev) => {
+      const arr = [...prev];
+      [arr[index], arr[target]] = [arr[target], arr[index]];
+      return arr;
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await apiFetch("/admin/content/text", {
+        method: "PUT",
+        body: JSON.stringify({
+          updates: [
+            {
+              key: dbKey,
+              value: JSON.stringify(sections),
+              section: "registration",
+            },
+          ],
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1800);
+    } catch {
+      alert("Failed to save sections");
+    }
+    setSaving(false);
+  }
+
+  if (!loaded)
+    return <div className="text-white/40 text-sm py-2">Loading...</div>;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-white/70 text-sm font-semibold">{label}</Label>
+        <button
+          type="button"
+          onClick={addSection}
+          className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors"
+        >
+          <Plus size={13} /> Add Section
+        </button>
+      </div>
+      <div className="space-y-3">
+        {sections.map((sec, i) => (
+          <div
+            key={i}
+            className="rounded-md border border-white/10 bg-[#0d0d0d] p-3 space-y-2"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-white/30 text-xs w-5">{i + 1}.</span>
+              <Input
+                value={sec.title}
+                onChange={(e) => updateSection(i, "title", e.target.value)}
+                placeholder="Section title"
+                className="bg-[#1a1a1a] border-white/10 text-white text-xs flex-1 h-7"
+              />
+              <button
+                type="button"
+                onClick={() => moveSection(i, -1)}
+                disabled={i === 0}
+                className="text-white/30 hover:text-white/70 disabled:opacity-20 transition-colors"
+                title="Move up"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={() => moveSection(i, 1)}
+                disabled={i === sections.length - 1}
+                className="text-white/30 hover:text-white/70 disabled:opacity-20 transition-colors"
+                title="Move down"
+              >
+                ▼
+              </button>
+              <button
+                type="button"
+                onClick={() => removeSection(i)}
+                className="text-red-500/60 hover:text-red-400 transition-colors"
+                title="Remove"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+            <Textarea
+              value={sec.content}
+              onChange={(e) => updateSection(i, "content", e.target.value)}
+              placeholder="Section content..."
+              className="bg-[#1a1a1a] border-white/10 text-white/80 text-xs min-h-[70px] resize-y"
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          size="sm"
+          className={
+            saved
+              ? "bg-green-700 hover:bg-green-700 text-white text-xs"
+              : "bg-red-700 hover:bg-red-600 text-white text-xs"
+          }
+        >
+          {saving ? (
+            "Saving…"
+          ) : saved ? (
+            <>
+              <Check size={12} className="mr-1" /> Saved
+            </>
+          ) : (
+            "Save Sections"
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── REGISTRATION SETTINGS PANEL ───────────────────────────────────────────
+
+const MEMBERSHIP_TERMS_DEFAULTS: TermsSection[] = [
+  {
+    title: "1. Membership Agreement",
+    content:
+      "By joining, you enter into a binding membership agreement with the gym. The membership starts from your selected start date and remains valid for the agreed duration. Membership fees are non-refundable once the membership period begins.",
+  },
+  {
+    title: "2. Payment Terms",
+    content:
+      "All fees must be paid in advance according to the selected payment frequency (monthly, quarterly, or yearly). Failure to pay may result in suspension or termination of membership. Late payments may incur additional charges.",
+  },
+  {
+    title: "3. Gym Rules & House Rules",
+    content:
+      "Members must conduct themselves respectfully at all times. Proper gym attire and footwear are required. Equipment must be returned to its designated place after use. Aggressive or unsafe behaviour will result in immediate termination of membership without refund.",
+  },
+  {
+    title: "4. Health & Safety Responsibility",
+    content:
+      "You confirm that you are in good physical health and have consulted a medical professional if required before commencing any exercise program. The gym will not be held liable for any injury, illness, or loss of personal property during your use of the facilities. You exercise at your own risk.",
+  },
+  {
+    title: "5. Cancellation Policy",
+    content:
+      "Memberships may be cancelled with a written notice of at least 30 days before the next billing cycle. Early termination fees may apply. Monthly memberships cannot be cancelled mid-cycle; cancellation takes effect at the end of the current period.",
+  },
+  {
+    title: "6. Freeze & Suspension",
+    content:
+      "Members may request a membership freeze for medical reasons with valid documentation. Freeze periods extend the membership end date accordingly. Abuse of freeze requests may result in membership termination.",
+  },
+  {
+    title: "7. Guest Policy",
+    content:
+      "Guests are only permitted when accompanied by an active member and subject to a guest fee. Guest visits are limited per month and guests must register at reception. Members are responsible for the behaviour of their guests.",
+  },
+  {
+    title: "8. Privacy & Data",
+    content:
+      "Your personal data will be processed in accordance with our Privacy Policy. We collect and store data necessary to manage your membership and may contact you with relevant information about your account or facility updates.",
+  },
+  {
+    title: "9. Amendments",
+    content:
+      "The gym reserves the right to amend these terms at any time. Members will be notified of significant changes with reasonable notice. Continued use of the facilities after notification constitutes acceptance of the updated terms.",
+  },
+];
+
+const GYM_RULES_DEFAULTS: TermsSection[] = [
+  {
+    title: "1. General Conduct",
+    content:
+      "All members must treat staff, fellow members, and equipment with respect at all times. Harassment, aggressive behaviour, or intimidation of any kind will result in immediate termination of membership without refund.",
+  },
+  {
+    title: "2. Dress Code & Hygiene",
+    content:
+      "Appropriate gym attire and closed-toe athletic footwear must be worn at all times on the gym floor. Members are expected to maintain personal hygiene. Use of a personal towel during workouts is mandatory.",
+  },
+  {
+    title: "3. Equipment Use",
+    content:
+      "All equipment must be used for its intended purpose and returned to its designated place after use. Weights must be re-racked after every set. Dropping weights carelessly is not permitted. Members must wipe down equipment with the provided disinfectant spray after each use.",
+  },
+  {
+    title: "4. Time Limits & Sharing",
+    content:
+      "During peak hours, members may be asked to share equipment or limit their time on a single machine to 30 minutes. Reserving equipment while not actively using it is not permitted.",
+  },
+  {
+    title: "5. Mobile Phones & Photography",
+    content:
+      "Phone calls should be taken outside the workout areas. Photography or video recording of other members without their explicit consent is strictly prohibited and may result in membership termination.",
+  },
+  {
+    title: "6. Health Responsibility",
+    content:
+      "Members are responsible for their own health and safety during gym use. By accepting this policy, you confirm that you are in a suitable physical condition to participate in exercise and have consulted a qualified medical professional if you have any pre-existing medical conditions, injuries, or health concerns.",
+  },
+  {
+    title: "7. Liability Waiver",
+    content:
+      "The gym and its staff shall not be held liable for any injury, illness, accident, or loss of personal property sustained during your use of the facilities. You voluntarily assume all risks associated with gym participation. Members exercise entirely at their own risk.",
+  },
+  {
+    title: "8. Emergency Procedures",
+    content:
+      "In case of a medical emergency, notify gym staff immediately. Do not attempt to move an injured person unless trained to do so. First-aid kits and defibrillators are located at the front desk. Emergency exits are clearly marked throughout the facility.",
+  },
+  {
+    title: "9. Prohibited Substances",
+    content:
+      "The use of illegal performance-enhancing drugs or any controlled substances on gym premises is strictly prohibited. Members found in violation of this rule will have their membership revoked immediately and the incident may be reported to relevant authorities.",
+  },
+  {
+    title: "10. Compliance",
+    content:
+      "All members are expected to follow the instructions of gym staff at all times. Failure to comply with these rules may result in a warning, suspension, or permanent termination of membership at the discretion of management.",
+  },
+];
 
 const REGISTRATION_DEFAULTS = {
   registration_fee: "99",
@@ -1774,17 +2056,36 @@ function RegistrationSettingsPanel() {
           {field("discount_amount", t("discountAmount"), "number")}
           {field("discount_label", t("discountLabel"))}
         </div>
-        {field("agreement_text", t("agreementText"), "textarea")}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {field("agreement_checkbox_1", t("agreementCheckbox1"))}
-          {field("agreement_checkbox_2", t("agreementCheckbox2"))}
-        </div>
         {field("terms_text", t("termsText"), "textarea")}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {field("terms_checkbox_1", t("termsCheckbox1"))}
           {field("terms_checkbox_2", t("termsCheckbox2"))}
         </div>
         {field("terms_final_checkbox", t("signatureConfirmation"))}
+        {field("agreement_text", t("agreementText"), "textarea")}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {field("agreement_checkbox_1", t("agreementCheckbox1"))}
+          {field("agreement_checkbox_2", t("agreementCheckbox2"))}
+        </div>
+
+        {/* ── Membership Terms Sections ── */}
+        <div className="border-t border-white/5 pt-4">
+          <TermsSectionsEditor
+            label="Membership Terms & Conditions — Sections"
+            dbKey="membership_terms_sections"
+            defaultSections={MEMBERSHIP_TERMS_DEFAULTS}
+          />
+        </div>
+
+        {/* ── Gym Rules Sections ── */}
+        <div className="border-t border-white/5 pt-4">
+          <TermsSectionsEditor
+            label="Gym Rules & Health Responsibility — Sections"
+            dbKey="gym_rules_sections"
+            defaultSections={GYM_RULES_DEFAULTS}
+          />
+        </div>
+
         <div className="flex justify-end pt-2">
           <Button
             onClick={saveAll}

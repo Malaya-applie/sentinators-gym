@@ -8,6 +8,7 @@ import shopRoutes from "./routes/shop";
 import adminRoutes from "./routes/admin";
 import contentRoutes from "./routes/content";
 import uploadRoutes from "./routes/upload";
+import eventRoutes from "./routes/events";
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use("/api/shop", shopRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/events", eventRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────
 app.use((_req, res) => {

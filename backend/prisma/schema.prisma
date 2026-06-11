@@ -57,6 +57,7 @@ model User {
 
    memberships   MembershipPurchase[]
    orders        Order[]
+   eventBookings EventBooking[]
  }
 
 // ─── Membership Plan (static catalog) ──────────────────
@@ -142,6 +143,8 @@ model Trainer {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  events      Event[]
 }
 
 // ─── CMS: Testimonials ─────────────────────────────────
@@ -278,6 +281,37 @@ model FaqItem {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Event ─────────────────────────────────────────────
+model Event {
+  id          Int            @id @default(autoincrement())
+  title       String
+  description String?        @db.Text
+  image       String?
+  date        DateTime
+  time        String?        // e.g. "10:00 AM"
+  location    String?
+  capacity    Int?           // max bookings; null = unlimited
+  isActive    Boolean        @default(true)
+  trainerId   Int?
+  trainer     Trainer?       @relation(fields: [trainerId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  bookings    EventBooking[]
+}
+
+// ─── Event Booking ──────────────────────────────────────
+model EventBooking {
+  id        Int      @id @default(autoincrement())
+  event     Event    @relation(fields: [eventId], references: [id])
+  eventId   Int
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
 }
 
 // ─── Order Item ────────────────────────────────────────

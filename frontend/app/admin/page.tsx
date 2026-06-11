@@ -10,12 +10,14 @@ import { AdminMemberships } from "@/components/admin/admin-memberships";
 import { AdminOrders } from "@/components/admin/admin-orders";
 import { AdminContent } from "@/components/admin/admin-content";
 import { AdminSettings } from "@/components/admin/admin-settings";
+import { AdminEvents } from "@/components/admin/admin-events";
 
 type AdminTab =
   | "dashboard"
   | "users"
   | "memberships"
   | "orders"
+  | "events"
   | "content"
   | "settings";
 
@@ -37,6 +39,8 @@ export default function AdminPage() {
         return <AdminMemberships />;
       case "orders":
         return <AdminOrders />;
+      case "events":
+        return <AdminEvents />;
       case "content":
         return <AdminContent />;
       case "settings":

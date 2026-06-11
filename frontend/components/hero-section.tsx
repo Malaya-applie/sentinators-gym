@@ -2,15 +2,9 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  clearError,
-  openRegistrationModal,
-  closeRegistrationModal,
-} from "@/store/slices/authSlice";
+import { openRegistrationModal } from "@/store/slices/authSlice";
 import { SiteText, getImageUrl } from "@/lib/content";
-import { StepperRegistrationForm } from "@/components/stepper-registration-form";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -43,15 +37,6 @@ export function HeroSection() {
       dispatch(openRegistrationModal());
     }
   }, [dispatch]);
-
-  const handleOpenChange = (val: boolean) => {
-    if (val) {
-      dispatch(openRegistrationModal());
-    } else {
-      dispatch(closeRegistrationModal());
-      dispatch(clearError());
-    }
-  };
 
   const heroImage = getImageUrl(text.hero_image) || DEFAULTS.hero_image;
   const titleLines = (text.hero_title || DEFAULTS.hero_title).split("\n");
@@ -126,19 +111,6 @@ export function HeroSection() {
           >
             {text.hero_button_text || "Fill Form"}
           </Button>
-
-          <Dialog open={registrationModalOpen} onOpenChange={handleOpenChange}>
-            <DialogContent
-              className="max-h-[96vh] w-[94vw] !max-w-[1220px] overflow-y-auto bg-[#08010a] p-0 shadow-[0_24px_90px_rgba(0,0,0,0.75)] sm:!max-w-[1220px] sm:p-0 lg:w-[88vw]"
-              style={{
-                border: "2px solid #733EA6",
-              }}
-            >
-              <StepperRegistrationForm
-                onComplete={() => dispatch(closeRegistrationModal())}
-              />
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
     </section>

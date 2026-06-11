@@ -12,6 +12,7 @@ import {
   X,
   Layout,
   Settings,
+  Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
@@ -22,6 +23,7 @@ type AdminTab =
   | "users"
   | "memberships"
   | "orders"
+  | "events"
   | "content"
   | "settings";
 
@@ -54,6 +56,7 @@ export function AdminLayout({
       icon: <CreditCard size={18} />,
     },
     { id: "orders", label: t("nav.orders"), icon: <ShoppingBag size={18} /> },
+    { id: "events" as AdminTab, label: "Events", icon: <Calendar size={18} /> },
     { id: "content", label: t("nav.content"), icon: <Layout size={18} /> },
     { id: "settings", label: t("nav.settings"), icon: <Settings size={18} /> },
   ];

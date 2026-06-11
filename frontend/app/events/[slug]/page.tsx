@@ -1,9 +1,12 @@
-import { EventDetailHero } from "@/components/events/event-detail-hero";
-import { EventDetailContent } from "@/components/events/event-detail-content";
-import { NewsletterSection } from "@/components/newsletter-section";
+import { EventDetailSection } from "@/components/events/event-detail-section";
 import { Footer } from "@/components/footer";
 
-export default function EventDetailPage() {
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function EventDetailPage({ params }: Props) {
+  const { slug } = await params;
   return (
     <main className="min-h-screen relative">
       {/* Fixed Background */}
@@ -20,9 +23,7 @@ export default function EventDetailPage() {
       {/* Content */}
       <div className="relative z-10">
         <div className="pt-16">
-          <EventDetailHero />
-          <EventDetailContent />
-          {/* <NewsletterSection /> */}
+          <EventDetailSection eventId={slug} />
           <Footer />
         </div>
       </div>
