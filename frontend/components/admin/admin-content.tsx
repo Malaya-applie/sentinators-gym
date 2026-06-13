@@ -67,9 +67,9 @@ async function apiFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
-async function uploadImage(file: File): Promise<string | null> {
+async function uploadMedia(file: File): Promise<string | null> {
   const fd = new FormData();
-  fd.append("image", file);
+  fd.append("file", file);
   const res = await fetch(`${BASE}/upload`, {
     method: "POST",
     headers: authHeaders(),
@@ -101,6 +101,10 @@ function isImageKey(key: string) {
   );
 }
 
+function isVideoKey(key: string) {
+  return key === "why_choose_video_url";
+}
+
 // ── tiny reusable pieces ───────────────────────────────────────────────────
 
 function ImageInput({
@@ -117,7 +121,7 @@ function ImageInput({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const url = await uploadImage(file);
+    const url = await uploadMedia(file);
     setUploading(false);
     if (url) onChange(url);
   }
@@ -143,6 +147,53 @@ function ImageInput({
         ref={ref}
         type="file"
         accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+    </div>
+  );
+}
+
+function VideoInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const url = await uploadMedia(file);
+    setUploading(false);
+    if (url) onChange(url);
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Video URL or upload ↗"
+        className="bg-[#1a1a1a] border-white/10 text-white text-xs flex-1"
+      />
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        disabled={uploading}
+        className="shrink-0 p-2 rounded bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition"
+        title="Upload video"
+      >
+        {uploading ? <span className="text-xs">…</span> : <Upload size={14} />}
+      </button>
+      <input
+        ref={ref}
+        type="file"
+        accept="video/*"
         className="hidden"
         onChange={handleFile}
       />
@@ -447,6 +498,10 @@ function DeleteConfirmDialog({
 
 type TextRow = { id: number; key: string; value: string; section: string };
 
+const REQUIRED_TEXT_ROWS: Array<Pick<TextRow, "key" | "section" | "value">> = [
+  { key: "why_choose_video_url", section: "why", value: "" },
+];
+
 function TextContentPanel() {
   const t = useTranslations("admin.content");
   const [rows, setRows] = useState<TextRow[]>([]);
@@ -455,14 +510,27 @@ function TextContentPanel() {
 
   useEffect(() => {
     apiFetch("/admin/content/text")
-      .then(setRows)
+      .then((fetched: TextRow[]) => {
+        const existingKeys = new Set(fetched.map((row) => row.key));
+        const missingRows = REQUIRED_TEXT_ROWS.filter(
+          (row) => !existingKeys.has(row.key),
+        ).map((row, idx) => ({
+          id: -(idx + 1),
+          ...row,
+        }));
+
+        setRows([...fetched, ...missingRows]);
+      })
       .catch(() => {});
   }, []);
 
   async function save(row: TextRow) {
     await apiFetch(`/admin/content/text/${row.key}`, {
       method: "PUT",
-      body: JSON.stringify({ value: editing[row.id] ?? row.value }),
+      body: JSON.stringify({
+        value: editing[row.id] ?? row.value,
+        section: row.section,
+      }),
     });
     setRows((prev) =>
       prev.map((r) =>
@@ -494,7 +562,38 @@ function TextContentPanel() {
                   <Label className="text-white/50 text-xs font-mono">
                     {row.key}
                   </Label>
-                  {isImageKey(row.key) ? (
+                  {isVideoKey(row.key) ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2 items-center">
+                        <VideoInput
+                          value={editing[row.id] ?? row.value}
+                          onChange={(url) =>
+                            setEditing((prev) => ({ ...prev, [row.id]: url }))
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => save(row)}
+                          className={
+                            saved[row.id]
+                              ? "bg-green-700 text-white"
+                              : "bg-red-700 hover:bg-red-600 text-white"
+                          }
+                        >
+                          {saved[row.id] ? <Check size={14} /> : t("save")}
+                        </Button>
+                      </div>
+                      {(editing[row.id] ?? row.value) && (
+                        <div className="w-40 h-20 rounded overflow-hidden bg-white/5 shrink-0 border border-white/10">
+                          <video
+                            src={img(editing[row.id] ?? row.value)}
+                            controls
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : isImageKey(row.key) ? (
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2 items-center">
                         <ImageInput

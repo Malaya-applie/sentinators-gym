@@ -292,6 +292,11 @@ async function main() {
           value: "/why-choose-us.png",
           section: "why",
         },
+        {
+          key: "why_choose_video_url",
+          value: "",
+          section: "why",
+        },
         // Gallery
         { key: "gallery_section_title", value: "Gallery", section: "gallery" },
         {

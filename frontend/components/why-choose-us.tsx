@@ -1,5 +1,6 @@
 import { Dumbbell, Users, Clock, Award, LucideIcon } from "lucide-react";
 import { getWhyFeatures, getSiteText, getImageUrl } from "@/lib/content";
+import { WhyVideoPlayer } from "@/components/why-video-player";
 
 const iconMap: Record<string, LucideIcon> = {
   Dumbbell,
@@ -9,9 +10,10 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export async function WhyChooseUs() {
-  const [features, text] = await Promise.all([
+  const [features, text, allText] = await Promise.all([
     getWhyFeatures(),
     getSiteText("why"),
+    getSiteText(),
   ]);
 
   const display =
@@ -54,6 +56,9 @@ export async function WhyChooseUs() {
 
   const videoImage =
     getImageUrl(text.why_choose_video_image) || "/why-choose-us.png";
+  const videoUrl = getImageUrl(
+    text.why_choose_video_url || allText.why_choose_video_url,
+  );
 
   return (
     <section id="about" className="py-20 bg-transparent">
@@ -71,7 +76,7 @@ export async function WhyChooseUs() {
                 className="flex items-start gap-4 border border-[#743EA7] rounded-xl p-6 h-full"
                 style={{ background: "#06020775" }}
               >
-                <div className="flex-shrink-0 w-10 h-10 bg-red-600/20 rounded-lg flex items-center justify-center">
+                <div className="shrink-0 w-10 h-10 bg-red-600/20 rounded-lg flex items-center justify-center">
                   <Icon className="w-5 h-5 text-red-500" />
                 </div>
                 <div>
@@ -85,19 +90,8 @@ export async function WhyChooseUs() {
           })}
         </div>
 
-        {/* Wide Image Below Features with Play Icon Overlay */}
-        <div className="mt-10 relative w-full">
-          <img
-            src={videoImage}
-            alt="Why Choose Us"
-            className="w-full rounded-xl object-cover"
-          />
-          <img
-            src="/play-icon.png"
-            alt="Play Icon"
-            className="absolute top-1/2 left-1/2 w-16 h-16 -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer"
-          />
-        </div>
+        {/* Wide media area: poster image stays, click play to start video */}
+        <WhyVideoPlayer posterSrc={videoImage} videoSrc={videoUrl} />
       </div>
     </section>
   );
