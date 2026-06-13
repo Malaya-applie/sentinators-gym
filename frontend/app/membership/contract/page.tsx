@@ -29,6 +29,8 @@ type SignaturePoint = {
   y: number;
 };
 
+type TermsSection = { title: string; content: string };
+
 type RegState = {
   form: {
     firstName: string;
@@ -59,6 +61,8 @@ type RegState = {
   selectedPlanId: number | null;
   contractMemberSig?: string;
   guardianSig?: string;
+  termsSections?: TermsSection[];
+  gymRulesSections?: TermsSection[];
 };
 
 function money(currency: string, amount: number) {
@@ -542,6 +546,8 @@ export default function MembershipContractPage() {
     customerNumber,
     isMinor,
     selectedPlanId,
+    termsSections,
+    gymRulesSections,
   } = state;
 
   const selectedPlanPrice = (() => {
@@ -807,61 +813,58 @@ export default function MembershipContractPage() {
               </div>
             </div>
 
-            {/* Section 5: Contract Conditions */}
-            <div className="border border-gray-300 rounded overflow-hidden">
-              <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                5. Contract Conditions
+            {/* Section 5: Membership Terms */}
+            {termsSections && termsSections.length > 0 && (
+              <div className="border border-gray-300 rounded overflow-hidden">
+                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                  5. Membership Terms
+                </div>
+                <div className="p-3">
+                  {termsSections.map(({ title, content }) => (
+                    <div
+                      key={title}
+                      className="py-2 border-b border-gray-200 last:border-0"
+                    >
+                      <p className="font-bold text-sm text-gray-900 mb-0.5">
+                        {title}
+                      </p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="p-3">
-                {[
-                  {
-                    title: "Term",
-                    text: "The selected membership begins on the start date and runs for the agreed term. An automatic extension occurs only if no timely cancellation is made.",
-                  },
-                  {
-                    title: "Notice Period",
-                    text: "Cancellation must be declared in writing and must be received at least 4 weeks before the end of the respective term.",
-                  },
-                  {
-                    title: "Payment Obligation",
-                    text: "The membership fee is to be paid in advance according to the chosen payment method and due date. In case of late payment, we reserve the right to charge reminder fees and suspend the membership.",
-                  },
-                  {
-                    title: "House Rules",
-                    text: "The membership is subject to the house rules of the gym. These are posted in the studio and can be viewed on our website. With your signature, you acknowledge these rules.",
-                  },
-                  {
-                    title: "Liability",
-                    text: "The gym is not liable for items brought in. Use of the equipment is at your own risk. Parents are liable for their children.",
-                  },
-                  {
-                    title: "Data Protection",
-                    text: "Your data will be used exclusively for contract processing and member support. Further information can be found in our privacy policy.",
-                  },
-                  {
-                    title: "Health Responsibility",
-                    text: "With your signature, you confirm that you are healthy enough to participate in training. In case of doubt, we recommend a medical clarification.",
-                  },
-                ].map(({ title, text }) => (
-                  <div
-                    key={title}
-                    className="py-2 border-b border-gray-200 last:border-0"
-                  >
-                    <p className="font-bold text-sm text-gray-900 mb-0.5">
-                      {title}
-                    </p>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {text}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
 
-            {/* Section 6: Signatures */}
+            {/* Section 6: Gym Rules & Health Responsibility */}
+            {gymRulesSections && gymRulesSections.length > 0 && (
+              <div className="border border-gray-300 rounded overflow-hidden">
+                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                  6. Gym Rules &amp; Health Responsibility
+                </div>
+                <div className="p-3">
+                  {gymRulesSections.map(({ title, content }) => (
+                    <div
+                      key={title}
+                      className="py-2 border-b border-gray-200 last:border-0"
+                    >
+                      <p className="font-bold text-sm text-gray-900 mb-0.5">
+                        {title}
+                      </p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section 7: Signatures */}
             <div className="border border-gray-300 rounded overflow-hidden">
               <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                6. Signatures
+                7. Signatures
               </div>
               <div className="p-5 space-y-6">
                 {/* Signature grid */}

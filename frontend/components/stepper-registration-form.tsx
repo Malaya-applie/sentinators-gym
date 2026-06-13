@@ -822,6 +822,8 @@ export function StepperRegistrationForm({
           features: p.features,
           category: p.category,
         })),
+      termsSections,
+      gymRulesSections,
     };
     sessionStorage.setItem("gymRegState", JSON.stringify(state));
     // Preserve existing PDF across navigation so it survives the round-trip

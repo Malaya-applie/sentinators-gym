@@ -153,6 +153,121 @@ function ContractField({ label, value }: { label: string; value: string }) {
   );
 }
 
+type TermsSection = { title: string; content: string };
+
+function parseSections(
+  raw: string | undefined,
+  fallback: TermsSection[],
+): TermsSection[] {
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as TermsSection[];
+  } catch {}
+  return fallback;
+}
+
+const DEFAULT_MEMBERSHIP_TERMS: TermsSection[] = [
+  {
+    title: "1. Membership Agreement",
+    content:
+      "By joining, you enter into a binding membership agreement with the gym. The membership starts from your selected start date and remains valid for the agreed duration. Membership fees are non-refundable once the membership period begins.",
+  },
+  {
+    title: "2. Payment Terms",
+    content:
+      "All fees must be paid in advance according to the selected payment frequency (monthly, quarterly, or yearly). Failure to pay may result in suspension or termination of membership. Late payments may incur additional charges.",
+  },
+  {
+    title: "3. Gym Rules & House Rules",
+    content:
+      "Members must conduct themselves respectfully at all times. Proper gym attire and footwear are required. Equipment must be returned to its designated place after use. Aggressive or unsafe behaviour will result in immediate termination of membership without refund.",
+  },
+  {
+    title: "4. Health & Safety Responsibility",
+    content:
+      "You confirm that you are in good physical health and have consulted a medical professional if required before commencing any exercise program. The gym will not be held liable for any injury, illness, or loss of personal property during your use of the facilities. You exercise at your own risk.",
+  },
+  {
+    title: "5. Cancellation Policy",
+    content:
+      "Memberships may be cancelled with a written notice of at least 30 days before the next billing cycle. Early termination fees may apply. Monthly memberships cannot be cancelled mid-cycle; cancellation takes effect at the end of the current period.",
+  },
+  {
+    title: "6. Freeze & Suspension",
+    content:
+      "Members may request a membership freeze for medical reasons with valid documentation. Freeze periods extend the membership end date accordingly. Abuse of freeze requests may result in membership termination.",
+  },
+  {
+    title: "7. Guest Policy",
+    content:
+      "Guests are only permitted when accompanied by an active member and subject to a guest fee. Guest visits are limited per month and guests must register at reception. Members are responsible for the behaviour of their guests.",
+  },
+  {
+    title: "8. Privacy & Data",
+    content:
+      "Your personal data will be processed in accordance with our Privacy Policy. We collect and store data necessary to manage your membership and may contact you with relevant information about your account or facility updates.",
+  },
+  {
+    title: "9. Amendments",
+    content:
+      "The gym reserves the right to amend these terms at any time. Members will be notified of significant changes with reasonable notice. Continued use of the facilities after notification constitutes acceptance of the updated terms.",
+  },
+];
+
+const DEFAULT_GYM_RULES: TermsSection[] = [
+  {
+    title: "1. General Conduct",
+    content:
+      "All members must treat staff, fellow members, and equipment with respect at all times. Harassment, aggressive behaviour, or intimidation of any kind will result in immediate termination of membership without refund.",
+  },
+  {
+    title: "2. Dress Code & Hygiene",
+    content:
+      "Appropriate gym attire and closed-toe athletic footwear must be worn at all times on the gym floor. Members are expected to maintain personal hygiene. Use of a personal towel during workouts is mandatory.",
+  },
+  {
+    title: "3. Equipment Use",
+    content:
+      "All equipment must be used for its intended purpose and returned to its designated place after use. Weights must be re-racked after every set. Dropping weights carelessly is not permitted. Members must wipe down equipment after each use.",
+  },
+  {
+    title: "4. Time Limits & Sharing",
+    content:
+      "During peak hours, members may be asked to share equipment or limit their time on a single machine to 30 minutes. Reserving equipment while not actively using it is not permitted.",
+  },
+  {
+    title: "5. Mobile Phones & Photography",
+    content:
+      "Phone calls should be taken outside the workout areas. Photography or video recording of other members without their explicit consent is strictly prohibited and may result in membership termination.",
+  },
+  {
+    title: "6. Health Responsibility",
+    content:
+      "Members are responsible for their own health and safety during gym use. By accepting this policy, you confirm that you are in a suitable physical condition to participate in exercise and have consulted a qualified medical professional if you have any pre-existing medical conditions, injuries, or health concerns.",
+  },
+  {
+    title: "7. Liability Waiver",
+    content:
+      "The gym and its staff shall not be held liable for any injury, illness, accident, or loss of personal property sustained during your use of the facilities. You voluntarily assume all risks associated with gym participation. Members exercise entirely at their own risk.",
+  },
+  {
+    title: "8. Emergency Procedures",
+    content:
+      "In case of a medical emergency, notify gym staff immediately. Do not attempt to move an injured person unless trained to do so. First-aid kits and defibrillators are located at the front desk. Emergency exits are clearly marked throughout the facility.",
+  },
+  {
+    title: "9. Prohibited Substances",
+    content:
+      "The use of illegal performance-enhancing drugs or any controlled substances on gym premises is strictly prohibited. Members found in violation of this rule will have their membership revoked immediately and the incident may be reported to relevant authorities.",
+  },
+  {
+    title: "10. Compliance",
+    content:
+      "All members are expected to follow the instructions of gym staff at all times. Failure to comply with these rules may result in a warning, suspension, or permanent termination of membership at the discretion of management.",
+  },
+];
+
 // ─── Renew Modal ───────────────────────────────────────
 function RenewModal({
   membership,
@@ -184,6 +299,11 @@ function RenewModal({
   const [error, setError] = useState("");
   const [quarterlyFeePercent, setQuarterlyFeePercent] = useState<number>(5);
   const [monthlyFeePercent, setMonthlyFeePercent] = useState<number>(10);
+  const [termsSections, setTermsSections] = useState<TermsSection[]>(
+    DEFAULT_MEMBERSHIP_TERMS,
+  );
+  const [gymRulesSections, setGymRulesSections] =
+    useState<TermsSection[]>(DEFAULT_GYM_RULES);
 
   // Contract step state
   const [modalStep, setModalStep] = useState<"plan" | "contract">("plan");
@@ -308,12 +428,26 @@ function RenewModal({
       adminApi().get("/membership/plans"),
       adminApi().get("/content/plan-categories"),
       adminApi().get("/content/settings"),
+      adminApi().get("/content/text/registration"),
     ])
-      .then(([plansRes, catsRes, settingsRes]) => {
+      .then(([plansRes, catsRes, settingsRes, regRes]) => {
         setPlans(plansRes.data.plans ?? []);
         setPlanCategories(catsRes.data ?? []);
         setQuarterlyFeePercent(settingsRes.data.quarterlyFeePercent ?? 5);
         setMonthlyFeePercent(settingsRes.data.monthlyFeePercent ?? 10);
+        const reg = regRes.data as {
+          membership_terms_sections?: string;
+          gym_rules_sections?: string;
+        };
+        setTermsSections(
+          parseSections(
+            reg.membership_terms_sections,
+            DEFAULT_MEMBERSHIP_TERMS,
+          ),
+        );
+        setGymRulesSections(
+          parseSections(reg.gym_rules_sections, DEFAULT_GYM_RULES),
+        );
       })
       .catch(() => {})
       .finally(() => setLoadingPlans(false));
@@ -787,61 +921,58 @@ function RenewModal({
                   </div>
                 </div>
 
-                {/* Section 5: Contract Conditions */}
-                <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    5. Contract Conditions
+                {/* Section 5: Membership Terms */}
+                {termsSections.length > 0 && (
+                  <div className="border border-gray-300 rounded overflow-hidden">
+                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                      5. Membership Terms
+                    </div>
+                    <div className="p-3">
+                      {termsSections.map(({ title, content }) => (
+                        <div
+                          key={title}
+                          className="py-2 border-b border-gray-200 last:border-0"
+                        >
+                          <p className="font-bold text-sm text-gray-900 mb-0.5">
+                            {title}
+                          </p>
+                          <p className="text-sm text-gray-700 leading-relaxed">
+                            {content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="p-3">
-                    {[
-                      {
-                        title: "Term",
-                        text: "The selected membership begins on the start date and runs for the agreed term. An automatic extension occurs only if no timely cancellation is made.",
-                      },
-                      {
-                        title: "Notice Period",
-                        text: "Cancellation must be declared in writing and must be received at least 4 weeks before the end of the respective term.",
-                      },
-                      {
-                        title: "Payment Obligation",
-                        text: "The membership fee is to be paid in advance according to the chosen payment method and due date. In case of late payment, we reserve the right to charge reminder fees and suspend the membership.",
-                      },
-                      {
-                        title: "House Rules",
-                        text: "The membership is subject to the house rules of the gym. These are posted in the studio and can be viewed on our website. With your signature, you acknowledge these rules.",
-                      },
-                      {
-                        title: "Liability",
-                        text: "The gym is not liable for items brought in. Use of the equipment is at your own risk. Parents are liable for their children.",
-                      },
-                      {
-                        title: "Data Protection",
-                        text: "Your data will be used exclusively for contract processing and member support. Further information can be found in our privacy policy.",
-                      },
-                      {
-                        title: "Health Responsibility",
-                        text: "With your signature, you confirm that you are healthy enough to participate in training. In case of doubt, we recommend a medical clarification.",
-                      },
-                    ].map(({ title, text }) => (
-                      <div
-                        key={title}
-                        className="py-2 border-b border-gray-200 last:border-0"
-                      >
-                        <p className="font-bold text-sm text-gray-900 mb-0.5">
-                          {title}
-                        </p>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {text}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                )}
 
-                {/* Section 6: Signatures */}
+                {/* Section 6: Gym Rules & Health Responsibility */}
+                {gymRulesSections.length > 0 && (
+                  <div className="border border-gray-300 rounded overflow-hidden">
+                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                      6. Gym Rules &amp; Health Responsibility
+                    </div>
+                    <div className="p-3">
+                      {gymRulesSections.map(({ title, content }) => (
+                        <div
+                          key={title}
+                          className="py-2 border-b border-gray-200 last:border-0"
+                        >
+                          <p className="font-bold text-sm text-gray-900 mb-0.5">
+                            {title}
+                          </p>
+                          <p className="text-sm text-gray-700 leading-relaxed">
+                            {content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 7: Signatures */}
                 <div className="border border-gray-300 rounded overflow-hidden">
                   <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    6. Signatures
+                    7. Signatures
                   </div>
                   <div className="p-5 space-y-5">
                     <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
@@ -1361,6 +1492,32 @@ function ContractViewModal({
   const contractDocRef = useRef<HTMLDivElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const autoDownloadFiredRef = useRef(false);
+  const [termsSections, setTermsSections] = useState<TermsSection[]>(
+    DEFAULT_MEMBERSHIP_TERMS,
+  );
+  const [gymRulesSections, setGymRulesSections] =
+    useState<TermsSection[]>(DEFAULT_GYM_RULES);
+
+  useEffect(() => {
+    adminApi()
+      .get("/content/text/registration")
+      .then((res) => {
+        const reg = res.data as {
+          membership_terms_sections?: string;
+          gym_rules_sections?: string;
+        };
+        setTermsSections(
+          parseSections(
+            reg.membership_terms_sections,
+            DEFAULT_MEMBERSHIP_TERMS,
+          ),
+        );
+        setGymRulesSections(
+          parseSections(reg.gym_rules_sections, DEFAULT_GYM_RULES),
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   // Auto-trigger PDF download after contract document has had time to render
   useEffect(() => {
@@ -1452,42 +1609,6 @@ function ContractViewModal({
         ? `<img src="${membership.signatureDataUrl}" alt="Member signature" style="max-height:100px;width:100%;object-fit:contain;padding:4px;" />`
         : `<p style="font-size:12px;color:#9ca3af;margin:0;">No signature captured</p>`;
 
-      const conditions = [
-        {
-          title: "Term",
-          text: "The selected membership begins on the start date and runs for the agreed term. An automatic extension occurs only if no timely cancellation is made.",
-        },
-        {
-          title: "Notice Period",
-          text: "Cancellation must be declared in writing and must be received at least 4 weeks before the end of the respective term.",
-        },
-        {
-          title: "Payment Obligation",
-          text: "The membership fee is to be paid in advance according to the chosen payment method and due date. In case of late payment, we reserve the right to charge reminder fees and suspend the membership.",
-        },
-        {
-          title: "House Rules",
-          text: "The membership is subject to the house rules of the gym. These are posted in the studio and can be viewed on our website. With your signature, you acknowledge these rules.",
-        },
-        {
-          title: "Liability",
-          text: "The gym is not liable for items brought in. Use of the equipment is at your own risk. Parents are liable for their children.",
-        },
-        {
-          title: "Data Protection",
-          text: "Your data will be used exclusively for contract processing and member support. Further information can be found in our privacy policy.",
-        },
-        {
-          title: "Health Responsibility",
-          text: "With your signature, you confirm that you are healthy enough to participate in training. In case of doubt, we recommend a medical clarification.",
-        },
-      ]
-        .map(
-          ({ title, text }) =>
-            `<div style="padding:8px 0;border-bottom:1px solid #e5e7eb;"><p style="font-weight:700;font-size:13px;color:#111827;margin:0 0 2px;">${title}</p><p style="font-size:13px;color:#374151;line-height:1.5;margin:0;">${text}</p></div>`,
-        )
-        .join("");
-
       const catLabel = mainPlan.category
         ? mainPlan.category.charAt(0) + mainPlan.category.slice(1).toLowerCase()
         : "-";
@@ -1553,9 +1674,11 @@ body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
       </div></div>
     </div>
 
-    <div class="sec">${sectionHead("5. Contract Conditions")}<div style="padding:12px;">${conditions}</div></div>
+    ${termsSections.length > 0 ? `<div class="sec">${sectionHead("5. Membership Terms")}<div style="padding:12px;">${termsSections.map(({ title, content }) => `<div style="padding:8px 0;border-bottom:1px solid #e5e7eb;"><p style="font-weight:700;font-size:13px;color:#111827;margin:0 0 2px;">${title}</p><p style="font-size:13px;color:#374151;line-height:1.5;margin:0;">${content}</p></div>`).join("")}</div></div>` : ""}
 
-    <div class="sec">${sectionHead("6. Signatures")}<div style="padding:20px;">
+    ${gymRulesSections.length > 0 ? `<div class="sec">${sectionHead("6. Gym Rules &amp; Health Responsibility")}<div style="padding:12px;">${gymRulesSections.map(({ title, content }) => `<div style="padding:8px 0;border-bottom:1px solid #e5e7eb;"><p style="font-weight:700;font-size:13px;color:#111827;margin:0 0 2px;">${title}</p><p style="font-size:13px;color:#374151;line-height:1.5;margin:0;">${content}</p></div>`).join("")}</div></div>` : ""}
+
+    <div class="sec">${sectionHead("7. Signatures")}<div style="padding:20px;">
       <div class="grid3">
         <div style="display:flex;flex-direction:column;gap:8px;">
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;">Place / Date</span>
@@ -1878,61 +2001,58 @@ body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
                 </div>
               </div>
 
-              {/* Section 5: Contract Conditions */}
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  5. Contract Conditions
+              {/* Section 5: Membership Terms */}
+              {termsSections.length > 0 && (
+                <div className="border border-gray-300 rounded overflow-hidden">
+                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                    5. Membership Terms
+                  </div>
+                  <div className="p-3">
+                    {termsSections.map(({ title, content }) => (
+                      <div
+                        key={title}
+                        className="py-2 border-b border-gray-200 last:border-0"
+                      >
+                        <p className="font-bold text-sm text-gray-900 mb-0.5">
+                          {title}
+                        </p>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="p-3">
-                  {[
-                    {
-                      title: "Term",
-                      text: "The selected membership begins on the start date and runs for the agreed term. An automatic extension occurs only if no timely cancellation is made.",
-                    },
-                    {
-                      title: "Notice Period",
-                      text: "Cancellation must be declared in writing and must be received at least 4 weeks before the end of the respective term.",
-                    },
-                    {
-                      title: "Payment Obligation",
-                      text: "The membership fee is to be paid in advance according to the chosen payment method and due date. In case of late payment, we reserve the right to charge reminder fees and suspend the membership.",
-                    },
-                    {
-                      title: "House Rules",
-                      text: "The membership is subject to the house rules of the gym. These are posted in the studio and can be viewed on our website. With your signature, you acknowledge these rules.",
-                    },
-                    {
-                      title: "Liability",
-                      text: "The gym is not liable for items brought in. Use of the equipment is at your own risk. Parents are liable for their children.",
-                    },
-                    {
-                      title: "Data Protection",
-                      text: "Your data will be used exclusively for contract processing and member support. Further information can be found in our privacy policy.",
-                    },
-                    {
-                      title: "Health Responsibility",
-                      text: "With your signature, you confirm that you are healthy enough to participate in training. In case of doubt, we recommend a medical clarification.",
-                    },
-                  ].map(({ title, text }) => (
-                    <div
-                      key={title}
-                      className="py-2 border-b border-gray-200 last:border-0"
-                    >
-                      <p className="font-bold text-sm text-gray-900 mb-0.5">
-                        {title}
-                      </p>
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
-              {/* Section 6: Signatures */}
+              {/* Section 6: Gym Rules & Health Responsibility */}
+              {gymRulesSections.length > 0 && (
+                <div className="border border-gray-300 rounded overflow-hidden">
+                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+                    6. Gym Rules &amp; Health Responsibility
+                  </div>
+                  <div className="p-3">
+                    {gymRulesSections.map(({ title, content }) => (
+                      <div
+                        key={title}
+                        className="py-2 border-b border-gray-200 last:border-0"
+                      >
+                        <p className="font-bold text-sm text-gray-900 mb-0.5">
+                          {title}
+                        </p>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Section 7: Signatures */}
               <div className="border border-gray-300 rounded overflow-hidden">
                 <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  6. Signatures
+                  7. Signatures
                 </div>
                 <div className="p-5 space-y-5">
                   <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
