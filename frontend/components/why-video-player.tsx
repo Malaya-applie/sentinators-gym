@@ -12,24 +12,25 @@ export function WhyVideoPlayer({ posterSrc, videoSrc }: WhyVideoPlayerProps) {
   const canPlayVideo = Boolean(videoSrc);
 
   return (
-    <div className="mt-10 relative w-full">
-      {isPlaying && canPlayVideo ? (
-        <video
-          src={videoSrc}
-          poster={posterSrc}
-          controls
-          autoPlay
-          playsInline
-          className="w-full rounded-xl object-cover"
+    <div className="mt-10 w-full">
+      <div className="relative w-full overflow-hidden rounded-xl">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={posterSrc}
+          alt="Why Choose Us"
+          className="block w-full object-cover"
         />
-      ) : (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={posterSrc}
-            alt="Why Choose Us"
-            className="w-full rounded-xl object-cover"
+
+        {isPlaying && canPlayVideo ? (
+          <video
+            src={videoSrc}
+            poster={posterSrc}
+            controls
+            autoPlay
+            playsInline
+            className="absolute inset-0 h-full w-full object-cover"
           />
+        ) : (
           <button
             type="button"
             onClick={() => canPlayVideo && setIsPlaying(true)}
@@ -44,8 +45,8 @@ export function WhyVideoPlayer({ posterSrc, videoSrc }: WhyVideoPlayerProps) {
               className={`w-16 h-16 ${canPlayVideo ? "cursor-pointer" : "opacity-60"}`}
             />
           </button>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
