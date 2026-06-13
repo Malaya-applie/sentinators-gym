@@ -204,14 +204,15 @@ export function PricingSection() {
                     className="relative z-10 rounded-[11px] p-6 h-full"
                     style={{ background: "#0300044D" }}
                   >
-                    <p className="text-sm font-semibold text-red-500 uppercase tracking-widest mb-1">
+                    {/* <p className="text-sm font-semibold text-red-500 uppercase tracking-widest mb-1">
                       {plan.name}
-                    </p>
+                    </p> */}
                     <h4
                       className="text-4xl font-normal text-white mb-2"
                       style={{ fontWeight: 400 }}
                     >
-                      {"duration" in plan ? plan.duration : ""}
+                      {/* {"duration" in plan ? plan.duration : ""} */}
+                      {plan.name}
                     </h4>
                     <p
                       className="text-[#A09BAE] text-xl font-normal mb-8"
