@@ -57,12 +57,12 @@ export async function TrainersSection() {
         </div>
 
         <div className="text-center mt-10 mb-10">
-          <Button
+          {/* <Button
             variant="outline"
             className=" text-red-500 hover:bg-red-500 hover:text-white btn-gradient"
           >
             Show more
-          </Button>
+          </Button> */}
         </div>
         {/* Separation line  */}
         {/* <div

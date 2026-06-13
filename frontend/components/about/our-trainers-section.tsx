@@ -119,9 +119,9 @@ export async function OurTrainersSection() {
 
         {/* Show more button */}
         <div className="flex justify-center mt-12">
-          <Button className="btn-gradient hover:bg-[#8f2244] text-white px-10 py-2 rounded-md text-sm font-medium">
+          {/* <Button className="btn-gradient hover:bg-[#8f2244] text-white px-10 py-2 rounded-md text-sm font-medium">
             Show more
-          </Button>
+          </Button> */}
         </div>
 
         {/* Separation line  */}
