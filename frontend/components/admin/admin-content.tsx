@@ -88,8 +88,8 @@ function img(src?: string | null) {
 }
 
 const IMAGE_DEFAULTS: Record<string, string> = {
-  // hero_image:
-  //   "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/anastase-maragos-ehQimz6-1qM-unsplash%201-GdqLOCVXElCrEmbSonGZfnAdIqozNH.png",
+  hero_image:
+    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/anastase-maragos-ehQimz6-1qM-unsplash%201-GdqLOCVXElCrEmbSonGZfnAdIqozNH.png",
   why_choose_video_image: "/why-choose-us.png",
   about_hero_image: "/about-hero-image.png",
   events_hero_image: "/event-hero-image.jpg",
