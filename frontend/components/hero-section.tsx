@@ -38,7 +38,7 @@ export function HeroSection() {
     }
   }, [dispatch]);
 
-  const heroImage = getImageUrl(text.hero_image) || DEFAULTS.hero_image;
+  const heroImage = getImageUrl(text.hero_image);
   const titleLines = (text.hero_title || DEFAULTS.hero_title).split("\n");
 
   return (
