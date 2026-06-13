@@ -23,6 +23,15 @@
     "emailPlaceholder": "Enter your email",
     "subscribe": "Subscribe"
   },
+  "gallery": {
+    "categories": {
+      "all": "All",
+      "events": "Events",
+      "workouts": "Workouts",
+      "trainingSessions": "Training Sessions",
+      "transformations": "Transformations"
+    }
+  },
   "registration": {
     "title": "Membership Registration",
     "steps": {
@@ -227,6 +236,7 @@
       "tabTestimonials": "Testimonials",
       "tabBlog": "Blog",
       "tabGallery": "Gallery",
+      "tabGalleryCategories": "Gallery Categories",
       "tabAchievements": "Achievements",
       "tabWhyChooseUs": "Why Choose Us",
       "tabEvents": "Events",
@@ -311,6 +321,7 @@
       "titleTestimonials": "Testimonials",
       "titleBlogPosts": "Blog Posts",
       "titleGalleryImages": "Gallery Images",
+      "titleGalleryCategories": "Gallery Category Tabs",
       "titleAchievements": "Achievements & Certifications",
       "titleWhyChooseUs": "Why Choose Us Features",
       "titleEvents": "Event Highlights",

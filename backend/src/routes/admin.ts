@@ -1262,6 +1262,86 @@ router.delete(
   },
 );
 
+// ─── GALLERY CATEGORIES ────────────────────────────────
+router.get(
+  "/content/gallery-categories",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const rows = await prisma.galleryCategory.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch gallery categories" });
+    }
+  },
+);
+
+router.post(
+  "/content/gallery-categories",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, order } = req.body;
+      const trimmedName = (name || "").trim();
+      if (!trimmedName) {
+        res.status(400).json({ error: "Category name is required" });
+        return;
+      }
+      const row = await prisma.galleryCategory.create({
+        data: { name: trimmedName, order: Number(order) || 0 },
+      });
+      res.json(row);
+    } catch (err: any) {
+      console.error("gallery-categories POST error:", err);
+      if (err?.code === "P2002") {
+        res
+          .status(400)
+          .json({ error: "A category with this name already exists" });
+      } else {
+        res.status(500).json({ error: "Failed to create gallery category" });
+      }
+    }
+  },
+);
+
+router.put(
+  "/content/gallery-categories/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, order, isActive } = req.body;
+      const row = await prisma.galleryCategory.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(order !== undefined ? { order: Number(order) } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update gallery category" });
+    }
+  },
+);
+
+router.delete(
+  "/content/gallery-categories/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      await prisma.galleryCategory.delete({
+        where: { id: Number(req.params.id) },
+      });
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete gallery category" });
+    }
+  },
+);
+
 // ─── ACHIEVEMENTS ──────────────────────────────────────
 router.get(
   "/content/achievements",

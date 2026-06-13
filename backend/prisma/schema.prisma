@@ -187,6 +187,15 @@ model GalleryImage {
   updatedAt DateTime @updatedAt
 }
 
+// ─── CMS: Gallery Categories ───────────────────────────
+model GalleryCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
 // ─── CMS: Achievements ─────────────────────────────────
 model Achievement {
   id        Int      @id @default(autoincrement())

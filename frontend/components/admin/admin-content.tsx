@@ -695,7 +695,8 @@ function TextContentPanel() {
 interface ColDef<T> {
   key: keyof T;
   label: string;
-  type?: "text" | "textarea" | "richtext" | "image" | "number";
+  type?: "text" | "textarea" | "richtext" | "image" | "number" | "select";
+  options?: string[];
 }
 
 function CrudPanel<T extends { id: number }>({
@@ -771,6 +772,24 @@ function CrudPanel<T extends { id: number }>({
           onChange={(e) => onChange(e.target.value)}
           className="bg-[#1a1a1a] border-white/10 text-white text-sm min-h-[60px]"
         />
+      );
+    }
+    if (col.type === "select") {
+      return (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-[#1a1a1a] border border-white/10 text-white text-sm rounded-md px-3 py-2"
+        >
+          <option value="" className="bg-[#1a1a1a]">
+            -- Select --
+          </option>
+          {(col.options ?? []).map((opt) => (
+            <option key={opt} value={opt} className="bg-[#1a1a1a]">
+              {opt}
+            </option>
+          ))}
+        </select>
       );
     }
     return (
@@ -2067,6 +2086,47 @@ const REGISTRATION_DEFAULTS = {
 
 type RegistrationSettings = typeof REGISTRATION_DEFAULTS;
 
+// ── GALLERY IMAGES PANEL (with dynamic category dropdown) ──────────────────
+
+function GalleryImagesPanel() {
+  const t = useTranslations("admin.content");
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    apiFetch("/admin/content/gallery-categories")
+      .then((rows: { name: string }[]) => {
+        setCategoryOptions(rows.map((r) => r.name));
+      })
+      .catch(() => {});
+  }, []);
+
+  return (
+    <CrudPanel
+      title={t("titleGalleryImages")}
+      endpoint="gallery"
+      cols={[
+        { key: "src" as never, label: t("colImage"), type: "image" },
+        { key: "alt" as never, label: t("colAltText"), type: "text" },
+        {
+          key: "category" as never,
+          label: t("colCategory"),
+          type: "select",
+          options: categoryOptions,
+        },
+        { key: "order" as never, label: t("colOrder"), type: "number" },
+      ]}
+      emptyForm={
+        {
+          src: "",
+          alt: "",
+          category: categoryOptions[0] ?? "",
+          order: 0,
+        } as never
+      }
+    />
+  );
+}
+
 function RegistrationSettingsPanel() {
   const t = useTranslations("admin.content");
   const [form, setForm] = useState<RegistrationSettings>({
@@ -2220,6 +2280,7 @@ const TABS = [
   "Testimonials",
   "Blog",
   "Gallery",
+  "Gallery Categories",
   "Achievements",
   "Why Choose Us",
   "Events",
@@ -2247,6 +2308,7 @@ export function AdminContent() {
     Testimonials: t("tabTestimonials"),
     Blog: t("tabBlog"),
     Gallery: t("tabGallery"),
+    "Gallery Categories": t("tabGalleryCategories"),
     Achievements: t("tabAchievements"),
     "Why Choose Us": t("tabWhyChooseUs"),
     Events: t("tabEvents"),
@@ -2380,40 +2442,21 @@ export function AdminContent() {
           />
         )}
 
-        {tab === "Gallery" && (
+        {tab === "Gallery" && <GalleryImagesPanel />}
+
+        {tab === "Gallery Categories" && (
           <CrudPanel
-            title={t("titleGalleryImages")}
-            endpoint="gallery"
+            title={t("titleGalleryCategories")}
+            endpoint="gallery-categories"
             cols={[
-              { key: "src" as never, label: t("colImage"), type: "image" },
-              { key: "alt" as never, label: t("colAltText"), type: "text" },
               {
-                key: "category" as never,
-                label: t("colCategory"),
-                type: "text",
-              },
-              {
-                key: "gridCol" as never,
-                label: t("colGridCol"),
-                type: "text",
-              },
-              {
-                key: "gridRow" as never,
-                label: t("colGridRow"),
+                key: "name" as never,
+                label: t("colCategoryName"),
                 type: "text",
               },
               { key: "order" as never, label: t("colOrder"), type: "number" },
             ]}
-            emptyForm={
-              {
-                src: "",
-                alt: "",
-                category: "All",
-                gridCol: "",
-                gridRow: "",
-                order: 0,
-              } as never
-            }
+            emptyForm={{ name: "", order: 0 } as never}
           />
         )}
 
