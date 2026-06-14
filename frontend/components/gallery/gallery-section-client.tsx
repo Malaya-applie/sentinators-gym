@@ -5,9 +5,15 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import {
   GalleryImage as GalleryImageType,
+  GalleryPagination,
   SiteText,
+  getGalleryImages,
   getImageUrl,
 } from "@/lib/content";
+
+const PAGE_SIZE = 12;
+const ALL_CATEGORY = "__ALL__";
+const ALL_CATEGORY_LABEL = "All";
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
@@ -34,6 +40,7 @@ function GalleryImg({ src, alt }: { src: string; alt: string }) {
         fill
         className="object-cover transition-transform duration-500 group-hover:scale-105"
         sizes="(max-width: 768px) 50vw, 25vw"
+        loading="lazy"
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 rounded-2xl" />
     </div>
@@ -43,21 +50,26 @@ function GalleryImg({ src, alt }: { src: string; alt: string }) {
 export function GallerySectionClient({
   initialImages,
   initialText,
-  defaultCategories,
+  initialCategories,
+  initialPagination,
 }: {
   initialImages: GalleryImageType[];
   initialText: SiteText;
-  defaultCategories: string[];
+  initialCategories: string[];
+  initialPagination: GalleryPagination;
 }) {
   const t = useTranslations("gallery");
   const isDesktop = useMediaQuery("(min-width: 768px)");
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState(ALL_CATEGORY);
+  const [images, setImages] = useState(initialImages);
+  const [pagination, setPagination] = useState(initialPagination);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const getCategoryLabel = (category: string) => {
     const normalized = category.trim().toLowerCase();
-    if (normalized === "all") return t("categories.all");
+    if (normalized === ALL_CATEGORY.toLowerCase()) return t("categories.all");
     if (normalized === "events") return t("categories.events");
     if (normalized === "workouts") return t("categories.workouts");
     if (normalized === "training sessions")
@@ -67,34 +79,54 @@ export function GallerySectionClient({
     return category;
   };
 
-  const allCategories = [
-    "All",
-    ...Array.from(
-      new Set(initialImages.map((i) => i.category).filter(Boolean)),
-    ),
-  ];
   const categories =
-    allCategories.length > 1 ? allCategories : defaultCategories;
+    initialCategories.length > 0 ? initialCategories : [ALL_CATEGORY_LABEL];
 
-  const filtered = initialImages.filter(
-    (img) => activeCategory === "All" || img.category === activeCategory,
-  );
-
-  const visibleImages = activeCategory === "All" ? initialImages : filtered;
-  const visibleImagesWithSrc = visibleImages
+  const visibleImagesWithSrc = images
     .map((img) => ({ ...img, resolvedSrc: getImageUrl(img.src) }))
     .filter((img) => Boolean(img.resolvedSrc?.trim()));
 
-  const pageSize = isDesktop ? 12 : 8;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(visibleImagesWithSrc.length / pageSize),
-  );
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedImages = visibleImagesWithSrc.slice(
-    startIndex,
-    startIndex + pageSize,
-  );
+  const totalPages = pagination.totalPages;
+
+  useEffect(() => {
+    setImages(initialImages);
+    setPagination(initialPagination);
+  }, [initialImages, initialPagination]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGallery() {
+      setIsLoading(true);
+      try {
+        const response = await getGalleryImages({
+          page: currentPage,
+          limit: PAGE_SIZE,
+          category:
+            activeCategory === ALL_CATEGORY ? undefined : activeCategory,
+        });
+        if (cancelled) return;
+        setImages(response.images);
+        setPagination(response.pagination);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    if (
+      !(
+        currentPage === 1 &&
+        activeCategory === ALL_CATEGORY &&
+        images === initialImages
+      )
+    ) {
+      void loadGallery();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCategory, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -106,6 +138,8 @@ export function GallerySectionClient({
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  const startIndex = 0;
 
   const openLightbox = (index: number) => setSelectedIndex(index);
   const closeLightbox = () => setSelectedIndex(null);
@@ -149,11 +183,17 @@ export function GallerySectionClient({
         <div className="w-full mb-10">
           <div className="flex flex-row flex-wrap sm:flex-nowrap gap-2 sm:gap-1 justify-center">
             {categories.map((cat) => {
-              const isActive = activeCategory === cat;
+              const isAllCategory = cat.trim().toLowerCase() === "all";
+              const isActive =
+                activeCategory === (isAllCategory ? ALL_CATEGORY : cat);
               return (
                 <button
                   key={cat}
-                  onClick={() => setActiveCategory(cat)}
+                  onClick={() => {
+                    setActiveCategory(isAllCategory ? ALL_CATEGORY : cat);
+                    setCurrentPage(1);
+                    setSelectedIndex(null);
+                  }}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap
                     ${
                       isActive
@@ -173,18 +213,67 @@ export function GallerySectionClient({
         </div>
 
         <div className="w-full">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {paginatedImages.map((img, index) => (
-              <button
-                key={img.id}
-                type="button"
-                className="aspect-square text-left"
-                onClick={() => openLightbox(startIndex + index)}
-                aria-label={`Open ${img.alt}`}
-              >
-                <GalleryImg src={img.resolvedSrc} alt={img.alt} />
-              </button>
-            ))}
+          <div className="relative">
+            {isLoading && (
+              <div className="absolute inset-0 z-10 rounded-2xl sm:rounded-3xl bg-[#0b0006]/80 backdrop-blur-sm border border-[#7a1f2e]/20 overflow-hidden shadow-[0_0_30px_rgba(122,31,46,0.12)]">
+                <div className="absolute inset-0 bg-linear-to-br from-transparent via-[#7a1f2e]/8 to-transparent" />
+                <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 pt-4 pb-3">
+                  <div className="space-y-2 max-w-full sm:max-w-md">
+                    <div className="h-4 w-32 sm:w-40 rounded-full bg-[#7a1f2e]/35 animate-pulse" />
+                    <div className="h-3 w-48 sm:w-60 rounded-full bg-white/8 animate-pulse" />
+                  </div>
+                  <div className="inline-flex w-fit rounded-full border border-[#7a1f2e]/30 bg-[#7a1f2e]/15 px-3 py-1 text-[11px] sm:text-xs text-white/80">
+                    Loading...
+                  </div>
+                </div>
+                <div className="relative grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-4">
+                  {Array.from({ length: isDesktop ? PAGE_SIZE : 6 }).map(
+                    (_, index) => (
+                      <div
+                        key={index}
+                        className="aspect-square rounded-xl sm:rounded-2xl border border-[#7a1f2e]/15 bg-[linear-gradient(135deg,rgba(122,31,46,0.18),rgba(255,255,255,0.02))] animate-pulse overflow-hidden"
+                      >
+                        <div className="h-full w-full bg-linear-to-tr from-[#7a1f2e]/20 via-transparent to-white/5" />
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div
+              className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 transition-opacity duration-300 ${
+                isLoading ? "opacity-20 blur-[1px]" : "opacity-100"
+              }`}
+            >
+              {visibleImagesWithSrc.length > 0 ? (
+                visibleImagesWithSrc.map((img, index) => (
+                  <button
+                    key={img.id}
+                    type="button"
+                    className="aspect-square text-left"
+                    onClick={() => openLightbox(startIndex + index)}
+                    aria-label={`Open ${img.alt}`}
+                    disabled={isLoading}
+                  >
+                    <GalleryImg src={img.resolvedSrc} alt={img.alt} />
+                  </button>
+                ))
+              ) : isLoading ? (
+                Array.from({ length: isDesktop ? PAGE_SIZE : 6 }).map(
+                  (_, index) => (
+                    <div
+                      key={index}
+                      className="aspect-square rounded-xl sm:rounded-2xl bg-[#7a1f2e]/10 animate-pulse border border-[#7a1f2e]/15"
+                    />
+                  ),
+                )
+              ) : (
+                <div className="col-span-full py-16 text-center text-white/55">
+                  No images found for this category.
+                </div>
+              )}
+            </div>
           </div>
 
           {totalPages > 1 && (

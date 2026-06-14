@@ -1,9 +1,12 @@
 import {
   GalleryImage as GalleryImageType,
+  getGalleryCategories,
   getGalleryImages,
   getSiteText,
 } from "@/lib/content";
 import { GallerySectionClient } from "@/components/gallery/gallery-section-client";
+
+const PAGE_SIZE = 12;
 
 const DEFAULT_CATEGORIES = [
   "All",
@@ -127,16 +130,31 @@ const DEFAULT_IMAGES: GalleryImageType[] = [
 ];
 
 export async function GallerySection() {
-  const [images, text] = await Promise.all([
-    getGalleryImages(),
+  const [galleryResponse, text, galleryCategories] = await Promise.all([
+    getGalleryImages({ page: 1, limit: PAGE_SIZE }),
     getSiteText("gallery"),
+    getGalleryCategories(),
   ]);
+
+  const fallbackImages = DEFAULT_IMAGES.slice(0, PAGE_SIZE);
+  const initialImages =
+    galleryResponse.images.length > 0 ? galleryResponse.images : fallbackImages;
+  const initialCategories =
+    galleryCategories.length > 0
+      ? [
+          "All",
+          ...galleryCategories
+            .map((category) => category.name.trim())
+            .filter((name) => name && name.toLowerCase() !== "all"),
+        ]
+      : DEFAULT_CATEGORIES;
 
   return (
     <GallerySectionClient
-      initialImages={images.length > 0 ? images : DEFAULT_IMAGES}
+      initialImages={initialImages}
       initialText={text}
-      defaultCategories={DEFAULT_CATEGORIES}
+      initialCategories={initialCategories}
+      initialPagination={galleryResponse.pagination}
     />
   );
 }

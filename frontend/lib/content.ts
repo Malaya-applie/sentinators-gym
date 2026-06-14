@@ -67,6 +67,27 @@ export interface GalleryImage {
   isActive: boolean;
 }
 
+export interface GalleryCategory {
+  id: number;
+  name: string;
+  order: number;
+  isActive: boolean;
+}
+
+export interface GalleryPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface GalleryImagesResponse {
+  images: GalleryImage[];
+  pagination: GalleryPagination;
+}
+
 export interface Achievement {
   id: number;
   image?: string | null;
@@ -157,8 +178,43 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
   return (await fetchJson<BlogPost[]>(`${API}/content/blog`)) ?? [];
 }
 
-export async function getGalleryImages(): Promise<GalleryImage[]> {
-  return (await fetchJson<GalleryImage[]>(`${API}/content/gallery`)) ?? [];
+export async function getGalleryImages(options?: {
+  page?: number;
+  limit?: number;
+  category?: string;
+}): Promise<GalleryImagesResponse> {
+  const params = new URLSearchParams();
+  if (options?.page) params.set("page", String(options.page));
+  if (options?.limit) params.set("limit", String(options.limit));
+  if (options?.category && options.category !== "All") {
+    params.set("category", options.category);
+  }
+
+  const query = params.toString();
+  const url = query
+    ? `${API}/content/gallery?${query}`
+    : `${API}/content/gallery`;
+
+  return (
+    (await fetchJson<GalleryImagesResponse>(url)) ?? {
+      images: [],
+      pagination: {
+        page: options?.page ?? 1,
+        limit: options?.limit ?? 12,
+        total: 0,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    }
+  );
+}
+
+export async function getGalleryCategories(): Promise<GalleryCategory[]> {
+  return (
+    (await fetchJson<GalleryCategory[]>(`${API}/content/gallery-categories`)) ??
+    []
+  );
 }
 
 export async function getAchievements(): Promise<Achievement[]> {

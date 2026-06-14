@@ -116,18 +116,62 @@ router.get("/blog/:id", async (req: Request, res: Response): Promise<void> => {
 });
 
 // ─── GET /api/content/gallery ───────────────────────────
-router.get("/gallery", async (_req: Request, res: Response): Promise<void> => {
+router.get("/gallery", async (req: Request, res: Response): Promise<void> => {
   try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 12));
+    const category =
+      typeof req.query.category === "string" ? req.query.category.trim() : "";
+
+    const where = {
+      isActive: true,
+      ...(category && category.toLowerCase() !== "all" ? { category } : {}),
+    };
+
+    const total = await prisma.galleryImage.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+
     const images = await prisma.galleryImage.findMany({
-      where: { isActive: true },
+      where,
       orderBy: { order: "asc" },
+      skip: (safePage - 1) * limit,
+      take: limit,
     });
-    res.json(images);
+
+    res.json({
+      images,
+      pagination: {
+        page: safePage,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: safePage < totalPages,
+        hasPrevPage: safePage > 1,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch gallery" });
   }
 });
+
+// ─── GET /api/content/gallery-categories ───────────────
+router.get(
+  "/gallery-categories",
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const categories = await prisma.galleryCategory.findMany({
+        where: { isActive: true },
+        orderBy: { order: "asc" },
+      });
+      res.json(categories);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch gallery categories" });
+    }
+  },
+);
 
 // ─── GET /api/content/achievements ─────────────────────
 router.get(
