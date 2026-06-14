@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchPlans,
@@ -81,12 +82,45 @@ export function PricingSectionClient({
     }
   };
 
+  const isMobile = useIsMobile();
+
   const activePlansForCategory = plans.filter(
     (p) => p.category === activeCategory,
   );
   const activeTab = categories.find((c) => c.name === activeCategory);
 
   const activePlans = activePlansForCategory;
+
+  // Carousel state — reset to 0 when category or screen size changes
+  const [carouselPage, setCarouselPage] = useState(0);
+  useEffect(() => {
+    setCarouselPage(0);
+  }, [activeCategory, isMobile]);
+
+  // On mobile show 1 card per page; on desktop show 4
+  const CHUNK = isMobile ? 1 : 4;
+  const chunks: (typeof activePlans)[] = [];
+  for (let i = 0; i < activePlans.length; i += CHUNK) {
+    chunks.push(activePlans.slice(i, i + CHUNK));
+  }
+  const totalPages = chunks.length;
+  const currentChunk = chunks[carouselPage] ?? [];
+
+  // Swipe support for mobile
+  const touchStartX = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0 && carouselPage < totalPages - 1)
+        setCarouselPage((p) => p + 1);
+      else if (diff < 0 && carouselPage > 0) setCarouselPage((p) => p - 1);
+    }
+    touchStartX.current = null;
+  };
 
   return (
     <section id="membership" className="mb-10 bg-transparent">
@@ -148,19 +182,20 @@ export function PricingSectionClient({
             </h3>
           </div>
           <div
-            className="flex gap-6 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory hide-scrollbar sm:flex-wrap sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0 sm:justify-center"
-            style={{ WebkitOverflowScrolling: "touch" }}
+            className="flex gap-6 flex-wrap justify-center"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
             {activePlans.length === 0 ? (
               <div className="w-full py-16 text-center text-white/40 text-sm">
                 No plans yet for this category.
               </div>
             ) : (
-              activePlans.map((plan, index) => (
+              currentChunk.map((plan, index) => (
                 <div
                   key={index}
-                  className="plan-card-wrapper min-w-[85vw] max-w-[90vw] snap-center sm:min-w-0 sm:max-w-none sm:w-64 lg:w-[270px]"
-                  style={{ flex: "0 0 auto" }}
+                  className="plan-card-wrapper w-full sm:w-64 lg:w-[270px]"
+                  style={{ flex: isMobile ? "0 0 100%" : "0 0 auto" }}
                 >
                   <div
                     className="relative z-10 rounded-[11px] p-6 h-full"
@@ -205,6 +240,44 @@ export function PricingSectionClient({
               ))
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-8 flex justify-center items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCarouselPage((p) => Math.max(0, p - 1))}
+                disabled={carouselPage === 0}
+                className="mr-1 p-1 rounded-full text-white/40 hover:text-white disabled:opacity-20 transition"
+                aria-label="Previous"
+              >
+                &#8592;
+              </button>
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setCarouselPage(i)}
+                  className={`rounded-full transition-all duration-300 ${
+                    i === carouselPage
+                      ? "w-6 h-3 bg-red-600"
+                      : "w-3 h-3 bg-white/25 hover:bg-white/50"
+                  }`}
+                  aria-label={`Go to page ${i + 1}`}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setCarouselPage((p) => Math.min(totalPages - 1, p + 1))
+                }
+                disabled={carouselPage === totalPages - 1}
+                className="ml-1 p-1 rounded-full text-white/40 hover:text-white disabled:opacity-20 transition"
+                aria-label="Next"
+              >
+                &#8594;
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
