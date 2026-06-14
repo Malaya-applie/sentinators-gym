@@ -32,9 +32,25 @@ export interface Order {
   items: { product: Product; quantity: number; unitPrice: number }[];
 }
 
+export interface ProductsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+interface FetchProductsParams {
+  page?: number;
+  limit?: number;
+  category?: string;
+}
+
 interface ShopState {
   products: Product[];
   categories: ProductCategory[];
+  productsPagination: ProductsPagination;
   cart: CartItem[];
   myOrders: Order[];
   loading: boolean;
@@ -46,6 +62,14 @@ interface ShopState {
 const initialState: ShopState = {
   products: [],
   categories: [],
+  productsPagination: {
+    page: 1,
+    limit: 6,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
   cart: [],
   myOrders: [],
   loading: false,
@@ -56,10 +80,22 @@ const initialState: ShopState = {
 
 export const fetchProducts = createAsyncThunk(
   "shop/fetchProducts",
-  async (_, { rejectWithValue }) => {
+  async (params: FetchProductsParams | undefined, { rejectWithValue }) => {
     try {
-      const res = await api.get("/shop/products");
-      return res.data.products as Product[];
+      const page = params?.page ?? 1;
+      const limit = params?.limit ?? 6;
+      const category = params?.category;
+      const res = await api.get("/shop/products", {
+        params: {
+          page,
+          limit,
+          ...(category && category !== "All" ? { category } : {}),
+        },
+      });
+      return {
+        products: res.data.products as Product[],
+        pagination: res.data.pagination as ProductsPagination,
+      };
     } catch (err: any) {
       return rejectWithValue(
         err.response?.data?.error || "Failed to fetch products",
@@ -145,7 +181,9 @@ const shopSlice = createSlice({
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
-        state.products = action.payload;
+        state.products = action.payload.products;
+        state.productsPagination = action.payload.pagination;
+        state.error = null;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;

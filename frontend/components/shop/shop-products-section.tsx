@@ -16,6 +16,8 @@ const UPLOADS_BASE = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
 ).replace("/api", "");
 
+const PAGE_SIZE = 6;
+
 function productImageSrc(image?: string | null): string {
   if (!image) return "/product-1.png";
   if (image.startsWith("http")) return image;
@@ -25,11 +27,11 @@ function productImageSrc(image?: string | null): string {
 
 export function ShopProductsSection() {
   const dispatch = useAppDispatch();
-  const { products, categories, loading, error } = useAppSelector(
-    (s) => s.shop,
-  );
+  const { products, categories, productsPagination, loading, error } =
+    useAppSelector((s) => s.shop);
 
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [currentPage, setCurrentPage] = useState(1);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [addedId, setAddedId] = useState<number | null>(null);
@@ -39,15 +41,30 @@ export function ShopProductsSection() {
   );
 
   useEffect(() => {
-    dispatch(fetchProducts());
     dispatch(fetchCategories());
+  }, [dispatch]);
 
-    // Poll for stock updates every 30 seconds
+  useEffect(() => {
+    dispatch(
+      fetchProducts({
+        page: currentPage,
+        limit: PAGE_SIZE,
+        category: activeCategory,
+      }),
+    );
+
+    // Poll for stock updates every 30 seconds for the current page/category.
     const interval = setInterval(() => {
-      dispatch(fetchProducts());
+      dispatch(
+        fetchProducts({
+          page: currentPage,
+          limit: PAGE_SIZE,
+          category: activeCategory,
+        }),
+      );
     }, 30_000);
     return () => clearInterval(interval);
-  }, [dispatch]);
+  }, [dispatch, activeCategory, currentPage]);
 
   // Sync quantities when products load
   useEffect(() => {
@@ -82,14 +99,25 @@ export function ShopProductsSection() {
     setCartOpen((prev) => prev || true);
   };
 
-  // Filter by active category ("All" shows everything)
-  const visibleProducts =
-    activeCategory === "All"
-      ? products
-      : products.filter((p) => p.category === activeCategory);
+  const totalPages = productsPagination.totalPages;
 
-  // Build tab list: use backend categories, fallback to "All" if empty
-  const tabs = categories.length > 0 ? categories.map((c) => c.name) : ["All"];
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory]);
+
+  useEffect(() => {
+    if (productsPagination.page !== currentPage) {
+      setCurrentPage(productsPagination.page);
+    }
+  }, [currentPage, productsPagination.page]);
+
+  // Build tab list and keep "All" only once.
+  const tabs = [
+    "All",
+    ...categories
+      .map((c) => c.name)
+      .filter((name) => name.trim().toLowerCase() !== "all"),
+  ];
 
   return (
     <section className="py-12 bg-transparent flex items-start">
@@ -147,96 +175,144 @@ export function ShopProductsSection() {
           {loading && products.length === 0 ? (
             <p className="text-white/40 text-center py-12">Loading products…</p>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {visibleProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="rounded-xl border border-white/10 overflow-hidden flex flex-col"
-                  style={{ background: "#0300044D" }}
-                >
-                  {/* Product Image */}
-                  <div className="relative w-full aspect-4/3 bg-black/30">
-                    <Image
-                      src={productImageSrc(product.image)}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-4 flex flex-col gap-3 flex-1">
-                    <h3 className="text-white font-semibold text-base">
-                      {product.name}
-                    </h3>
-                    {product.features && product.features.length > 0 && (
-                      <ul className="text-white/60 text-xs space-y-1">
-                        {product.features.map((f, i) => (
-                          <li key={i}>– {f}</li>
-                        ))}
-                      </ul>
-                    )}
-
-                    {/* Price + Qty */}
-                    <div className="flex items-center justify-between mt-auto pt-2">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-white font-bold text-lg">
-                          {product.currency} {product.price}
-                        </span>
-                        <span
-                          className={`text-xs font-medium ${
-                            product.stock === 0
-                              ? "text-red-400"
-                              : product.stock <= 3
-                                ? "text-yellow-400"
-                                : "text-white/40"
-                          }`}
-                        >
-                          {product.stock === 0
-                            ? "Out of stock"
-                            : `${product.stock} in stock`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 border border-white/20 rounded-lg overflow-hidden">
-                        <button
-                          onClick={() => updateQty(product.id, -1)}
-                          disabled={product.stock === 0}
-                          className="px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          −
-                        </button>
-                        <span className="px-3 text-white text-sm">
-                          {quantities[product.id] ?? 1}
-                        </span>
-                        <button
-                          onClick={() => updateQty(product.id, 1)}
-                          disabled={
-                            product.stock === 0 ||
-                            (quantities[product.id] ?? 1) >= product.stock
-                          }
-                          className="px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          +
-                        </button>
-                      </div>
+            <>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="rounded-xl border border-white/10 overflow-hidden flex flex-col"
+                    style={{ background: "#0300044D" }}
+                  >
+                    {/* Product Image */}
+                    <div className="relative w-full aspect-4/3 bg-black/30">
+                      <Image
+                        src={productImageSrc(product.image)}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
 
-                    {/* Add to Cart Button */}
-                    <Button
-                      onClick={() => handleAddToCart(product.id)}
-                      disabled={product.stock === 0}
-                      className="btn-gradient text-white font-semibold w-fit px-6 mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {product.stock === 0
-                        ? "Out of Stock"
-                        : addedId === product.id
-                          ? "Added!"
-                          : "Add to Cart"}
-                    </Button>
+                    {/* Info */}
+                    <div className="p-4 flex flex-col gap-3 flex-1">
+                      <h3 className="text-white font-semibold text-base">
+                        {product.name}
+                      </h3>
+                      {product.features && product.features.length > 0 && (
+                        <ul className="text-white/60 text-xs space-y-1">
+                          {product.features.map((f, i) => (
+                            <li key={i}>– {f}</li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {/* Price + Qty */}
+                      <div className="flex items-center justify-between mt-auto pt-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-white font-bold text-lg">
+                            {product.currency} {product.price}
+                          </span>
+                          <span
+                            className={`text-xs font-medium ${
+                              product.stock === 0
+                                ? "text-red-400"
+                                : product.stock <= 3
+                                  ? "text-yellow-400"
+                                  : "text-white/40"
+                            }`}
+                          >
+                            {product.stock === 0
+                              ? "Out of stock"
+                              : `${product.stock} in stock`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 border border-white/20 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => updateQty(product.id, -1)}
+                            disabled={product.stock === 0}
+                            className="px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            −
+                          </button>
+                          <span className="px-3 text-white text-sm">
+                            {quantities[product.id] ?? 1}
+                          </span>
+                          <button
+                            onClick={() => updateQty(product.id, 1)}
+                            disabled={
+                              product.stock === 0 ||
+                              (quantities[product.id] ?? 1) >= product.stock
+                            }
+                            className="px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Add to Cart Button */}
+                      <Button
+                        onClick={() => handleAddToCart(product.id)}
+                        disabled={product.stock === 0}
+                        className="btn-gradient text-white font-semibold w-fit px-6 mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {product.stock === 0
+                          ? "Out of Stock"
+                          : addedId === product.id
+                            ? "Added!"
+                            : "Add to Cart"}
+                      </Button>
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              {products.length === 0 && (
+                <p className="text-white/40 text-center py-12">
+                  No products in this category.
+                </p>
+              )}
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-center gap-2 flex-wrap">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 rounded-md border border-white/20 text-white/80 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Prev
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1.5 rounded-md border transition-colors ${
+                          currentPage === page
+                            ? "bg-white text-black border-white"
+                            : "border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ),
+                  )}
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 rounded-md border border-white/20 text-white/80 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

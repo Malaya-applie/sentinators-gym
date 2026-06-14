@@ -2127,6 +2127,262 @@ function GalleryImagesPanel() {
   );
 }
 
+function ShopProductsPanel() {
+  const t = useTranslations("admin.content");
+  const [categories, setCategories] = useState<
+    { id: number; name: string; order: number }[]
+  >([]);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryOrder, setNewCategoryOrder] = useState(0);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
+    null,
+  );
+  const [editCategoryName, setEditCategoryName] = useState("");
+  const [editCategoryOrder, setEditCategoryOrder] = useState(0);
+  const [categoryActionLoading, setCategoryActionLoading] = useState(false);
+  const [deleteCategoryId, setDeleteCategoryId] = useState<number | null>(null);
+
+  async function loadCategories() {
+    try {
+      const rows = await apiFetch("/admin/content/product-categories");
+      const typedRows = rows as { id: number; name: string; order: number }[];
+      setCategories(typedRows);
+      const names = typedRows.map((r) => r.name.trim()).filter(Boolean);
+      setCategoryOptions(Array.from(new Set(names)));
+    } catch {
+      setCategories([]);
+      setCategoryOptions([]);
+    }
+  }
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  async function handleCreateCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setCreatingCategory(true);
+    try {
+      await apiFetch("/admin/content/product-categories", {
+        method: "POST",
+        body: JSON.stringify({ name, order: Number(newCategoryOrder) || 0 }),
+      });
+      setNewCategoryName("");
+      setNewCategoryOrder(0);
+      await loadCategories();
+    } catch {
+      alert("Failed to create category");
+    }
+    setCreatingCategory(false);
+  }
+
+  function startEditCategory(category: {
+    id: number;
+    name: string;
+    order: number;
+  }) {
+    setEditingCategoryId(category.id);
+    setEditCategoryName(category.name);
+    setEditCategoryOrder(category.order);
+  }
+
+  async function handleSaveCategory() {
+    if (editingCategoryId === null || !editCategoryName.trim()) return;
+    setCategoryActionLoading(true);
+    try {
+      await apiFetch(`/admin/content/product-categories/${editingCategoryId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: editCategoryName.trim(),
+          order: Number(editCategoryOrder) || 0,
+        }),
+      });
+      setEditingCategoryId(null);
+      await loadCategories();
+    } catch {
+      alert("Failed to update category");
+    }
+    setCategoryActionLoading(false);
+  }
+
+  async function handleDeleteCategory() {
+    if (deleteCategoryId === null) return;
+    setCategoryActionLoading(true);
+    try {
+      await apiFetch(`/admin/content/product-categories/${deleteCategoryId}`, {
+        method: "DELETE",
+      });
+      if (editingCategoryId === deleteCategoryId) {
+        setEditingCategoryId(null);
+      }
+      setDeleteCategoryId(null);
+      await loadCategories();
+    } catch {
+      alert("Failed to delete category");
+    }
+    setCategoryActionLoading(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      <DeleteConfirmDialog
+        open={deleteCategoryId !== null}
+        title="Delete Category"
+        description="Are you sure you want to delete this category?"
+        onConfirm={handleDeleteCategory}
+        onCancel={() => setDeleteCategoryId(null)}
+      />
+
+      <div className="bg-[#111] border border-white/10 rounded-lg p-4">
+        <p className="text-white text-sm font-semibold mb-3">Create Category</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">Name</Label>
+            <Input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="e.g. Supplements"
+              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+            />
+          </div>
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">Order</Label>
+            <Input
+              type="number"
+              value={newCategoryOrder}
+              onChange={(e) => setNewCategoryOrder(Number(e.target.value) || 0)}
+              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+            />
+          </div>
+          <div className="flex items-end">
+            <Button
+              onClick={handleCreateCategory}
+              disabled={creatingCategory || !newCategoryName.trim()}
+              className="w-full bg-red-700 hover:bg-red-600 text-white"
+            >
+              {creatingCategory ? "Creating..." : "Create Category"}
+            </Button>
+          </div>
+        </div>
+
+        {categoryOptions.length > 0 && (
+          <p className="text-white/50 text-xs mt-3">
+            Available: {categoryOptions.join(", ")}
+          </p>
+        )}
+
+        <div className="mt-4 space-y-2">
+          {categories.map((category) =>
+            editingCategoryId === category.id ? (
+              <div
+                key={category.id}
+                className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2 items-center bg-[#1a1a1a] border border-white/10 rounded-md p-2"
+              >
+                <Input
+                  value={editCategoryName}
+                  onChange={(e) => setEditCategoryName(e.target.value)}
+                  className="bg-[#121212] border-white/10 text-white text-sm"
+                />
+                <Input
+                  type="number"
+                  value={editCategoryOrder}
+                  onChange={(e) =>
+                    setEditCategoryOrder(Number(e.target.value) || 0)
+                  }
+                  className="bg-[#121212] border-white/10 text-white text-sm"
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveCategory}
+                    disabled={categoryActionLoading || !editCategoryName.trim()}
+                    className="bg-green-700 hover:bg-green-600 text-white"
+                  >
+                    <Check size={14} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditingCategoryId(null)}
+                    className="border-white/10 text-white/60 hover:text-white"
+                  >
+                    <X size={14} />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                key={category.id}
+                className="flex items-center justify-between bg-[#1a1a1a] border border-white/10 rounded-md px-3 py-2"
+              >
+                <p className="text-white text-sm">
+                  {category.name}
+                  <span className="text-white/40 text-xs ml-2">
+                    (order: {category.order})
+                  </span>
+                </p>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => startEditCategory(category)}
+                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition"
+                    title="Edit category"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteCategoryId(category.id)}
+                    className="p-1.5 rounded bg-white/5 hover:bg-red-900/40 text-white/50 hover:text-red-400 transition"
+                    title="Delete category"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ),
+          )}
+        </div>
+      </div>
+
+      <CrudPanel
+        title={t("titleShopProducts")}
+        endpoint="products"
+        cols={[
+          { key: "image" as never, label: t("colImage"), type: "image" },
+          { key: "name" as never, label: t("colName"), type: "text" },
+          { key: "price" as never, label: t("colPrice"), type: "number" },
+          { key: "currency" as never, label: t("currency"), type: "text" },
+          {
+            key: "category" as never,
+            label: t("colCategory"),
+            type: "select",
+            options: categoryOptions,
+          },
+          {
+            key: "features" as never,
+            label: t("colFeatures"),
+            type: "textarea",
+          },
+          { key: "stock" as never, label: t("colStock"), type: "number" },
+        ]}
+        emptyForm={
+          {
+            name: "",
+            price: 0,
+            currency: "CHF",
+            image: "",
+            category: categoryOptions[0] ?? "",
+            features: "",
+            stock: 100,
+          } as never
+        }
+      />
+    </div>
+  );
+}
+
 function RegistrationSettingsPanel() {
   const t = useTranslations("admin.content");
   const [form, setForm] = useState<RegistrationSettings>({
@@ -2554,40 +2810,7 @@ export function AdminContent() {
 
         {tab === "Registration" && <RegistrationSettingsPanel />}
 
-        {tab === "Shop Products" && (
-          <CrudPanel
-            title={t("titleShopProducts")}
-            endpoint="products"
-            cols={[
-              { key: "image" as never, label: t("colImage"), type: "image" },
-              { key: "name" as never, label: t("colName"), type: "text" },
-              { key: "price" as never, label: t("colPrice"), type: "number" },
-              { key: "currency" as never, label: t("currency"), type: "text" },
-              {
-                key: "category" as never,
-                label: t("colCategory"),
-                type: "text",
-              },
-              {
-                key: "features" as never,
-                label: t("colFeatures"),
-                type: "textarea",
-              },
-              { key: "stock" as never, label: t("colStock"), type: "number" },
-            ]}
-            emptyForm={
-              {
-                name: "",
-                price: 0,
-                currency: "CHF",
-                image: "",
-                category: "General",
-                features: "",
-                stock: 100,
-              } as never
-            }
-          />
-        )}
+        {tab === "Shop Products" && <ShopProductsPanel />}
 
         {tab === "Shop Categories" && (
           <CrudPanel
