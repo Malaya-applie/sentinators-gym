@@ -254,7 +254,7 @@ function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "min-h-[160px] p-3 text-white text-sm outline-none leading-relaxed break-words",
+          "min-h-[180px] p-3 text-white text-sm outline-none leading-relaxed break-words [&_p]:mb-3 [&_p:last-child]:mb-0 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-white [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-1 [&_blockquote]:border-l-2 [&_blockquote]:border-red-500/60 [&_blockquote]:pl-3 [&_blockquote]:italic [&_a]:text-red-300 [&_a]:underline",
       },
     },
   });

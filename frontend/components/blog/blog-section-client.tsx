@@ -7,6 +7,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { BlogPost, SiteText, getImageUrl } from "@/lib/content";
 
+function htmlToPlainText(value: string | undefined | null): string {
+  if (!value) return "";
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function BlogSectionClient({
   initialPosts,
   initialText,
@@ -58,7 +67,7 @@ export function BlogSectionClient({
 
     return initialPosts.filter((post) => {
       const title = post.title?.toLowerCase() ?? "";
-      const excerpt = post.excerpt?.toLowerCase() ?? "";
+      const excerpt = htmlToPlainText(post.excerpt).toLowerCase();
 
       return title.includes(term) || excerpt.includes(term);
     });
@@ -110,7 +119,7 @@ export function BlogSectionClient({
                 {post.title}
               </h3>
               <p className="text-white/60 text-sm leading-relaxed mb-3 flex-1">
-                {post.excerpt}
+                {htmlToPlainText(post.excerpt)}
               </p>
               <Link
                 href={`/blog/${post.id}`}
