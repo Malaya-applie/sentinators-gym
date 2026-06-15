@@ -47,7 +47,7 @@ export async function TrainersSection() {
                 priority={index === 0}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
-              <div className="absolute inset-0 bg-red-900/30" />
+              <div className="absolute inset-0" />
               <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
                 <h3 className="text-white font-semibold">{trainer.name}</h3>
                 <p className="text-white/60 text-sm">{trainer.role}</p>
