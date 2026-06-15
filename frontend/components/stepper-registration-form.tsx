@@ -288,6 +288,9 @@ export function StepperRegistrationForm({
   >([]);
   const [activePlanCategory, setActivePlanCategory] =
     useState<string>("MEMBERSHIP");
+  const [planPageByCategory, setPlanPageByCategory] = useState<
+    Record<string, number>
+  >({});
   const [planCategories, setPlanCategories] = useState<PlanCategoryItem[]>([]);
   const [content, setContent] =
     useState<
@@ -325,6 +328,7 @@ export function StepperRegistrationForm({
   const [contractPdfBase64, setContractPdfBase64] = useState<
     string | undefined
   >();
+  const planSwipeStartXRef = useRef<number | null>(null);
   const [contractNumber] = useState(
     () => "CNT-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
   );
@@ -644,6 +648,22 @@ export function StepperRegistrationForm({
   const selectedPlanGroup =
     groupedPlans.find((group) => group.key === activePlanCategory) ??
     groupedPlans[0];
+  const PLAN_CARDS_PER_PAGE = 4;
+  const currentPlanPage = selectedPlanGroup
+    ? (planPageByCategory[selectedPlanGroup.key] ?? 0)
+    : 0;
+  const totalPlanPages = selectedPlanGroup
+    ? Math.max(
+        1,
+        Math.ceil(selectedPlanGroup.items.length / PLAN_CARDS_PER_PAGE),
+      )
+    : 1;
+  const visiblePlanItems = selectedPlanGroup
+    ? selectedPlanGroup.items.slice(
+        currentPlanPage * PLAN_CARDS_PER_PAGE,
+        (currentPlanPage + 1) * PLAN_CARDS_PER_PAGE,
+      )
+    : [];
 
   // Update activePlanCategory when grouped plans change
   useEffect(() => {
@@ -655,6 +675,47 @@ export function StepperRegistrationForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupedPlans]);
+
+  useEffect(() => {
+    if (!selectedPlanGroup) return;
+    if (currentPlanPage < totalPlanPages) return;
+    setPlanPageByCategory((prev) => ({
+      ...prev,
+      [selectedPlanGroup.key]: Math.max(totalPlanPages - 1, 0),
+    }));
+  }, [selectedPlanGroup, currentPlanPage, totalPlanPages]);
+
+  function setPlanPage(pageIndex: number) {
+    if (!selectedPlanGroup) return;
+    setPlanPageByCategory((prev) => ({
+      ...prev,
+      [selectedPlanGroup.key]: Math.min(
+        Math.max(pageIndex, 0),
+        totalPlanPages - 1,
+      ),
+    }));
+  }
+
+  function handlePlanTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    if (totalPlanPages <= 1) return;
+    planSwipeStartXRef.current = event.touches[0]?.clientX ?? null;
+  }
+
+  function handlePlanTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (totalPlanPages <= 1 || planSwipeStartXRef.current === null) return;
+    const endX = event.changedTouches[0]?.clientX;
+    if (typeof endX !== "number") {
+      planSwipeStartXRef.current = null;
+      return;
+    }
+
+    const deltaX = endX - planSwipeStartXRef.current;
+    const SWIPE_THRESHOLD = 40;
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD) {
+      setPlanPage(deltaX < 0 ? currentPlanPage + 1 : currentPlanPage - 1);
+    }
+    planSwipeStartXRef.current = null;
+  }
 
   function toggleAdditionalPlan(planId: number) {
     setSelectedAdditionalPlanIds((prev) =>
@@ -1126,7 +1187,13 @@ export function StepperRegistrationForm({
                         <button
                           key={group.key}
                           type="button"
-                          onClick={() => setActivePlanCategory(group.key)}
+                          onClick={() => {
+                            setActivePlanCategory(group.key);
+                            setPlanPageByCategory((prev) => ({
+                              ...prev,
+                              [group.key]: 0,
+                            }));
+                          }}
                           className={`rounded-full px-5 py-2 text-xs font-semibold transition sm:text-sm ${
                             activePlanCategory === group.key
                               ? "bg-red-700 text-white shadow-[0_0_18px_rgba(220,38,38,0.32)]"
@@ -1161,129 +1228,162 @@ export function StepperRegistrationForm({
                     </div>
                   ) : activePlanCategory === "ADDITIONAL" ? (
                     /* Additional tab — multi-select */
-                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                      {selectedPlanGroup.items.map((plan) => {
-                        const isSelected = selectedAdditionalPlanIds.includes(
-                          plan.id,
-                        );
-                        return (
-                          <button
-                            type="button"
-                            key={plan.id}
-                            onClick={() => toggleAdditionalPlan(plan.id)}
-                            className={`rounded-lg border p-3 text-left transition w-full relative ${
-                              isSelected
-                                ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
-                                : "border-white/10 bg-white/5 hover:border-white/30"
-                            }`}
-                          >
-                            {isSelected && (
-                              <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600">
-                                <Check className="h-3 w-3 text-white" />
-                              </span>
-                            )}
-                            <p className="text-base font-semibold pr-6">
-                              {planTitle(plan)}
-                            </p>
-                            <p
-                              className={`mt-2 text-lg font-bold ${plan.price < 0 ? "text-green-400" : ""}`}
+                    <div
+                      onTouchStart={handlePlanTouchStart}
+                      onTouchEnd={handlePlanTouchEnd}
+                      className="touch-pan-y"
+                    >
+                      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                        {visiblePlanItems.map((plan) => {
+                          const isSelected = selectedAdditionalPlanIds.includes(
+                            plan.id,
+                          );
+                          return (
+                            <button
+                              type="button"
+                              key={plan.id}
+                              onClick={() => toggleAdditionalPlan(plan.id)}
+                              className={`rounded-lg border p-3 text-left transition w-full relative ${
+                                isSelected
+                                  ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
+                                  : "border-white/10 bg-white/5 hover:border-white/30"
+                              }`}
                             >
-                              {plan.price < 0
-                                ? `- ${money(plan.currency, Math.abs(plan.price))}`
-                                : money(plan.currency, plan.price)}
-                            </p>
-                            <ul className="mt-3 space-y-1 text-sm text-white/65">
-                              {plan.features.slice(0, 3).map((feature) => (
-                                <li key={feature} className="flex gap-2">
-                                  <Check className="mt-0.5 h-4 w-4 text-red-400" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </button>
-                        );
-                      })}
+                              {isSelected && (
+                                <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600">
+                                  <Check className="h-3 w-3 text-white" />
+                                </span>
+                              )}
+                              <p className="text-base font-semibold pr-6">
+                                {planTitle(plan)}
+                              </p>
+                              <p
+                                className={`mt-2 text-lg font-bold ${plan.price < 0 ? "text-green-400" : ""}`}
+                              >
+                                {plan.price < 0
+                                  ? `- ${money(plan.currency, Math.abs(plan.price))}`
+                                  : money(plan.currency, plan.price)}
+                              </p>
+                              <ul className="mt-3 space-y-1 text-sm text-white/65">
+                                {plan.features.slice(0, 3).map((feature) => (
+                                  <li key={feature} className="flex gap-2">
+                                    <Check className="mt-0.5 h-4 w-4 text-red-400" />
+                                    <span>{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     /* Annual / Short Term tab — single select */
-                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                      {selectedPlanGroup.items.map((plan) => {
-                        const selected = selectedPlanId === plan.id;
-                        const today = new Date().toISOString().slice(0, 10);
-                        return (
-                          <div
-                            key={plan.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setSelectedPlanId(plan.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ")
-                                setSelectedPlanId(plan.id);
-                            }}
-                            className={`rounded-lg border p-3 text-left transition w-full cursor-pointer ${
-                              selected
-                                ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
-                                : "border-white/10 bg-white/5 hover:border-white/30"
+                    <div
+                      onTouchStart={handlePlanTouchStart}
+                      onTouchEnd={handlePlanTouchEnd}
+                      className="touch-pan-y"
+                    >
+                      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                        {visiblePlanItems.map((plan) => {
+                          const selected = selectedPlanId === plan.id;
+                          const today = new Date().toISOString().slice(0, 10);
+                          return (
+                            <div
+                              key={plan.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setSelectedPlanId(plan.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ")
+                                  setSelectedPlanId(plan.id);
+                              }}
+                              className={`rounded-lg border p-3 text-left transition w-full cursor-pointer ${
+                                selected
+                                  ? "border-red-500 bg-red-950/40 shadow-[0_0_24px_rgba(185,28,28,0.28)]"
+                                  : "border-white/10 bg-white/5 hover:border-white/30"
+                              }`}
+                            >
+                              <p className="text-base font-semibold">
+                                {plan.duration}
+                              </p>
+                              <p className="text-sm text-white/55">
+                                {planTitle(plan)}
+                              </p>
+                              <p className="mt-2 text-lg font-bold">
+                                {money(plan.currency, plan.price)}
+                              </p>
+                              <ul className="mt-3 space-y-1 text-sm text-white/65">
+                                {plan.features.slice(0, 3).map((feature) => (
+                                  <li key={feature} className="flex gap-2">
+                                    <Check className="mt-0.5 h-4 w-4 text-red-400" />
+                                    <span>{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                              {selected && (
+                                <div
+                                  className="mt-4 border-t border-white/10 pt-3 space-y-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div>
+                                    <p className="mb-1 text-xs text-white/50">
+                                      {t("fields.startDate")} *
+                                    </p>
+                                    <input
+                                      type="date"
+                                      min={today}
+                                      value={membershipStartDate}
+                                      onChange={(e) =>
+                                        setMembershipStartDate(e.target.value)
+                                      }
+                                      style={{ colorScheme: "dark" }}
+                                      className="h-8 w-full rounded-md border border-white/10 bg-black/40 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-700/50"
+                                    />
+                                  </div>
+                                  <div>
+                                    <p className="mb-1 text-xs text-white/50">
+                                      {t("fields.endDate")}
+                                    </p>
+                                    <p
+                                      className={`h-8 flex items-center rounded-md border border-white/10 bg-black/40 px-3 text-sm ${
+                                        membershipEndDate
+                                          ? "text-white/80"
+                                          : "text-white/30 italic"
+                                      }`}
+                                    >
+                                      {membershipEndDate
+                                        ? formatDate(membershipEndDate)
+                                        : t("plan.pickStartDate")}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {totalPlanPages > 1 && (
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      {Array.from(
+                        { length: totalPlanPages },
+                        (_, pageIndex) => (
+                          <button
+                            key={pageIndex}
+                            type="button"
+                            aria-label={`Go to plan page ${pageIndex + 1}`}
+                            onClick={() => setPlanPage(pageIndex)}
+                            className={`h-2.5 w-2.5 rounded-full transition ${
+                              pageIndex === currentPlanPage
+                                ? "bg-red-500"
+                                : "bg-white/25 hover:bg-white/45"
                             }`}
-                          >
-                            <p className="text-base font-semibold">
-                              {plan.duration}
-                            </p>
-                            <p className="text-sm text-white/55">
-                              {planTitle(plan)}
-                            </p>
-                            <p className="mt-2 text-lg font-bold">
-                              {money(plan.currency, plan.price)}
-                            </p>
-                            <ul className="mt-3 space-y-1 text-sm text-white/65">
-                              {plan.features.slice(0, 3).map((feature) => (
-                                <li key={feature} className="flex gap-2">
-                                  <Check className="mt-0.5 h-4 w-4 text-red-400" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                            {selected && (
-                              <div
-                                className="mt-4 border-t border-white/10 pt-3 space-y-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div>
-                                  <p className="mb-1 text-xs text-white/50">
-                                    {t("fields.startDate")} *
-                                  </p>
-                                  <input
-                                    type="date"
-                                    min={today}
-                                    value={membershipStartDate}
-                                    onChange={(e) =>
-                                      setMembershipStartDate(e.target.value)
-                                    }
-                                    style={{ colorScheme: "dark" }}
-                                    className="h-8 w-full rounded-md border border-white/10 bg-black/40 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-700/50"
-                                  />
-                                </div>
-                                <div>
-                                  <p className="mb-1 text-xs text-white/50">
-                                    {t("fields.endDate")}
-                                  </p>
-                                  <p
-                                    className={`h-8 flex items-center rounded-md border border-white/10 bg-black/40 px-3 text-sm ${
-                                      membershipEndDate
-                                        ? "text-white/80"
-                                        : "text-white/30 italic"
-                                    }`}
-                                  >
-                                    {membershipEndDate
-                                      ? formatDate(membershipEndDate)
-                                      : t("plan.pickStartDate")}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                          />
+                        ),
+                      )}
                     </div>
                   )}
                 </div>
