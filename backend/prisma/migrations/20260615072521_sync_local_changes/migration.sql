@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Equipment" ALTER COLUMN "images" DROP DEFAULT,
+ALTER COLUMN "features" DROP DEFAULT,
+ALTER COLUMN "updatedAt" DROP DEFAULT;

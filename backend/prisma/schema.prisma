@@ -241,6 +241,17 @@ model TrainingZone {
   updatedAt DateTime @updatedAt
 }
 
+// ─── CMS: Equipment ────────────────────────────────────
+model Equipment {
+  id        Int      @id @default(autoincrement())
+  images    String[] // array of image URLs (max 4)
+  features  String[] // array of feature points
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // ─── Product Category (Shop Tabs) ─────────────────────
 model ProductCategory {
   id        Int      @id @default(autoincrement())

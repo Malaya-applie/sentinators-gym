@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { getEquipment, getImageUrl } from "@/lib/content";
 
 const GRAD = "linear-gradient(180deg, #733EA6 0%, #49225B 100%)";
 
@@ -28,13 +29,35 @@ function GradientBorderImage({
   );
 }
 
-export function EquipmentsSection() {
-  const features = [
-    "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-    "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-    "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-    "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-  ];
+export async function EquipmentsSection() {
+  const equipment = await getEquipment();
+  const images = (equipment?.images || [])
+    .filter((img) => img)
+    .map((img) => getImageUrl(img))
+    .slice(0, 4);
+  const features = equipment?.features || [];
+
+  // Fallback images if empty
+  const displayImages =
+    images.length > 0
+      ? images
+      : [
+          "/equipment-1.png",
+          "/equipment-2.png",
+          "/equipment-3.png",
+          "/equipment-4.png",
+        ];
+
+  // Fallback features if empty
+  const displayFeatures =
+    features.length > 0
+      ? features
+      : [
+          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
+          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
+          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
+          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
+        ];
 
   return (
     <section className="mt-10 bg-transparent">
@@ -50,9 +73,9 @@ export function EquipmentsSection() {
 
         <div className="flex flex-col-reverse md:flex-row items-center gap-12">
           {/* Left – Feature list */}
-          <div className="w-full md:w-[38%] flex-shrink-0 mt-8 md:mt-0">
+          <div className="w-full md:w-[38%] shrink-0 mt-8 md:mt-0">
             <ul className="space-y-7">
-              {features.map((feature, idx) => (
+              {displayFeatures.map((feature, idx) => (
                 <li
                   key={idx}
                   className="flex items-start gap-3 text-base text-gray-200"
@@ -69,41 +92,45 @@ export function EquipmentsSection() {
             className="w-full md:flex-1 relative"
             style={{ height: "360px", minHeight: 220, maxHeight: 460 }}
           >
-            {/* Image 1 – top, offset from left, large landscape */}
-            <GradientBorderImage
-              src="/equipment-1.png"
-              alt="Cardio equipment"
-              style={{ left: "9%", top: "0%", width: "52%", height: "52%" }}
-            />
-            {/* Image 2 – top-right, slightly lower */}
-            <GradientBorderImage
-              src="/equipment-2.png"
-              alt="Weight rack"
-              style={{ right: "10%", top: "6%", width: "36%", height: "52%" }}
-            />
-            {/* Image 3 – bottom-left, extends to left edge */}
-            <GradientBorderImage
-              src="/equipment-3.png"
-              alt="Dumbbells"
-              style={{
-                left: "0%",
-                bottom: "20%",
-                width: "37%",
-                height: "44%",
-                zIndex: 10,
-              }}
-            />
-            {/* Image 4 – bottom-right, large */}
-            <GradientBorderImage
-              src="/equipment-4.png"
-              alt="Cable machines"
-              style={{
-                right: "20%",
-                bottom: "0%",
-                width: "59%",
-                height: "52%",
-              }}
-            />
+            {displayImages[0] && (
+              <GradientBorderImage
+                src={displayImages[0]}
+                alt="Equipment image 1"
+                style={{ left: "9%", top: "0%", width: "52%", height: "52%" }}
+              />
+            )}
+            {displayImages[1] && (
+              <GradientBorderImage
+                src={displayImages[1]}
+                alt="Equipment image 2"
+                style={{ right: "10%", top: "6%", width: "36%", height: "52%" }}
+              />
+            )}
+            {displayImages[2] && (
+              <GradientBorderImage
+                src={displayImages[2]}
+                alt="Equipment image 3"
+                style={{
+                  left: "0%",
+                  bottom: "20%",
+                  width: "37%",
+                  height: "44%",
+                  zIndex: 10,
+                }}
+              />
+            )}
+            {displayImages[3] && (
+              <GradientBorderImage
+                src={displayImages[3]}
+                alt="Equipment image 4"
+                style={{
+                  right: "20%",
+                  bottom: "0%",
+                  width: "59%",
+                  height: "52%",
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

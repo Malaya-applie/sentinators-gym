@@ -40,6 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EquipmentAdminPanel } from "@/components/admin/equipment-admin-panel";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const UPLOADS_BASE = BASE.replace("/api", "");
@@ -2541,6 +2542,7 @@ const TABS = [
   "Why Choose Us",
   "Events",
   "Training Zones",
+  "Equipments",
   "Membership Plans",
   "Registration",
   "FAQ",
@@ -2569,6 +2571,7 @@ export function AdminContent() {
     "Why Choose Us": t("tabWhyChooseUs"),
     Events: t("tabEvents"),
     "Training Zones": t("tabTrainingZones"),
+    Equipments: "Equipments",
     "Membership Plans": t("tabMembershipPlans"),
     Registration: t("tabRegistration"),
     FAQ: t("tabFaq"),
@@ -2805,6 +2808,8 @@ export function AdminContent() {
             emptyForm={{ image: "", alt: "", order: 0 } as never}
           />
         )}
+
+        {tab === "Equipments" && <EquipmentAdminPanel />}
 
         {tab === "Membership Plans" && <MembershipPlansPanel />}
 

@@ -368,4 +368,29 @@ router.get("/settings", async (_req: Request, res: Response): Promise<void> => {
   }
 });
 
+// ─── GET /api/content/equipment ────────────────────────
+router.get(
+  "/equipment",
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const equipment = await prisma.equipment.findFirst({
+        where: { isActive: true },
+      });
+      res.json(
+        equipment || {
+          id: 0,
+          images: [],
+          features: [],
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      );
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch equipment" });
+    }
+  },
+);
+
 export default router;

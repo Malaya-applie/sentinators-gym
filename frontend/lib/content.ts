@@ -120,6 +120,16 @@ export interface TrainingZone {
   order: number;
 }
 
+export interface Equipment {
+  id: number;
+  images: string[];
+  features: string[];
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface AllContent {
   text: SiteText;
   stats: Stat[];
@@ -234,5 +244,19 @@ export async function getEventHighlights(): Promise<EventHighlight[]> {
 export async function getTrainingZones(): Promise<TrainingZone[]> {
   return (
     (await fetchJson<TrainingZone[]>(`${API}/content/training-zones`)) ?? []
+  );
+}
+
+export async function getEquipment(): Promise<Equipment> {
+  return (
+    (await fetchJson<Equipment>(`${API}/content/equipment`)) ?? {
+      id: 0,
+      images: [],
+      features: [],
+      order: 0,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
   );
 }

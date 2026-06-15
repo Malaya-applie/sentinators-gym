@@ -2128,4 +2128,89 @@ router.put(
   },
 );
 
+// ─── EQUIPMENT CRUD ──────────────────────────────────────
+// GET /api/admin/equipment
+router.get(
+  "/equipment",
+  requireAdmin,
+  async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const equipment = await prisma.equipment.findFirst({
+        where: { isActive: true },
+      });
+      res.json(
+        equipment || { id: 0, images: [], features: [], isActive: true },
+      );
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch equipment" });
+    }
+  },
+);
+
+// POST /api/admin/equipment (create or update single record)
+router.post(
+  "/equipment",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { images = [], features = [] } = req.body;
+
+      // Ensure arrays are valid
+      const validImages = Array.isArray(images)
+        ? images.filter((img) => typeof img === "string" && img.trim())
+        : [];
+      const validFeatures = Array.isArray(features)
+        ? features.filter((feat) => typeof feat === "string" && feat.trim())
+        : [];
+
+      // Since we only need 1 equipment record, upsert with id = 1
+      const equipment = await prisma.equipment.upsert({
+        where: { id: 1 },
+        update: {
+          images: validImages,
+          features: validFeatures,
+          updatedAt: new Date(),
+        },
+        create: {
+          id: 1,
+          images: validImages,
+          features: validFeatures,
+          isActive: true,
+        },
+      });
+
+      res.json(equipment);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to save equipment" });
+    }
+  },
+);
+
+// PUT /api/admin/equipment/:id (update specific fields)
+router.put(
+  "/equipment/:id",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { images, features } = req.body;
+      const id = Number(req.params.id) || 1;
+
+      const equipment = await prisma.equipment.update({
+        where: { id },
+        data: {
+          ...(images !== undefined ? { images } : {}),
+          ...(features !== undefined ? { features } : {}),
+          updatedAt: new Date(),
+        },
+      });
+
+      res.json(equipment);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to update equipment" });
+    }
+  },
+);
+
 export default router;
