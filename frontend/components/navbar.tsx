@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import { useTranslations } from "next-intl";
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [cmsText, setCmsText] = useState<Record<string, string>>({});
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -35,14 +36,37 @@ export function Navbar() {
   );
   const t = useTranslations("navbar");
 
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    fetch(`${base}/content/text/navbar`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data === "object") {
+          setCmsText(data as Record<string, string>);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const navLabel = {
+    home: cmsText.navbar_home_label || t("home"),
+    about: cmsText.navbar_about_label || t("about"),
+    membership: cmsText.navbar_membership_label || t("membership"),
+    shop: cmsText.navbar_shop_label || t("shop"),
+    events: cmsText.navbar_events_label || t("events"),
+    gallery: cmsText.navbar_gallery_label || t("gallery"),
+    blog: cmsText.navbar_blog_label || t("blog"),
+    memberLogin: cmsText.navbar_member_login_text || t("memberLogin"),
+  };
+
   const navLinks = [
-    { href: "/", label: t("home") },
-    { href: "/about", label: t("about") },
-    { href: "/membership", label: t("membership") },
-    { href: "/shop", label: t("shop") },
-    { href: "/events", label: t("events") },
-    { href: "/gallery", label: t("gallery") },
-    { href: "/blog", label: t("blog") },
+    { href: "/", label: navLabel.home },
+    { href: "/about", label: navLabel.about },
+    { href: "/membership", label: navLabel.membership },
+    { href: "/shop", label: navLabel.shop },
+    { href: "/events", label: navLabel.events },
+    { href: "/gallery", label: navLabel.gallery },
+    { href: "/blog", label: navLabel.blog },
   ];
 
   const isActive = (href: string) => {
@@ -141,7 +165,7 @@ export function Navbar() {
                   className="self-center btn-gradient hover:bg-red-700 text-white text-sm px-4 cursor-pointer"
                   onClick={() => dispatch(openLoginModal())}
                 >
-                  Member Login
+                  {navLabel.memberLogin}
                 </Button>
               )}
             </div>
@@ -202,7 +226,7 @@ export function Navbar() {
                   dispatch(openLoginModal());
                 }}
               >
-                {t("memberLogin")}
+                {navLabel.memberLogin}
               </Button>
             )}
           </div>

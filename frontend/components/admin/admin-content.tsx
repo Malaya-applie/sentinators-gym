@@ -501,6 +501,18 @@ type TextRow = { id: number; key: string; value: string; section: string };
 
 const REQUIRED_TEXT_ROWS: Array<Pick<TextRow, "key" | "section" | "value">> = [
   { key: "why_choose_video_url", section: "why", value: "" },
+  { key: "navbar_home_label", section: "navbar", value: "Home" },
+  { key: "navbar_about_label", section: "navbar", value: "About" },
+  { key: "navbar_membership_label", section: "navbar", value: "Membership" },
+  { key: "navbar_shop_label", section: "navbar", value: "Shop" },
+  { key: "navbar_events_label", section: "navbar", value: "Events" },
+  { key: "navbar_gallery_label", section: "navbar", value: "Gallery" },
+  { key: "navbar_blog_label", section: "navbar", value: "Blog" },
+  {
+    key: "navbar_member_login_text",
+    section: "navbar",
+    value: "Member Login",
+  },
 ];
 
 function TextContentPanel() {

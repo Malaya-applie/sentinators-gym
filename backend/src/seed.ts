@@ -855,8 +855,80 @@ async function main() {
         section: "pricing",
       },
     }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_home_label" },
+      update: {},
+      create: {
+        key: "navbar_home_label",
+        value: "Home",
+        section: "navbar",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_about_label" },
+      update: {},
+      create: {
+        key: "navbar_about_label",
+        value: "About",
+        section: "navbar",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_membership_label" },
+      update: {},
+      create: {
+        key: "navbar_membership_label",
+        value: "Membership",
+        section: "navbar",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_shop_label" },
+      update: {},
+      create: {
+        key: "navbar_shop_label",
+        value: "Shop",
+        section: "navbar",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_events_label" },
+      update: {},
+      create: {
+        key: "navbar_events_label",
+        value: "Events",
+        section: "navbar",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_gallery_label" },
+      update: {},
+      create: {
+        key: "navbar_gallery_label",
+        value: "Gallery",
+        section: "navbar",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_blog_label" },
+      update: {},
+      create: {
+        key: "navbar_blog_label",
+        value: "Blog",
+        section: "navbar",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "navbar_member_login_text" },
+      update: {},
+      create: {
+        key: "navbar_member_login_text",
+        value: "Member Login",
+        section: "navbar",
+      },
+    }),
   ]);
-  console.log("✅ Pricing section text upserted");
+  console.log("✅ Pricing and navbar text upserted");
 
   console.log("🎉 Seeding complete!");
 }
