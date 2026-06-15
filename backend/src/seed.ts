@@ -883,6 +883,15 @@ async function main() {
       },
     }),
     prisma.siteContent.upsert({
+      where: { key: "shop_hero_title" },
+      update: {},
+      create: {
+        key: "shop_hero_title",
+        value: "LOREM IPSUM\nLOREM IPSUM LOREM",
+        section: "shop",
+      },
+    }),
+    prisma.siteContent.upsert({
       where: { key: "navbar_home_label" },
       update: {},
       create: {
