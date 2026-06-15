@@ -132,7 +132,7 @@ export function EventDetailSection({ eventId }: Props) {
           >
             <div className="flex justify-center">
               <Image
-                src="/gym-logo.png"
+                src="/gym_logo.png"
                 alt="Sentinators"
                 width={64}
                 height={64}

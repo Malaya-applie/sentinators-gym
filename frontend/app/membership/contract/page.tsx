@@ -576,7 +576,7 @@ export default function MembershipContractPage() {
         {/* Logo */}
         <div className="flex justify-center mb-5 sm:mb-6">
           <Image
-            src="/gym-logo.png"
+            src="/gym_logo.png"
             alt="Gym Logo"
             width={120}
             height={120}

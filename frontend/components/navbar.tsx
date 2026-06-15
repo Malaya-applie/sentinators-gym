@@ -123,7 +123,7 @@ export function Navbar() {
             <div className="flex items-center">
               <Link href="/" className="flex items-center gap-2">
                 <img
-                  src="/gym-logo.png"
+                  src="/gym_logo.png"
                   alt="Gym Logo"
                   className="h-12 w-auto"
                 />

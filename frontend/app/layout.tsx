@@ -15,8 +15,8 @@ export const metadata: Metadata = {
     "Join Sentinators premium fitness center with expert trainers, modern equipment, and personalized workout plans to achieve your fitness goals.",
   generator: "v0.app",
   icons: {
-    icon: "/gym-logo.png",
-    apple: "/gym-logo.png",
+    icon: "/gym_logo.png",
+    apple: "/gym_logo.png",
   },
 };
 

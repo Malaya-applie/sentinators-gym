@@ -31,7 +31,7 @@ export async function Footer() {
           {/* Logo & Description */}
           <div>
             <div className="inline-block mb-4">
-              <img src="/gym-logo.png" alt="Gym Logo" className="h-12 w-auto" />
+              <img src="/gym_logo.png" alt="Gym Logo" className="h-12 w-auto" />
             </div>
             <p className="text-white/60 text-sm leading-relaxed mb-4">
               {t.footer_description ||
