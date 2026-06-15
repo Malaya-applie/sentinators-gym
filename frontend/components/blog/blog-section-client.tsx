@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -31,6 +31,9 @@ export function BlogSectionClient({
   const [debouncedQuery, setDebouncedQuery] = useState(
     searchParams.get("q") ?? "",
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const listTopRef = useRef<HTMLDivElement | null>(null);
+  const POSTS_PER_PAGE = 6;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -73,9 +76,37 @@ export function BlogSectionClient({
     });
   }, [debouncedQuery, initialPosts]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / POSTS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage <= totalPages) return;
+    setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const paginatedPosts = useMemo(() => {
+    const start = (currentPage - 1) * POSTS_PER_PAGE;
+    return filtered.slice(start, start + POSTS_PER_PAGE);
+  }, [currentPage, filtered]);
+
+  function changePage(page: number) {
+    const nextPage = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(nextPage);
+    requestAnimationFrame(() => {
+      listTopRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
   return (
     <section className="py-20 bg-transparent">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div ref={listTopRef} />
         <div className="text-center mb-6">
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-wide mb-4">
             {initialText.blog_section_title || "BLOG"}
@@ -104,7 +135,7 @@ export function BlogSectionClient({
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filtered.map((post) => (
+          {paginatedPosts.map((post) => (
             <div key={post.id} className="flex flex-col">
               <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden mb-4">
                 <Image
@@ -130,6 +161,46 @@ export function BlogSectionClient({
             </div>
           ))}
         </div>
+
+        {filtered.length > 0 && totalPages > 1 && (
+          <div className="mt-10 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => changePage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="rounded-md border border-white/10 px-3 py-2 text-sm text-white/70 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Prev
+            </button>
+
+            {Array.from({ length: totalPages }, (_, index) => {
+              const page = index + 1;
+              return (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => changePage(page)}
+                  className={`h-10 min-w-10 rounded-md border px-3 text-sm font-semibold transition ${
+                    currentPage === page
+                      ? "border-red-500 bg-red-700 text-white"
+                      : "border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => changePage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="rounded-md border border-white/10 px-3 py-2 text-sm text-white/70 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         {!filtered.length ? (
           <p className="text-center text-white/70 text-sm mt-8">
