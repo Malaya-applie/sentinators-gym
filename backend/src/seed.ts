@@ -856,6 +856,15 @@ async function main() {
       },
     }),
     prisma.siteContent.upsert({
+      where: { key: "membership_hero_title" },
+      update: {},
+      create: {
+        key: "membership_hero_title",
+        value: "PLANS & PRICING",
+        section: "membership",
+      },
+    }),
+    prisma.siteContent.upsert({
       where: { key: "navbar_home_label" },
       update: {},
       create: {

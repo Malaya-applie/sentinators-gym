@@ -1,6 +1,10 @@
 import Image from "next/image";
+import { getSiteText } from "@/lib/content";
 
-export function MembershipHero() {
+export async function MembershipHero() {
+  const text = await getSiteText("membership");
+  const heading = text.membership_hero_title || "PLANS & PRICING";
+
   return (
     <section className="relative min-h-[100vh] flex items-center justify-center">
       {/* Background Image */}
@@ -18,7 +22,7 @@ export function MembershipHero() {
 
       <div className="relative z-10 w-full flex items-center justify-center text-center px-4">
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-wide">
-          PLANS &amp; PRICING
+          {heading}
         </h1>
       </div>
     </section>
