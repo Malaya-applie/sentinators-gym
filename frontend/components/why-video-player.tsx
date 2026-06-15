@@ -13,12 +13,12 @@ export function WhyVideoPlayer({ posterSrc, videoSrc }: WhyVideoPlayerProps) {
 
   return (
     <div className="mt-10 w-full">
-      <div className="relative w-full overflow-hidden rounded-xl">
+      <div className="relative w-full overflow-hidden rounded-xl aspect-4/3 sm:aspect-video lg:aspect-21/9">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={posterSrc}
           alt="Why Choose Us"
-          className="block w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         />
 
         {isPlaying && canPlayVideo ? (
