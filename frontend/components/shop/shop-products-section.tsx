@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export function ShopProductsSection() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [addedId, setAddedId] = useState<number | null>(null);
+  const productsTopRef = useRef<HTMLDivElement | null>(null);
 
   const cartCount = useAppSelector((s) =>
     s.shop.cart.reduce((sum, c) => sum + c.quantity, 0),
@@ -101,6 +102,17 @@ export function ShopProductsSection() {
 
   const totalPages = productsPagination.totalPages;
 
+  const changePage = (page: number) => {
+    const nextPage = Math.min(Math.max(page, 1), totalPages || 1);
+    setCurrentPage(nextPage);
+    requestAnimationFrame(() => {
+      productsTopRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
   useEffect(() => {
     setCurrentPage(1);
   }, [activeCategory]);
@@ -111,6 +123,22 @@ export function ShopProductsSection() {
     }
   }, [currentPage, productsPagination.page]);
 
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalOverscrollBehavior = document.body.style.overscrollBehavior;
+    const isMobile = window.matchMedia("(max-width: 1023px)").matches;
+
+    if (cartOpen && isMobile) {
+      document.body.style.overflow = "hidden";
+      document.body.style.overscrollBehavior = "none";
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.overscrollBehavior = originalOverscrollBehavior;
+    };
+  }, [cartOpen]);
+
   // Build tab list and keep "All" only once.
   const tabs = [
     "All",
@@ -120,12 +148,19 @@ export function ShopProductsSection() {
   ];
 
   return (
-    <section className="py-12 bg-transparent flex items-start">
+    <section className="py-10 sm:py-12 bg-transparent flex items-start">
+      {cartOpen && (
+        <div
+          className="fixed top-16 left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-[1px] lg:hidden"
+          onClick={() => setCartOpen(false)}
+        />
+      )}
+
       {/* Floating Cart Button — hide when sidebar is open */}
       {!cartOpen && (
         <button
           onClick={() => setCartOpen(true)}
-          className="fixed bottom-6 right-6 z-30 flex items-center gap-2 px-4 py-3 rounded-full text-white font-semibold text-sm shadow-lg shadow-purple-900/40 transition-transform hover:scale-105 active:scale-95"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-full text-white font-semibold text-xs sm:text-sm shadow-lg shadow-purple-900/40 transition-transform hover:scale-105 active:scale-95"
           style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)" }}
         >
           <ShoppingCart size={18} />
@@ -141,6 +176,7 @@ export function ShopProductsSection() {
       {/* Products Area */}
       <div className="flex-1 min-w-0 transition-all duration-300">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div ref={productsTopRef} />
           {error && (
             <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-lg">
               {error}
@@ -150,7 +186,7 @@ export function ShopProductsSection() {
           {/* Category Tabs */}
           {/* Responsive Category Tabs (no horizontal scroll, always wraps) */}
           <div
-            className="flex gap-2 mb-10 p-2 rounded-xl flex-wrap"
+            className="flex gap-2 mb-8 sm:mb-10 p-2 rounded-xl flex-wrap"
             style={{
               background: "#0300044D",
               border: "1px solid rgba(255,255,255,0.1)",
@@ -160,7 +196,7 @@ export function ShopProductsSection() {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 sm:px-4 md:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                   activeCategory === cat
                     ? "bg-white text-black"
                     : "text-white/70 hover:text-white"
@@ -176,7 +212,7 @@ export function ShopProductsSection() {
             <p className="text-white/40 text-center py-12">Loading products…</p>
           ) : (
             <>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {products.map((product) => (
                   <div
                     key={product.id}
@@ -254,7 +290,7 @@ export function ShopProductsSection() {
                       <Button
                         onClick={() => handleAddToCart(product.id)}
                         disabled={product.stock === 0}
-                        className="btn-gradient text-white font-semibold w-fit px-6 mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="btn-gradient text-white font-semibold w-full sm:w-fit px-6 mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         {product.stock === 0
                           ? "Out of Stock"
@@ -276,9 +312,7 @@ export function ShopProductsSection() {
               {totalPages > 1 && (
                 <div className="mt-8 flex items-center justify-center gap-2 flex-wrap">
                   <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
+                    onClick={() => changePage(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-3 py-1.5 rounded-md border border-white/20 text-white/80 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -289,7 +323,7 @@ export function ShopProductsSection() {
                     (page) => (
                       <button
                         key={page}
-                        onClick={() => setCurrentPage(page)}
+                        onClick={() => changePage(page)}
                         className={`px-3 py-1.5 rounded-md border transition-colors ${
                           currentPage === page
                             ? "bg-white text-black border-white"
@@ -302,9 +336,7 @@ export function ShopProductsSection() {
                   )}
 
                   <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
+                    onClick={() => changePage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     className="px-3 py-1.5 rounded-md border border-white/20 text-white/80 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -317,9 +349,24 @@ export function ShopProductsSection() {
         </div>
       </div>
 
-      {/* Cart Panel — in-page right column */}
+      {/* Cart Panel — mobile drawer */}
       <div
-        className={`transition-all mx-5 duration-300 ease-in-out overflow-hidden shrink-0 ${
+        className={`fixed top-16 right-0 z-50 h-[calc(100dvh-4rem)] w-[92vw] max-w-sm transform bg-[#09030f]/95 backdrop-blur-md border-l border-white/10 shadow-[-12px_0_30px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-in-out lg:hidden ${
+          cartOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="h-full overflow-y-auto">
+          <CartSidebar
+            open={cartOpen}
+            onClose={() => setCartOpen(false)}
+            mobile
+          />
+        </div>
+      </div>
+
+      {/* Cart Panel — in-page right column (desktop) */}
+      <div
+        className={`hidden lg:block transition-all ml-5 duration-300 ease-in-out overflow-hidden shrink-0 ${
           cartOpen ? "w-96" : "w-0"
         }`}
       >

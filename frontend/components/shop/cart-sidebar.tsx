@@ -14,9 +14,14 @@ import {
 interface CartSidebarProps {
   open: boolean;
   onClose: () => void;
+  mobile?: boolean;
 }
 
-export function CartSidebar({ open, onClose }: CartSidebarProps) {
+export function CartSidebar({
+  open,
+  onClose,
+  mobile = false,
+}: CartSidebarProps) {
   const dispatch = useAppDispatch();
   const { cart, orderLoading, successMessage, error } = useAppSelector(
     (s) => s.shop,
@@ -56,20 +61,25 @@ export function CartSidebar({ open, onClose }: CartSidebarProps) {
     await dispatch(placeOrder(items));
   };
 
-  return (
-    <div
-      className="sticky top-8 flex flex-col w-full px-6 py-8 rounded-2xl"
-      style={{
+  const containerClass = mobile
+    ? "flex flex-col min-h-full w-full px-4 py-5"
+    : "sticky top-3 lg:top-8 flex flex-col w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6 lg:py-8 rounded-2xl";
+
+  const containerStyle = mobile
+    ? undefined
+    : {
         background:
           "linear-gradient(160deg, rgba(124,58,237,0.06) 0%, rgba(13,0,20,0.4) 100%)",
         border: "1px solid rgba(124,58,237,0.25)",
         boxShadow:
           "0 0 32px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.04)",
-      }}
-    >
+      };
+
+  return (
+    <div className={containerClass} style={containerStyle}>
       {/* Heading row */}
       <div className="flex items-start justify-between mb-6">
-        <h5 className="text-5xl font-bold text-white leading-none tracking-tight">
+        <h5 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-none tracking-tight">
           Cart
         </h5>
         <button
@@ -135,7 +145,7 @@ export function CartSidebar({ open, onClose }: CartSidebarProps) {
                 </span>
                 <button
                   onClick={() => dispatch(removeFromCart(item.product.id))}
-                  className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 transition-all"
+                  className="opacity-70 md:opacity-0 md:group-hover:opacity-100 text-white/20 hover:text-red-400 transition-all"
                 >
                   <Trash2 size={13} />
                 </button>

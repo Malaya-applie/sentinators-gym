@@ -7,12 +7,9 @@ export default function ShopPage() {
     <main className="min-h-screen relative">
       {/* Fixed Background */}
       <div
-        className="fixed inset-0 z-0 pointer-events-none"
+        className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center md:bg-fixed"
         style={{
           backgroundImage: `url('/gym-bg-texture.png')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
         }}
       />
 

@@ -7,7 +7,7 @@ export async function ShopHero() {
   const headingLines = heading.split("\n").filter((line) => line.trim());
 
   return (
-    <section className="relative h-[55vh] min-h-[360px] flex items-center">
+    <section className="relative h-[42vh] min-h-[280px] sm:h-[50vh] sm:min-h-[320px] lg:h-[55vh] lg:min-h-[360px] flex items-center">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -19,8 +19,8 @@ export async function ShopHero() {
         />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto w-full px-6 sm:px-8 lg:px-12">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight mb-6 tracking-wide">
+      <div className="relative z-10 max-w-5xl mx-auto w-full px-4 sm:px-8 lg:px-12">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4 sm:mb-6 tracking-wide max-w-3xl">
           {headingLines.map((line, index) => (
             <span key={`${line}-${index}`}>
               {line}
