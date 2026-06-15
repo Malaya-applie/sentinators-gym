@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { getTrainers, getSiteText, getImageUrl } from "@/lib/content";
 
 export async function OurTrainersSection() {
@@ -8,19 +7,18 @@ export async function OurTrainersSection() {
     getSiteText("about"),
   ]);
 
-  // Use trainers with description (about-page trainers) — fallback to first 4
-  const withDesc = allTrainers.filter((t) => t.description);
-  const trainers =
-    withDesc.length >= 4
-      ? withDesc.slice(0, 4)
-      : allTrainers.slice(0, 4).map((t) => ({
-          ...t,
-          description:
-            t.description ??
-            "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-        }));
+  const trainers = allTrainers.map((t) => ({
+    ...t,
+    description:
+      t.description ??
+      "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
+  }));
 
   const ph = "/trainer-image.png";
+  const trainerGroups = Array.from(
+    { length: Math.ceil(trainers.length / 4) },
+    (_, i) => trainers.slice(i * 4, i * 4 + 4),
+  );
 
   return (
     <section className="bg-transparent">
@@ -36,86 +34,111 @@ export async function OurTrainersSection() {
           </p>
         </div>
 
-        {trainers.length >= 2 && (
-          <>
-            {/* Horizontal scroll for mobile, grid for large screens */}
-            <div className="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col justify-center order-1">
-                <h3 className="text-white text-xl font-semibold mb-3">
-                  {trainers[0].name}
-                </h3>
-                <p className="text-white/60 text-sm leading-relaxed">
-                  {trainers[0].description}
-                </p>
-              </div>
-              <div className="relative aspect-[4/5] rounded-2xl overflow-hidden order-2">
-                <Image
-                  src={getImageUrl(trainers[0].image) || ph}
-                  alt={trainers[0].name}
-                  fill
-                  className="object-cover object-top"
-                />
-              </div>
-              {trainers[1] && (
-                <>
-                  <div className="flex flex-col justify-center order-4 lg:order-3">
-                    <h3 className="text-white text-xl font-semibold mb-3">
-                      {trainers[1].name}
-                    </h3>
-                    <p className="text-white/60 text-sm leading-relaxed">
-                      {trainers[1].description}
-                    </p>
-                  </div>
-                  <div className="relative aspect-[4/5] rounded-2xl overflow-hidden order-3 lg:order-4">
-                    <Image
-                      src={getImageUrl(trainers[1].image) || ph}
-                      alt={trainers[1].name}
-                      fill
-                      className="object-cover object-top"
-                    />
-                  </div>
-                </>
+        {trainerGroups.map((group, groupIndex) => {
+          const t0 = group[0];
+          const t1 = group[1];
+          const t2 = group[2];
+          const t3 = group[3];
+
+          return (
+            <div
+              key={`trainer-group-${groupIndex}`}
+              className={groupIndex > 0 ? "mt-6" : ""}
+            >
+              {(t0 || t1) && (
+                <div className="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {t0 && (
+                    <>
+                      <div className="flex flex-col justify-center order-1">
+                        <h3 className="text-white text-xl font-semibold mb-3">
+                          {t0.name}
+                        </h3>
+                        <p className="text-white/60 text-sm leading-relaxed">
+                          {t0.description}
+                        </p>
+                      </div>
+                      <div className="relative aspect-4/5 rounded-2xl overflow-hidden order-2">
+                        <Image
+                          src={getImageUrl(t0.image) || ph}
+                          alt={t0.name}
+                          fill
+                          className="object-cover object-top"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {t1 && (
+                    <>
+                      <div className="flex flex-col justify-center order-4 lg:order-3">
+                        <h3 className="text-white text-xl font-semibold mb-3">
+                          {t1.name}
+                        </h3>
+                        <p className="text-white/60 text-sm leading-relaxed">
+                          {t1.description}
+                        </p>
+                      </div>
+                      <div className="relative aspect-4/5 rounded-2xl overflow-hidden order-3 lg:order-4">
+                        <Image
+                          src={getImageUrl(t1.image) || ph}
+                          alt={t1.name}
+                          fill
+                          className="object-cover object-top"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {(t2 || t3) && (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {t2 && (
+                    <>
+                      <div className="relative aspect-4/5 rounded-2xl overflow-hidden order-1">
+                        <Image
+                          src={getImageUrl(t2.image) || ph}
+                          alt={t2.name}
+                          fill
+                          className="object-cover object-top"
+                        />
+                      </div>
+                      <div className="flex flex-col justify-center order-2">
+                        <h3 className="text-white text-xl font-semibold mb-3">
+                          {t2.name}
+                        </h3>
+                        <p className="text-white/60 text-sm leading-relaxed">
+                          {t2.description}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {t3 && (
+                    <>
+                      <div className="relative aspect-4/5 rounded-2xl overflow-hidden order-3">
+                        <Image
+                          src={getImageUrl(t3.image) || ph}
+                          alt={t3.name}
+                          fill
+                          className="object-cover object-top"
+                        />
+                      </div>
+                      <div className="flex flex-col justify-center order-4">
+                        <h3 className="text-white text-xl font-semibold mb-3">
+                          {t3.name}
+                        </h3>
+                        <p className="text-white/60 text-sm leading-relaxed">
+                          {t3.description}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-
-            {trainers.length >= 4 && (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden order-1">
-                  <Image
-                    src={getImageUrl(trainers[2].image) || ph}
-                    alt={trainers[2].name}
-                    fill
-                    className="object-cover object-top"
-                  />
-                </div>
-                <div className="flex flex-col justify-center order-2">
-                  <h3 className="text-white text-xl font-semibold mb-3">
-                    {trainers[2].name}
-                  </h3>
-                  <p className="text-white/60 text-sm leading-relaxed">
-                    {trainers[2].description}
-                  </p>
-                </div>
-                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden order-3">
-                  <Image
-                    src={getImageUrl(trainers[3].image) || ph}
-                    alt={trainers[3].name}
-                    fill
-                    className="object-cover object-top"
-                  />
-                </div>
-                <div className="flex flex-col justify-center order-4">
-                  <h3 className="text-white text-xl font-semibold mb-3">
-                    {trainers[3].name}
-                  </h3>
-                  <p className="text-white/60 text-sm leading-relaxed">
-                    {trainers[3].description}
-                  </p>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+          );
+        })}
 
         {/* Show more button */}
         <div className="flex justify-center mt-12">
