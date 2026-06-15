@@ -8,7 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { clearError, registerUser } from "@/store/slices/authSlice";
+import {
+  clearError,
+  closeRegistrationModal,
+  registerUser,
+} from "@/store/slices/authSlice";
 import {
   clearMembershipMessages,
   fetchPlans,
@@ -16,7 +20,7 @@ import {
   purchaseMembership,
 } from "@/store/slices/membershipSlice";
 import { useRouter } from "next/navigation";
-import { Check, Eraser, Loader2 } from "lucide-react";
+import { Check, Eraser, Loader2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1005,6 +1009,17 @@ export function StepperRegistrationForm({
       className="mx-auto w-full max-w-[1140px] text-white flex flex-col"
     >
       <div className="sticky top-0 z-10 bg-[#08010a] px-2 sm:px-4 md:px-6 lg:px-8 pt-4 pb-3 text-center border-b border-white/5">
+        <button
+          type="button"
+          onClick={() => {
+            dispatch(clearError());
+            dispatch(closeRegistrationModal());
+          }}
+          aria-label="Close registration form"
+          className="sm:hidden absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <X size={18} />
+        </button>
         <h2 className="text-xl font-bold tracking-wide sm:text-2xl">
           {t("title")}
         </h2>
@@ -1625,13 +1640,13 @@ export function StepperRegistrationForm({
 
         {showGymRulesModal && (
           <Dialog open={showGymRulesModal} onOpenChange={setShowGymRulesModal}>
-            <DialogContent className="bg-[#0f0a14] border border-white/10 text-white max-w-2xl w-full max-h-[75vh] flex flex-col p-0 overflow-hidden">
-              <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10 shrink-0">
+            <DialogContent className="bg-[#0f0a14] border border-white/10 text-white w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-2xl max-h-[85dvh] sm:max-h-[75vh] flex flex-col p-0 overflow-hidden">
+              <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 sm:pb-4 border-b border-white/10 shrink-0">
                 <DialogTitle className="text-lg font-bold text-white">
                   Gym Rules &amp; Health Responsibility Policy
                 </DialogTitle>
               </DialogHeader>
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
                 {gymRulesSections.map((sec, i) => (
                   <section key={i}>
                     <h3 className="font-semibold text-white mb-1">
@@ -1641,12 +1656,12 @@ export function StepperRegistrationForm({
                   </section>
                 ))}
               </div>
-              <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center gap-3">
+              <div className="px-4 sm:px-6 py-4 border-t border-white/10 shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowGymRulesModal(false)}
-                  className="border-white/15 bg-transparent text-white hover:bg-white/10"
+                  className="border-white/15 bg-transparent text-white hover:bg-white/10 w-full sm:w-auto"
                 >
                   Close
                 </Button>
@@ -1658,7 +1673,7 @@ export function StepperRegistrationForm({
                     );
                     setShowGymRulesModal(false);
                   }}
-                  className="btn-gradient text-white flex-1"
+                  className="btn-gradient text-white w-full sm:flex-1"
                 >
                   I Accept the Gym Rules &amp; Health Responsibility Policy
                 </Button>
@@ -1669,13 +1684,13 @@ export function StepperRegistrationForm({
 
         {showTermsModal && (
           <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
-            <DialogContent className="bg-[#0f0a14] border border-white/10 text-white max-w-2xl w-full max-h-[75vh] flex flex-col p-0 overflow-hidden">
-              <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10 shrink-0">
+            <DialogContent className="bg-[#0f0a14] border border-white/10 text-white w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-2xl max-h-[85dvh] sm:max-h-[75vh] flex flex-col p-0 overflow-hidden">
+              <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 sm:pb-4 border-b border-white/10 shrink-0">
                 <DialogTitle className="text-lg font-bold text-white">
                   Membership Terms &amp; Conditions
                 </DialogTitle>
               </DialogHeader>
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
                 {termsSections.map((sec, i) => (
                   <section key={i}>
                     <h3 className="font-semibold text-white mb-1">
@@ -1685,12 +1700,12 @@ export function StepperRegistrationForm({
                   </section>
                 ))}
               </div>
-              <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center gap-3">
+              <div className="px-4 sm:px-6 py-4 border-t border-white/10 shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowTermsModal(false)}
-                  className="border-white/15 bg-transparent text-white hover:bg-white/10"
+                  className="border-white/15 bg-transparent text-white hover:bg-white/10 w-full sm:w-auto"
                 >
                   Close
                 </Button>
@@ -1702,7 +1717,7 @@ export function StepperRegistrationForm({
                     );
                     setShowTermsModal(false);
                   }}
-                  className="btn-gradient text-white flex-1"
+                  className="btn-gradient text-white w-full sm:flex-1"
                 >
                   I Agree to the Terms &amp; Conditions
                 </Button>
@@ -1795,7 +1810,7 @@ export function StepperRegistrationForm({
         )}
 
         <div
-          className={`mt-3 flex gap-3 w-full max-w-4xl mx-auto ${step === 1 ? "hidden" : step === 0 ? "justify-end" : "justify-between"}`}
+          className={`mt-3 flex flex-wrap gap-3 w-full max-w-4xl mx-auto ${step === 1 ? "hidden" : step === 0 ? "justify-end" : "justify-between"}`}
         >
           {step > 0 && (
             <Button
@@ -1803,7 +1818,7 @@ export function StepperRegistrationForm({
               variant="outline"
               disabled={isBusy}
               onClick={() => setStep((prev) => Math.max(prev - 1, 0) as Step)}
-              className="border-white/15 bg-transparent text-white hover:bg-white/10"
+              className="border-white/15 bg-transparent text-white hover:bg-white/10 w-full sm:w-auto"
             >
               {t("back")}
             </Button>
@@ -1812,7 +1827,7 @@ export function StepperRegistrationForm({
             <Button
               type="button"
               onClick={goNext}
-              className="btn-gradient text-white"
+              className="btn-gradient text-white w-full sm:w-auto"
             >
               {t("next")}
             </Button>
@@ -1821,7 +1836,7 @@ export function StepperRegistrationForm({
               type="button"
               onClick={submit}
               disabled={isBusy || !!success}
-              className="btn-gradient text-white"
+              className="btn-gradient text-white w-full sm:w-auto"
             >
               {isBusy ? t("submitting") : t("signConfirm")}
             </Button>
@@ -1874,7 +1889,7 @@ function CheckRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-white/80">
+    <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-white/80 wrap-break-word">
       <Checkbox
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}

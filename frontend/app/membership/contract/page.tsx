@@ -562,7 +562,7 @@ export default function MembershipContractPage() {
   })();
 
   return (
-    <div className="min-h-screen bg-[#08010a] py-6 px-4">
+    <div className="min-h-screen bg-[#08010a] py-4 sm:py-6 px-3 sm:px-4">
       {/* Print-mode CSS: hide interactive elements and force colors when saving as PDF */}
       <style>{`
         @media print {
@@ -574,13 +574,13 @@ export default function MembershipContractPage() {
       `}</style>
       <div className="max-w-3xl mx-auto">
         {/* Logo */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-5 sm:mb-6">
           <Image
             src="/gym-logo.png"
             alt="Gym Logo"
             width={120}
             height={120}
-            className="object-contain"
+            className="object-contain w-23 h-23 sm:w-30 sm:h-30"
           />
         </div>
 
@@ -588,7 +588,7 @@ export default function MembershipContractPage() {
         <button
           type="button"
           onClick={cancelContract}
-          className="mb-4 text-white/60 hover:text-white text-sm flex items-center gap-2 transition-colors"
+          className="mb-4 text-white/60 hover:text-white text-xs sm:text-sm flex items-center gap-2 transition-colors"
         >
           ← Back to Registration
         </button>
@@ -599,8 +599,8 @@ export default function MembershipContractPage() {
           className="bg-white rounded-lg overflow-hidden shadow-2xl"
         >
           {/* Header */}
-          <div className="bg-[#100a0a] text-white px-5 py-4 flex flex-wrap items-start gap-3">
-            <div className="flex-1 min-w-[130px]">
+          <div className="bg-[#100a0a] text-white px-3 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:flex-wrap items-start gap-3">
+            <div className="w-full sm:flex-1 sm:min-w-32.5">
               <p className="text-base font-black tracking-widest text-red-500">
                 SENTINATORS
               </p>
@@ -608,7 +608,7 @@ export default function MembershipContractPage() {
                 Keep Pumping Gym
               </p>
             </div>
-            <div className="flex-1 text-center min-w-[150px]">
+            <div className="w-full sm:flex-1 text-left sm:text-center sm:min-w-37.5">
               <p className="text-sm font-black tracking-wide uppercase">
                 Fitness Membership Contract
               </p>
@@ -616,16 +616,16 @@ export default function MembershipContractPage() {
                 Membership Agreement
               </p>
             </div>
-            <div className="text-right text-xs space-y-1 min-w-[160px]">
-              <div className="flex items-center justify-end gap-2">
+            <div className="w-full sm:w-auto text-left sm:text-right text-xs space-y-1 sm:min-w-40">
+              <div className="flex items-center justify-start sm:justify-end gap-2">
                 <span className="text-white/50">Contract Number:</span>
                 <span className="font-mono font-bold">{contractNumber}</span>
               </div>
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-start sm:justify-end gap-2">
                 <span className="text-white/50">Customer Number:</span>
                 <span className="font-mono font-bold">{customerNumber}</span>
               </div>
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-start sm:justify-end gap-2">
                 <span className="text-white/50">Date:</span>
                 <span className="font-semibold">
                   {new Date().toLocaleDateString()}
@@ -635,7 +635,7 @@ export default function MembershipContractPage() {
           </div>
 
           {/* Body */}
-          <div className="p-4 space-y-4 text-gray-900">
+          <div className="p-3 sm:p-4 space-y-4 text-gray-900">
             {/* Sections 1 & 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="border border-gray-300 rounded overflow-hidden">
@@ -866,7 +866,7 @@ export default function MembershipContractPage() {
               <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
                 7. Signatures
               </div>
-              <div className="p-5 space-y-6">
+              <div className="p-4 sm:p-5 space-y-6">
                 {/* Signature grid */}
                 <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
                   {/* Place & Date */}
@@ -874,7 +874,7 @@ export default function MembershipContractPage() {
                     <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                       Place / Date
                     </span>
-                    <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-[110px]">
+                    <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-27.5">
                       <p className="text-base font-bold text-gray-900">
                         {new Date().toLocaleDateString()}
                       </p>
@@ -886,7 +886,7 @@ export default function MembershipContractPage() {
 
                   {/* Member Signature */}
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                         Member Signature
                         {contractMemberSig || canvasHasContent ? (
@@ -904,7 +904,7 @@ export default function MembershipContractPage() {
                             setContractMemberSig("");
                             setCanvasHasContent(false);
                           }}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors print:hidden"
+                          className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors print:hidden"
                         >
                           <Eraser size={11} /> Re-sign
                         </button>
@@ -912,24 +912,24 @@ export default function MembershipContractPage() {
                         <button
                           type="button"
                           onClick={clearContractSig}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors print:hidden"
+                          className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors print:hidden"
                         >
                           <Eraser size={11} /> Clear
                         </button>
                       )}
                     </div>
                     {contractMemberSig ? (
-                      <div className="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden min-h-[110px] flex items-center justify-center">
+                      <div className="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden min-h-27.5 flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={contractMemberSig}
                           alt="Member signature"
-                          className="max-h-[110px] w-full object-contain p-1"
+                          className="max-h-27.5 w-full object-contain p-1"
                         />
                       </div>
                     ) : (
                       <div
-                        className={`relative rounded-xl overflow-hidden min-h-[160px] transition-all border-2 ${
+                        className={`relative rounded-xl overflow-hidden min-h-40 transition-all border-2 ${
                           canvasHasContent
                             ? "border-green-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.06)]"
                             : "border-dashed border-gray-300 hover:border-gray-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)]"
@@ -941,7 +941,7 @@ export default function MembershipContractPage() {
                           onPointerMove={drawContractSig}
                           onPointerUp={() => endContractDraw()}
                           onPointerCancel={() => endContractDraw()}
-                          className="h-[160px] w-full touch-none cursor-crosshair"
+                          className="h-37.5 sm:h-40 w-full touch-none cursor-crosshair"
                         />
                         {/* Baseline */}
                         <div className="absolute bottom-9 left-5 right-5 border-b-2 border-dashed border-gray-200 pointer-events-none" />
@@ -1001,7 +1001,7 @@ export default function MembershipContractPage() {
                     <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                       Gym Signature
                     </span>
-                    <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 min-h-[110px] flex flex-col items-center justify-center gap-1.5">
+                    <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 min-h-27.5 flex flex-col items-center justify-center gap-1.5">
                       <p className="text-xs font-medium text-gray-400">
                         To be signed by gym staff
                       </p>
@@ -1014,7 +1014,7 @@ export default function MembershipContractPage() {
                   <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                     Gym Stamp
                   </span>
-                  <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 h-[90px] flex items-center justify-center">
+                  <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 h-22.5 flex items-center justify-center">
                     <p className="text-xs font-medium text-gray-400">
                       Official gym stamp
                     </p>
@@ -1030,12 +1030,12 @@ export default function MembershipContractPage() {
                 {/* Action buttons — excluded from PDF capture via data-pdf-exclude */}
                 <div
                   data-pdf-exclude
-                  className="flex gap-3 justify-between items-center pt-2 border-t border-gray-100"
+                  className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 justify-between items-stretch sm:items-center pt-2 border-t border-gray-100"
                 >
                   <button
                     type="button"
                     onClick={cancelContract}
-                    className="px-5 py-2.5 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-100 hover:border-gray-300 transition-colors"
+                    className="px-5 py-2.5 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-100 hover:border-gray-300 transition-colors w-full sm:w-auto"
                   >
                     Cancel
                   </button>
@@ -1043,7 +1043,7 @@ export default function MembershipContractPage() {
                     type="button"
                     onClick={acceptContract}
                     disabled={capturing}
-                    className="px-6 py-2.5 rounded-lg bg-red-700 text-white text-sm font-bold hover:bg-red-800 transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2.5 rounded-lg bg-red-700 text-white text-sm font-bold hover:bg-red-800 transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 w-full sm:w-auto"
                   >
                     {capturing && (
                       <Loader2 size={15} className="animate-spin" />
