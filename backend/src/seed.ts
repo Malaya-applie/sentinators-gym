@@ -865,6 +865,24 @@ async function main() {
       },
     }),
     prisma.siteContent.upsert({
+      where: { key: "events_schedule_title" },
+      update: {},
+      create: {
+        key: "events_schedule_title",
+        value: "FOLLOW EVENT SCHEDULE",
+        section: "events_page",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "events_schedule_subtitle" },
+      update: {},
+      create: {
+        key: "events_schedule_subtitle",
+        value: "Moments that define the experience",
+        section: "events_page",
+      },
+    }),
+    prisma.siteContent.upsert({
       where: { key: "navbar_home_label" },
       update: {},
       create: {

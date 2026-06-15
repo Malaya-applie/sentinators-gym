@@ -502,6 +502,16 @@ type TextRow = { id: number; key: string; value: string; section: string };
 const REQUIRED_TEXT_ROWS: Array<Pick<TextRow, "key" | "section" | "value">> = [
   { key: "why_choose_video_url", section: "why", value: "" },
   {
+    key: "events_schedule_title",
+    section: "events_page",
+    value: "FOLLOW EVENT SCHEDULE",
+  },
+  {
+    key: "events_schedule_subtitle",
+    section: "events_page",
+    value: "Moments that define the experience",
+  },
+  {
     key: "membership_hero_title",
     section: "membership",
     value: "PLANS & PRICING",
