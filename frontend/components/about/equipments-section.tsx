@@ -74,65 +74,103 @@ export async function EquipmentsSection() {
         </div>
 
         <div className="flex flex-col-reverse md:flex-row items-center gap-12">
-          {/* Left – Feature list */}
+          {/* Left – Feature cards */}
           <div className="w-full md:w-[38%] shrink-0 mt-8 md:mt-0">
-            <ul className="space-y-7">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-4 md:gap-5">
               {displayFeatures.map((feature, idx) => (
                 <li
                   key={idx}
-                  className="flex items-start gap-3 text-base text-gray-200"
+                  className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3.5 text-[15px] leading-relaxed text-gray-100"
                 >
-                  <span className="mt-1 text-white/60 select-none">•</span>
-                  <span>{feature}</span>
+                  <div
+                    className="absolute inset-y-0 left-0 w-1"
+                    style={{ background: GRAD }}
+                  />
+                  <div className="pl-3">{feature}</div>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Right – Staggered images */}
-          <div
-            className="w-full md:flex-1 relative"
-            style={{ height: "360px", minHeight: 220, maxHeight: 460 }}
-          >
-            {displayImages[0] && (
-              <GradientBorderImage
-                src={displayImages[0]}
-                alt="Equipment image 1"
-                style={{ left: "9%", top: "0%", width: "52%", height: "52%" }}
-              />
-            )}
-            {displayImages[1] && (
-              <GradientBorderImage
-                src={displayImages[1]}
-                alt="Equipment image 2"
-                style={{ right: "10%", top: "6%", width: "36%", height: "52%" }}
-              />
-            )}
-            {displayImages[2] && (
-              <GradientBorderImage
-                src={displayImages[2]}
-                alt="Equipment image 3"
-                style={{
-                  left: "0%",
-                  bottom: "20%",
-                  width: "37%",
-                  height: "44%",
-                  zIndex: 10,
-                }}
-              />
-            )}
-            {displayImages[3] && (
-              <GradientBorderImage
-                src={displayImages[3]}
-                alt="Equipment image 4"
-                style={{
-                  right: "20%",
-                  bottom: "0%",
-                  width: "59%",
-                  height: "52%",
-                }}
-              />
-            )}
+          {/* Right – Mobile slider + desktop staggered images */}
+          <div className="w-full md:flex-1">
+            <div className="md:hidden -mx-1">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                {displayImages.map((image, idx) => (
+                  <div
+                    key={image + idx}
+                    className="snap-center shrink-0 w-[82%] sm:w-[68%]"
+                  >
+                    <div
+                      className="relative rounded-xl overflow-hidden"
+                      style={{
+                        padding: "2px",
+                        background: GRAD,
+                      }}
+                    >
+                      <div className="relative aspect-16/10 rounded-[10px] overflow-hidden bg-black/30">
+                        <Image
+                          src={image}
+                          alt={`Equipment image ${idx + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className="hidden md:block relative"
+              style={{ height: "360px", minHeight: 220, maxHeight: 460 }}
+            >
+              {displayImages[0] && (
+                <GradientBorderImage
+                  src={displayImages[0]}
+                  alt="Equipment image 1"
+                  style={{ left: "9%", top: "0%", width: "52%", height: "52%" }}
+                />
+              )}
+              {displayImages[1] && (
+                <GradientBorderImage
+                  src={displayImages[1]}
+                  alt="Equipment image 2"
+                  style={{
+                    right: "10%",
+                    top: "6%",
+                    width: "36%",
+                    height: "52%",
+                  }}
+                />
+              )}
+              {displayImages[2] && (
+                <GradientBorderImage
+                  src={displayImages[2]}
+                  alt="Equipment image 3"
+                  style={{
+                    left: "0%",
+                    bottom: "20%",
+                    width: "37%",
+                    height: "44%",
+                    zIndex: 10,
+                  }}
+                />
+              )}
+              {displayImages[3] && (
+                <GradientBorderImage
+                  src={displayImages[3]}
+                  alt="Equipment image 4"
+                  style={{
+                    right: "20%",
+                    bottom: "0%",
+                    width: "59%",
+                    height: "52%",
+                  }}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
