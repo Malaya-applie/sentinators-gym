@@ -2614,6 +2614,398 @@ function RegistrationSettingsPanel() {
   );
 }
 
+// ── EVENT HIGHLIGHTS PANEL ────────────────────────────────────────────────
+
+type EventHighlight = {
+  id: number;
+  title: string;
+  description: string | null;
+  image: string | null;
+  videoUrl: string | null;
+  order: number;
+  isMain: boolean;
+  isActive?: boolean;
+};
+
+function EventHighlightsPanel() {
+  const t = useTranslations("admin.content");
+  const [items, setItems] = useState<EventHighlight[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<EventHighlight>>({});
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState<Partial<Omit<EventHighlight, "id">>>({
+    title: "",
+    description: "",
+    image: "",
+    videoUrl: "",
+    order: 0,
+    isMain: false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiFetch("/admin/content/event-highlights")
+      .then(setItems)
+      .catch(() => {});
+  }, []);
+
+  async function handleSave(id: number) {
+    setSaving(true);
+    const updated = await apiFetch(`/admin/content/event-highlights/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(editForm),
+    });
+    setItems((prev) => prev.map((i) => (i.id === id ? updated : i)));
+    setEditingId(null);
+    setSaving(false);
+  }
+
+  async function handleDelete(id: number) {
+    await apiFetch(`/admin/content/event-highlights/${id}`, {
+      method: "DELETE",
+    });
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    setDeleteTargetId(null);
+  }
+
+  async function handleAdd() {
+    setSaving(true);
+    const created = await apiFetch("/admin/content/event-highlights", {
+      method: "POST",
+      body: JSON.stringify(addForm),
+    });
+    setItems((prev) => [...prev, created]);
+    setAddForm({
+      title: "",
+      description: "",
+      image: "",
+      videoUrl: "",
+      order: 0,
+      isMain: false,
+    });
+    setShowAdd(false);
+    setSaving(false);
+  }
+
+  return (
+    <div>
+      <DeleteConfirmDialog
+        open={deleteTargetId !== null}
+        onConfirm={() =>
+          deleteTargetId !== null && handleDelete(deleteTargetId)
+        }
+        onCancel={() => setDeleteTargetId(null)}
+      />
+
+      <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+        <SectionHeader title={t("titleEvents")} />
+        <Button
+          size="sm"
+          onClick={() => setShowAdd((v) => !v)}
+          className="bg-red-700 hover:bg-red-600 text-white"
+        >
+          <Plus size={14} className="mr-1" /> {t("add")}
+        </Button>
+      </div>
+
+      {showAdd && (
+        <div className="bg-[#111] border border-white/10 rounded-lg p-4 mb-4 space-y-3">
+          <p className="text-white/50 text-xs mb-2">{t("newItem")}</p>
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">
+              {t("colImage")}
+            </Label>
+            <ImageInput
+              value={String(addForm.image ?? "")}
+              onChange={(v) => setAddForm((prev) => ({ ...prev, image: v }))}
+            />
+          </div>
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">
+              {t("colTitle")}
+            </Label>
+            <Input
+              value={String(addForm.title ?? "")}
+              onChange={(e) =>
+                setAddForm((prev) => ({ ...prev, title: e.target.value }))
+              }
+              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+            />
+          </div>
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">
+              {t("colDescription")}
+            </Label>
+            <Textarea
+              value={String(addForm.description ?? "")}
+              onChange={(e) =>
+                setAddForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+            />
+          </div>
+          <div>
+            <Label className="text-white/50 text-xs mb-1 block">
+              Video URL
+            </Label>
+            <Input
+              value={String(addForm.videoUrl ?? "")}
+              onChange={(e) =>
+                setAddForm((prev) => ({ ...prev, videoUrl: e.target.value }))
+              }
+              placeholder="https://youtube.com/..."
+              className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-white/50 text-xs mb-1 block">
+                {t("colOrder")}
+              </Label>
+              <Input
+                type="number"
+                value={String(addForm.order ?? 0)}
+                onChange={(e) =>
+                  setAddForm((prev) => ({
+                    ...prev,
+                    order: Number(e.target.value),
+                  }))
+                }
+                className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+              />
+            </div>
+            <div className="flex items-end">
+              <div className="flex items-center gap-2 w-full">
+                <input
+                  type="checkbox"
+                  id="add-is-main"
+                  checked={addForm.isMain === true}
+                  onChange={(e) =>
+                    setAddForm((prev) => ({
+                      ...prev,
+                      isMain: e.target.checked,
+                    }))
+                  }
+                  className="accent-red-600 w-4 h-4"
+                />
+                <Label
+                  htmlFor="add-is-main"
+                  className="text-white/70 text-xs cursor-pointer"
+                >
+                  Main Event
+                </Label>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowAdd(false)}
+              className="border-white/10 text-white/60 hover:text-white"
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              size="sm"
+              disabled={saving}
+              onClick={handleAdd}
+              className="bg-green-700 hover:bg-green-600 text-white"
+            >
+              {saving ? t("saving") : t("create")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {items.map((item) =>
+          editingId === item.id ? (
+            <div
+              key={item.id}
+              className="bg-[#111] border border-red-700/30 rounded-lg p-4 space-y-3"
+            >
+              <div>
+                <Label className="text-white/50 text-xs mb-1 block">
+                  {t("colImage")}
+                </Label>
+                <ImageInput
+                  value={String(editForm.image ?? item.image ?? "")}
+                  onChange={(v) =>
+                    setEditForm((prev) => ({ ...prev, image: v }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-white/50 text-xs mb-1 block">
+                  {t("colTitle")}
+                </Label>
+                <Input
+                  value={String(editForm.title ?? item.title ?? "")}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
+                  className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-white/50 text-xs mb-1 block">
+                  {t("colDescription")}
+                </Label>
+                <Textarea
+                  value={String(editForm.description ?? item.description ?? "")}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-white/50 text-xs mb-1 block">
+                  Video URL
+                </Label>
+                <Input
+                  value={String(editForm.videoUrl ?? item.videoUrl ?? "")}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      videoUrl: e.target.value,
+                    }))
+                  }
+                  placeholder="https://youtube.com/..."
+                  className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-white/50 text-xs mb-1 block">
+                    {t("colOrder")}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={String(editForm.order ?? item.order ?? 0)}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        order: Number(e.target.value),
+                      }))
+                    }
+                    className="bg-[#1a1a1a] border-white/10 text-white text-sm"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <div className="flex items-center gap-2 w-full">
+                    <input
+                      type="checkbox"
+                      id={`edit-is-main-${item.id}`}
+                      checked={editForm.isMain ?? item.isMain ?? false}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          isMain: e.target.checked,
+                        }))
+                      }
+                      className="accent-red-600 w-4 h-4"
+                    />
+                    <Label
+                      htmlFor={`edit-is-main-${item.id}`}
+                      className="text-white/70 text-xs cursor-pointer"
+                    >
+                      Main Event
+                    </Label>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditingId(null)}
+                  className="border-white/10 text-white/60"
+                >
+                  <X size={14} />
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => handleSave(item.id)}
+                  className="bg-green-700 hover:bg-green-600 text-white"
+                >
+                  {saving ? "…" : <Check size={14} />}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              key={item.id}
+              className="bg-[#111] border border-white/5 rounded-lg p-3 flex gap-3 items-start"
+            >
+              <div className="shrink-0 w-20 h-20 rounded overflow-hidden bg-white/5">
+                {img(item.image ?? "") && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={img(item.image ?? "")}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm font-semibold text-white truncate">
+                    {item.title}
+                  </p>
+                  {item.isMain && (
+                    <span className="px-2 py-0.5 bg-red-700/30 text-red-300 text-xs rounded font-semibold shrink-0">
+                      MAIN
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-white/50 line-clamp-2">
+                  {item.description}
+                </p>
+                {item.videoUrl && (
+                  <p className="text-xs text-blue-400 mt-1">
+                    Video: {item.videoUrl.slice(0, 40)}
+                    {item.videoUrl.length > 40 ? "…" : ""}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  onClick={() => {
+                    setEditingId(item.id);
+                    setEditForm(item);
+                  }}
+                  className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  onClick={() => setDeleteTargetId(item.id)}
+                  className="p-1.5 rounded bg-white/5 hover:bg-red-900/40 text-white/50 hover:text-red-400 transition"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── TABS ───────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -2851,36 +3243,7 @@ export function AdminContent() {
           />
         )}
 
-        {tab === "Events" && (
-          <CrudPanel
-            title={t("titleEvents")}
-            endpoint="event-highlights"
-            cols={[
-              { key: "image" as never, label: t("colImage"), type: "image" },
-              { key: "title" as never, label: t("colTitle"), type: "text" },
-              {
-                key: "description" as never,
-                label: t("colDescription"),
-                type: "textarea",
-              },
-              {
-                key: "videoUrl" as never,
-                label: t("colVideoUrl"),
-                type: "text",
-              },
-              { key: "order" as never, label: t("colOrder"), type: "number" },
-            ]}
-            emptyForm={
-              {
-                title: "",
-                description: "",
-                image: "",
-                videoUrl: "",
-                order: 0,
-              } as never
-            }
-          />
-        )}
+        {tab === "Events" && <EventHighlightsPanel />}
 
         {tab === "Training Zones" && (
           <CrudPanel
