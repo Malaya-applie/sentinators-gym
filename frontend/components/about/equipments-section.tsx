@@ -31,6 +31,10 @@ function GradientBorderImage({
 
 export async function EquipmentsSection() {
   const equipment = await getEquipment();
+  const title = equipment?.title?.trim() || "EQUIPMENTS OVERVIEW";
+  const subtitle =
+    equipment?.subtitle?.trim() ||
+    "Everything You Need For Serious Training Comfort And Result";
   const images = (equipment?.images || [])
     .filter((img) => img)
     .map((img) => getImageUrl(img))
@@ -64,11 +68,9 @@ export async function EquipmentsSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-2 tracking-tight">
-            EQUIPMENTS OVERVIEW
+            {title}
           </h2>
-          <p className="text-white/70 text-base">
-            Everything You Need For Serious Training Comfort And Result
-          </p>
+          <p className="text-white/70 text-base">{subtitle}</p>
         </div>
 
         <div className="flex flex-col-reverse md:flex-row items-center gap-12">

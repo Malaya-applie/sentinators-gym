@@ -122,6 +122,8 @@ export interface TrainingZone {
 
 export interface Equipment {
   id: number;
+  title: string;
+  subtitle: string;
   images: string[];
   features: string[];
   order: number;
@@ -251,6 +253,8 @@ export async function getEquipment(): Promise<Equipment> {
   return (
     (await fetchJson<Equipment>(`${API}/content/equipment`)) ?? {
       id: 0,
+      title: "EQUIPMENTS OVERVIEW",
+      subtitle: "Everything You Need For Serious Training Comfort And Result",
       images: [],
       features: [],
       order: 0,

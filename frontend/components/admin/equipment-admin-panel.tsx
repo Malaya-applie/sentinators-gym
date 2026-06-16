@@ -8,12 +8,16 @@ const UPLOADS_BASE = BASE.replace("/api", "");
 
 interface EquipmentData {
   id: number;
+  title: string;
+  subtitle: string;
   images: string[];
   features: string[];
 }
 
 const EMPTY_EQUIPMENT: EquipmentData = {
   id: 0,
+  title: "EQUIPMENTS OVERVIEW",
+  subtitle: "Everything You Need For Serious Training Comfort And Result",
   images: [],
   features: [],
 };
@@ -54,6 +58,14 @@ export function EquipmentAdminPanel() {
       const data = await res.json();
       setEquipment({
         id: data.id ?? 0,
+        title:
+          typeof data.title === "string" && data.title.trim()
+            ? data.title
+            : EMPTY_EQUIPMENT.title,
+        subtitle:
+          typeof data.subtitle === "string" && data.subtitle.trim()
+            ? data.subtitle
+            : EMPTY_EQUIPMENT.subtitle,
         images: Array.isArray(data.images) ? data.images : [],
         features: Array.isArray(data.features) ? data.features : [],
       });
@@ -74,6 +86,8 @@ export function EquipmentAdminPanel() {
           ...authHeaders(),
         },
         body: JSON.stringify({
+          title: next.title,
+          subtitle: next.subtitle,
           images: next.images.slice(0, 4),
           features: next.features.filter((f) => f.trim()),
         }),
@@ -82,6 +96,14 @@ export function EquipmentAdminPanel() {
       const data = await res.json();
       const normalized: EquipmentData = {
         id: data.id ?? 0,
+        title:
+          typeof data.title === "string" && data.title.trim()
+            ? data.title
+            : EMPTY_EQUIPMENT.title,
+        subtitle:
+          typeof data.subtitle === "string" && data.subtitle.trim()
+            ? data.subtitle
+            : EMPTY_EQUIPMENT.subtitle,
         images: Array.isArray(data.images) ? data.images : [],
         features: Array.isArray(data.features) ? data.features : [],
       };
@@ -166,9 +188,34 @@ export function EquipmentAdminPanel() {
       <div>
         <h2 className="text-white text-lg font-semibold">Equipment</h2>
         <p className="text-white/50 text-xs mt-1">
-          Upload or remove up to 4 images and manage the left-side bullet
-          points.
+          Manage heading, subheading, images, and feature bullet points.
         </p>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-white/90 text-sm font-medium">Section Heading</h3>
+        <input
+          type="text"
+          value={equipment.title}
+          onChange={(e) =>
+            setEquipment((prev) => ({ ...prev, title: e.target.value }))
+          }
+          placeholder="EQUIPMENTS OVERVIEW"
+          className="w-full rounded border border-white/10 bg-[#1b1b1b] text-white text-sm px-3 py-2 outline-none focus:border-red-600"
+        />
+
+        <h3 className="text-white/90 text-sm font-medium">
+          Section Subheading
+        </h3>
+        <textarea
+          value={equipment.subtitle}
+          onChange={(e) =>
+            setEquipment((prev) => ({ ...prev, subtitle: e.target.value }))
+          }
+          placeholder="Everything You Need For Serious Training Comfort And Result"
+          rows={3}
+          className="w-full rounded border border-white/10 bg-[#1b1b1b] text-white text-sm px-3 py-2 outline-none focus:border-red-600 resize-y"
+        />
       </div>
 
       {error ? (

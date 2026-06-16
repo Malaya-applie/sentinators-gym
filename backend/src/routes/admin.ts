@@ -2135,11 +2135,44 @@ router.get(
   requireAdmin,
   async (_req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const equipment = await prisma.equipment.findFirst({
-        where: { isActive: true },
-      });
+      const [equipment, equipmentText] = await Promise.all([
+        prisma.equipment.findFirst({
+          where: { isActive: true },
+        }),
+        prisma.siteContent.findMany({
+          where: {
+            key: { in: ["equipment_title", "equipment_subtitle"] },
+          },
+        }),
+      ]);
+
+      const textMap = equipmentText.reduce<Record<string, string>>(
+        (acc, row) => {
+          acc[row.key] = row.value;
+          return acc;
+        },
+        {},
+      );
+
       res.json(
-        equipment || { id: 0, images: [], features: [], isActive: true },
+        equipment
+          ? {
+              ...equipment,
+              title: textMap.equipment_title || "EQUIPMENTS OVERVIEW",
+              subtitle:
+                textMap.equipment_subtitle ||
+                "Everything You Need For Serious Training Comfort And Result",
+            }
+          : {
+              id: 0,
+              images: [],
+              features: [],
+              title: textMap.equipment_title || "EQUIPMENTS OVERVIEW",
+              subtitle:
+                textMap.equipment_subtitle ||
+                "Everything You Need For Serious Training Comfort And Result",
+              isActive: true,
+            },
       );
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch equipment" });
@@ -2153,7 +2186,12 @@ router.post(
   requireAdmin,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { images = [], features = [] } = req.body;
+      const {
+        images = [],
+        features = [],
+        title = "",
+        subtitle = "",
+      } = req.body;
 
       // Ensure arrays are valid
       const validImages = Array.isArray(images)
@@ -2163,23 +2201,56 @@ router.post(
         ? features.filter((feat) => typeof feat === "string" && feat.trim())
         : [];
 
-      // Since we only need 1 equipment record, upsert with id = 1
-      const equipment = await prisma.equipment.upsert({
-        where: { id: 1 },
-        update: {
-          images: validImages,
-          features: validFeatures,
-          updatedAt: new Date(),
-        },
-        create: {
-          id: 1,
-          images: validImages,
-          features: validFeatures,
-          isActive: true,
-        },
-      });
+      const cleanTitle =
+        typeof title === "string" && title.trim()
+          ? title.trim()
+          : "EQUIPMENTS OVERVIEW";
+      const cleanSubtitle =
+        typeof subtitle === "string" && subtitle.trim()
+          ? subtitle.trim()
+          : "Everything You Need For Serious Training Comfort And Result";
 
-      res.json(equipment);
+      // Since we only need 1 equipment record, upsert with id = 1
+      const [equipment] = await prisma.$transaction([
+        prisma.equipment.upsert({
+          where: { id: 1 },
+          update: {
+            images: validImages,
+            features: validFeatures,
+            updatedAt: new Date(),
+          },
+          create: {
+            id: 1,
+            images: validImages,
+            features: validFeatures,
+            isActive: true,
+          },
+        }),
+        prisma.siteContent.upsert({
+          where: { key: "equipment_title" },
+          update: { value: cleanTitle },
+          create: {
+            key: "equipment_title",
+            value: cleanTitle,
+            section: "about",
+          },
+        }),
+        prisma.siteContent.upsert({
+          where: { key: "equipment_subtitle" },
+          update: { value: cleanSubtitle },
+          create: {
+            key: "equipment_subtitle",
+            value: cleanSubtitle,
+            section: "about",
+          },
+        }),
+      ]);
+
+      res.json({
+        ...equipment,
+        title: cleanTitle,
+        subtitle: cleanSubtitle,
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to save equipment" });
@@ -2193,19 +2264,62 @@ router.put(
   requireAdmin,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { images, features } = req.body;
+      const { images, features, title, subtitle } = req.body;
       const id = Number(req.params.id) || 1;
 
-      const equipment = await prisma.equipment.update({
-        where: { id },
-        data: {
-          ...(images !== undefined ? { images } : {}),
-          ...(features !== undefined ? { features } : {}),
-          updatedAt: new Date(),
-        },
-      });
+      const cleanTitle =
+        typeof title === "string" && title.trim() ? title.trim() : undefined;
+      const cleanSubtitle =
+        typeof subtitle === "string" && subtitle.trim()
+          ? subtitle.trim()
+          : undefined;
 
-      res.json(equipment);
+      const txOps: Parameters<typeof prisma.$transaction>[0] = [
+        prisma.equipment.update({
+          where: { id },
+          data: {
+            ...(images !== undefined ? { images } : {}),
+            ...(features !== undefined ? { features } : {}),
+            updatedAt: new Date(),
+          },
+        }),
+      ];
+
+      if (cleanTitle !== undefined) {
+        txOps.push(
+          prisma.siteContent.upsert({
+            where: { key: "equipment_title" },
+            update: { value: cleanTitle },
+            create: {
+              key: "equipment_title",
+              value: cleanTitle,
+              section: "about",
+            },
+          }),
+        );
+      }
+
+      if (cleanSubtitle !== undefined) {
+        txOps.push(
+          prisma.siteContent.upsert({
+            where: { key: "equipment_subtitle" },
+            update: { value: cleanSubtitle },
+            create: {
+              key: "equipment_subtitle",
+              value: cleanSubtitle,
+              section: "about",
+            },
+          }),
+        );
+      }
+
+      const [equipment] = await prisma.$transaction(txOps);
+
+      res.json({
+        ...equipment,
+        ...(cleanTitle !== undefined ? { title: cleanTitle } : {}),
+        ...(cleanSubtitle !== undefined ? { subtitle: cleanSubtitle } : {}),
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to update equipment" });

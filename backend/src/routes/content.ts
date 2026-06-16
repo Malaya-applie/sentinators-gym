@@ -373,18 +373,46 @@ router.get(
   "/equipment",
   async (_req: Request, res: Response): Promise<void> => {
     try {
-      const equipment = await prisma.equipment.findFirst({
-        where: { isActive: true },
-      });
-      res.json(
-        equipment || {
-          id: 0,
-          images: [],
-          features: [],
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+      const [equipment, equipmentText] = await Promise.all([
+        prisma.equipment.findFirst({
+          where: { isActive: true },
+        }),
+        prisma.siteContent.findMany({
+          where: {
+            key: { in: ["equipment_title", "equipment_subtitle"] },
+          },
+        }),
+      ]);
+
+      const textMap = equipmentText.reduce<Record<string, string>>(
+        (acc, row) => {
+          acc[row.key] = row.value;
+          return acc;
         },
+        {},
+      );
+
+      res.json(
+        equipment
+          ? {
+              ...equipment,
+              title: textMap.equipment_title || "EQUIPMENTS OVERVIEW",
+              subtitle:
+                textMap.equipment_subtitle ||
+                "Everything You Need For Serious Training Comfort And Result",
+            }
+          : {
+              id: 0,
+              images: [],
+              features: [],
+              title: textMap.equipment_title || "EQUIPMENTS OVERVIEW",
+              subtitle:
+                textMap.equipment_subtitle ||
+                "Everything You Need For Serious Training Comfort And Result",
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
       );
     } catch (err) {
       console.error(err);
