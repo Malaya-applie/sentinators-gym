@@ -142,12 +142,12 @@ export function TestimonialsCarousel({
                     </span>
                   </div>
 
-                  <div
-                    className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
-                      isExpanded ? "max-h-130" : "max-h-24"
-                    }`}
-                  >
-                    <p className="text-white/90 text-base leading-relaxed whitespace-pre-line">
+                  <div className="overflow-hidden">
+                    <p
+                      className={`text-white/90 text-base leading-relaxed whitespace-pre-line ${
+                        isExpanded ? "" : "line-clamp-4"
+                      }`}
+                    >
                       {testimonial.content}
                     </p>
                   </div>
