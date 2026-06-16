@@ -888,6 +888,26 @@ router.put(
   },
 );
 
+// ─── DELETE /api/admin/content/text/:key ───────────────
+router.delete(
+  "/content/text/:key",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const key = req.params.key as string;
+      await prisma.siteContent.delete({ where: { key } });
+      res.json({ message: "Text content deleted", key });
+    } catch (err: any) {
+      if (err?.code === "P2025") {
+        res.status(404).json({ error: "Text content key not found" });
+        return;
+      }
+      console.error(err);
+      res.status(500).json({ error: "Failed to delete text content" });
+    }
+  },
+);
+
 // ─── STATS ─────────────────────────────────────────────
 router.get(
   "/content/stats",

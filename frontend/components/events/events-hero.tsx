@@ -1,12 +1,17 @@
 import Image from "next/image";
+import { getImageUrl, getSiteText } from "@/lib/content";
 
-export function EventsHero() {
+export async function EventsHero() {
+  const text = await getSiteText("events_page");
+  const bgImage =
+    getImageUrl(text.events_hero_image) || "/event-hero-image.jpg";
+
   return (
     <section className="relative min-h-[100vh] flex items-center justify-center">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/event-hero-image.jpg"
+          src={bgImage}
           alt="Event background"
           fill
           className="object-cover object-center opacity-70"

@@ -1,8 +1,9 @@
 import Image from "next/image";
-import { getSiteText } from "@/lib/content";
+import { getImageUrl, getSiteText } from "@/lib/content";
 
 export async function ShopHero() {
   const text = await getSiteText("shop");
+  const bgImage = getImageUrl(text.shop_hero_image) || "/shop-hero-image.jpg";
   const heading = text.shop_hero_title || "LOREM IPSUM\nLOREM IPSUM LOREM";
   const headingLines = heading.split("\n").filter((line) => line.trim());
 
@@ -11,7 +12,7 @@ export async function ShopHero() {
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/shop-hero-image.jpg"
+          src={bgImage}
           alt="Shop hero"
           fill
           className="object-cover object-center opacity-80"

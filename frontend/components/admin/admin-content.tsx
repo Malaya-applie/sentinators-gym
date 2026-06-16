@@ -94,6 +94,7 @@ const IMAGE_DEFAULTS: Record<string, string> = {
   why_choose_video_image: "/why-choose-us.png",
   about_hero_image: "/about-hero-image.png",
   events_hero_image: "/event-hero-image.jpg",
+  shop_hero_image: "/shop-hero-image.jpg",
 };
 
 function isImageKey(key: string) {
@@ -502,9 +503,19 @@ type TextRow = { id: number; key: string; value: string; section: string };
 const REQUIRED_TEXT_ROWS: Array<Pick<TextRow, "key" | "section" | "value">> = [
   { key: "why_choose_video_url", section: "why", value: "" },
   {
+    key: "shop_hero_image",
+    section: "shop",
+    value: "/shop-hero-image.jpg",
+  },
+  {
     key: "shop_hero_title",
     section: "shop",
     value: "LOREM IPSUM\nLOREM IPSUM LOREM",
+  },
+  {
+    key: "events_hero_image",
+    section: "events_page",
+    value: "/event-hero-image.jpg",
   },
   {
     key: "events_schedule_title",
@@ -574,6 +585,25 @@ function TextContentPanel() {
     setTimeout(() => setSaved((prev) => ({ ...prev, [row.id]: false })), 1500);
   }
 
+  async function remove(row: TextRow) {
+    if (row.id < 0) {
+      setRows((prev) =>
+        prev.map((r) => (r.id === row.id ? { ...r, value: "" } : r)),
+      );
+      setEditing((prev) => ({ ...prev, [row.id]: "" }));
+      return;
+    }
+
+    await apiFetch(`/admin/content/text/${row.key}`, {
+      method: "DELETE",
+    });
+
+    setRows((prev) =>
+      prev.map((r) => (r.id === row.id ? { ...r, value: "" } : r)),
+    );
+    setEditing((prev) => ({ ...prev, [row.id]: "" }));
+  }
+
   const sections = [...new Set(rows.map((r) => r.section))].sort();
 
   return (
@@ -606,6 +636,14 @@ function TextContentPanel() {
                         />
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => remove(row)}
+                          className="border-white/10 text-white/60 hover:text-red-300"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                        <Button
+                          size="sm"
                           onClick={() => save(row)}
                           className={
                             saved[row.id]
@@ -635,6 +673,14 @@ function TextContentPanel() {
                             setEditing((prev) => ({ ...prev, [row.id]: url }))
                           }
                         />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => remove(row)}
+                          className="border-white/10 text-white/60 hover:text-red-300"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
                         <Button
                           size="sm"
                           onClick={() => save(row)}
@@ -701,6 +747,14 @@ function TextContentPanel() {
                           className="bg-[#1a1a1a] border-white/10 text-white text-sm flex-1"
                         />
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => remove(row)}
+                        className="border-white/10 text-white/60 hover:text-red-300"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
                       <Button
                         size="sm"
                         onClick={() => save(row)}
