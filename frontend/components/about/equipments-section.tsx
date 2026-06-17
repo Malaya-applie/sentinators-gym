@@ -6,6 +6,7 @@ import {
 } from "@/lib/equipment-feature-defaults";
 
 const GRAD = "linear-gradient(180deg, #733EA6 0%, #49225B 100%)";
+const DESKTOP_MEDIA_HEIGHT = 320;
 
 function GradientBorderImage({
   src,
@@ -72,17 +73,17 @@ export async function EquipmentsSection() {
           <p className="text-white/70 text-base">{subtitle}</p>
         </div>
 
-        <div className="flex flex-col-reverse md:flex-row items-center gap-12">
+        <div className="flex flex-col-reverse md:flex-row items-center md:items-stretch gap-12">
           {/* Left – Feature cards */}
-          <div className="w-full md:w-[40%] shrink-0 mt-8 md:mt-0">
-            <div className="bg-transparent">
-              <ul>
+          <div className="w-full md:w-[42%] shrink-0 mt-8 md:mt-0">
+            <div className="bg-transparent h-full">
+              <ul className="h-full">
                 {displayFeatures.map((feature, idx) => (
                   <li
                     key={idx}
-                    className="flex items-start gap-5 py-5 sm:py-6 border-b border-[#8d5cf6]/18 last:border-b-0"
+                    className="flex items-start gap-5 md:gap-3 lg:gap-4 py-4 sm:py-5 md:py-3 border-b border-[#8d5cf6]/18 last:border-b-0"
                   >
-                    <div className="relative mt-0.5 h-14 w-14 shrink-0">
+                    <div className="relative mt-0.5 h-10 w-14 md:h-9 md:w-12 shrink-0">
                       <Image
                         src={getImageUrl(feature.icon) || feature.icon}
                         alt={feature.title || `Feature icon ${idx + 1}`}
@@ -91,10 +92,10 @@ export async function EquipmentsSection() {
                       />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-xl sm:text-[1.85rem] leading-tight font-semibold text-white tracking-[-0.02em]">
+                      <h3 className="text-sm sm:text-[1.25rem] md:text-lg lg:text-[1.25rem] leading-tight font-semibold text-white tracking-[-0.02em]">
                         {feature.title}
                       </h3>
-                      <p className="mt-1.5 text-sm sm:text-base leading-relaxed text-white/68">
+                      <p className="mt-1 sm:mt-1.5 md:mt-1 text-sm sm:text-base md:text-sm lg:text-base leading-relaxed md:leading-snug text-white/68">
                         {feature.description}
                       </p>
                     </div>
@@ -105,7 +106,7 @@ export async function EquipmentsSection() {
           </div>
 
           {/* Right – Mobile slider + desktop staggered images */}
-          <div className="w-full md:flex-1">
+          <div className="w-full md:flex-1 md:max-w-[58%]">
             <div className="md:hidden -mx-1">
               <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {displayImages.map((image, idx) => (
@@ -136,7 +137,11 @@ export async function EquipmentsSection() {
 
             <div
               className="hidden md:block relative"
-              style={{ height: "360px", minHeight: 220, maxHeight: 460 }}
+              style={{
+                height: `${DESKTOP_MEDIA_HEIGHT}px`,
+                minHeight: 220,
+                maxHeight: 380,
+              }}
             >
               {displayImages[0] && (
                 <GradientBorderImage
