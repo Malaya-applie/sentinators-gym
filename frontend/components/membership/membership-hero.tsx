@@ -1,23 +1,25 @@
 import Image from "next/image";
-import { getSiteText } from "@/lib/content";
+import { getImageUrl, getSiteText } from "@/lib/content";
 
 export async function MembershipHero() {
   const text = await getSiteText("membership");
   const heading = text.membership_hero_title || "PLANS & PRICING";
+  const backgroundImage =
+    getImageUrl(text.membership_hero_image) || "/pricing-hero-image.png";
 
   return (
-    <section className="relative min-h-[100vh] flex items-center justify-center">
+    <section className="relative min-h-screen flex items-center justify-center">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/pricing-hero-image.png"
+          src={backgroundImage}
           alt="Plans & Pricing background"
           fill
           className="object-cover object-center opacity-60"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/95" />
-        <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-black/95" />
+        <div className="absolute bottom-0 left-0 right-0 h-60 bg-linear-to-t from-black to-transparent" />
       </div>
 
       <div className="relative z-10 w-full flex items-center justify-center text-center px-4">

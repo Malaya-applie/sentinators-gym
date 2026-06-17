@@ -95,6 +95,7 @@ const IMAGE_DEFAULTS: Record<string, string> = {
   about_hero_image: "/about-hero-image.png",
   events_hero_image: "/event-hero-image.jpg",
   shop_hero_image: "/shop-hero-image.jpg",
+  membership_hero_image: "/pricing-hero-image.png",
 };
 
 function isImageKey(key: string) {
@@ -531,6 +532,11 @@ const REQUIRED_TEXT_ROWS: Array<Pick<TextRow, "key" | "section" | "value">> = [
     key: "membership_hero_title",
     section: "membership",
     value: "PLANS & PRICING",
+  },
+  {
+    key: "membership_hero_image",
+    section: "membership",
+    value: "/pricing-hero-image.png",
   },
   { key: "navbar_home_label", section: "navbar", value: "Home" },
   { key: "navbar_about_label", section: "navbar", value: "About" },

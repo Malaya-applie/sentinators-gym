@@ -387,6 +387,17 @@ async function main() {
           value: "/event-hero-image.jpg",
           section: "events_page",
         },
+        // Membership page
+        {
+          key: "membership_hero_title",
+          value: "PLANS & PRICING",
+          section: "membership",
+        },
+        {
+          key: "membership_hero_image",
+          value: "/pricing-hero-image.png",
+          section: "membership",
+        },
         // Footer
         {
           key: "footer_description",
