@@ -1,15 +1,44 @@
+"use client";
+
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getTrainers, getSiteText, getImageUrl } from "@/lib/content";
+import {
+  getTrainers,
+  getSiteText,
+  getImageUrl,
+  type Trainer,
+  type SiteText,
+} from "@/lib/content";
 
-export async function TrainersSection() {
-  const [trainers, text] = await Promise.all([
-    getTrainers(),
-    getSiteText("trainers"),
-  ]);
+export function TrainersSection() {
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [text, setText] = useState<SiteText>({});
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  // Show only the first 4 by order (home preview)
-  const preview = trainers.slice(0, 4);
+  const trainersPerPage = 4;
+
+  useEffect(() => {
+    async function fetchData() {
+      const [trainersData, textData] = await Promise.all([
+        getTrainers(),
+        getSiteText("trainers"),
+      ]);
+      setTrainers(trainersData);
+      setText(textData);
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return <div className="py-5 bg-transparent" />;
+  }
+
+  const totalPages = Math.ceil(trainers.length / trainersPerPage);
+  const startIndex = currentPage * trainersPerPage;
+  const preview = trainers.slice(startIndex, startIndex + trainersPerPage);
 
   return (
     <section className="py-5 bg-transparent">
@@ -34,7 +63,7 @@ export async function TrainersSection() {
           {preview.map((trainer, index) => (
             <div
               key={trainer.id}
-              className="group relative rounded-xl overflow-hidden bg-[#1a0a12]/80 aspect-[3/4] backdrop-blur-sm min-w-[85vw] max-w-[90vw] sm:min-w-0 sm:max-w-none snap-center"
+              className="group relative rounded-xl overflow-hidden bg-[#1a0a12]/80 aspect-3/4 backdrop-blur-sm min-w-[85vw] max-w-[90vw] sm:min-w-0 sm:max-w-none snap-center"
               style={{ flex: "0 0 auto" }}
             >
               <Image
@@ -46,13 +75,29 @@ export async function TrainersSection() {
                 sizes="(max-width: 768px) 100vw, 25vw"
                 priority={index === 0}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent z-10" />
               <div className="absolute inset-0" />
               <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
                 <h3 className="text-white font-semibold">{trainer.name}</h3>
                 <p className="text-white/60 text-sm">{trainer.role}</p>
               </div>
             </div>
+          ))}
+        </div>
+
+        {/* Pagination Dots */}
+        <div className="flex justify-center items-center gap-3 mt-8">
+          {Array.from({ length: totalPages }).map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentPage(index)}
+              className={`transition-all duration-300 ${
+                currentPage === index
+                  ? "w-8 h-2 bg-red-500 rounded-full"
+                  : "w-2 h-2 bg-white/30 rounded-full hover:bg-white/50"
+              }`}
+              aria-label={`Go to page ${index + 1}`}
+            />
           ))}
         </div>
 
@@ -64,41 +109,6 @@ export async function TrainersSection() {
             Show more
           </Button> */}
         </div>
-        {/* Separation line  */}
-        {/* <div
-          className="w-full flex justify-center items-center relative"
-          style={{ height: "40px" }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "30%",
-              height: "40px",
-              background:
-                "radial-gradient(ellipse at center, #733EA6 0%, transparent 70%)",
-              opacity: 0.45,
-              filter: "blur(12px)",
-              zIndex: 0,
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            style={{
-              border: "0",
-              height: "4px",
-              width: "50%",
-              borderRadius: "2px",
-              background:
-                "linear-gradient(90deg, #48215A 0%, #5D225E 50%, #48215A 100%)",
-              boxShadow: "0 0 24px 0 #733EA6AA",
-              position: "relative",
-              zIndex: 1,
-            }}
-          />
-        </div> */}
       </div>
     </section>
   );
