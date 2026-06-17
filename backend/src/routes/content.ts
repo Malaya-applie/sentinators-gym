@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { parseEquipmentFeatureItems } from "../lib/equipmentFeatureItems";
 
 const router = Router();
 
@@ -379,7 +380,13 @@ router.get(
         }),
         prisma.siteContent.findMany({
           where: {
-            key: { in: ["equipment_title", "equipment_subtitle"] },
+            key: {
+              in: [
+                "equipment_title",
+                "equipment_subtitle",
+                "equipment_feature_items",
+              ],
+            },
           },
         }),
       ]);
@@ -392,6 +399,11 @@ router.get(
         {},
       );
 
+      const featureItems = parseEquipmentFeatureItems(
+        textMap.equipment_feature_items,
+        equipment?.features || [],
+      );
+
       res.json(
         equipment
           ? {
@@ -400,11 +412,13 @@ router.get(
               subtitle:
                 textMap.equipment_subtitle ||
                 "Everything You Need For Serious Training Comfort And Result",
+              featureItems,
             }
           : {
               id: 0,
               images: [],
               features: [],
+              featureItems,
               title: textMap.equipment_title || "EQUIPMENTS OVERVIEW",
               subtitle:
                 textMap.equipment_subtitle ||

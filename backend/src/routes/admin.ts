@@ -4,6 +4,10 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, AuthRequest } from "../middleware/auth";
 import { generateAgreementPdf } from "../lib/generateAgreementPdf";
+import {
+  normalizeEquipmentFeatureItems,
+  parseEquipmentFeatureItems,
+} from "../lib/equipmentFeatureItems";
 
 const router = Router();
 
@@ -2161,7 +2165,13 @@ router.get(
         }),
         prisma.siteContent.findMany({
           where: {
-            key: { in: ["equipment_title", "equipment_subtitle"] },
+            key: {
+              in: [
+                "equipment_title",
+                "equipment_subtitle",
+                "equipment_feature_items",
+              ],
+            },
           },
         }),
       ]);
@@ -2174,6 +2184,11 @@ router.get(
         {},
       );
 
+      const featureItems = parseEquipmentFeatureItems(
+        textMap.equipment_feature_items,
+        equipment?.features || [],
+      );
+
       res.json(
         equipment
           ? {
@@ -2182,11 +2197,13 @@ router.get(
               subtitle:
                 textMap.equipment_subtitle ||
                 "Everything You Need For Serious Training Comfort And Result",
+              featureItems,
             }
           : {
               id: 0,
               images: [],
               features: [],
+              featureItems,
               title: textMap.equipment_title || "EQUIPMENTS OVERVIEW",
               subtitle:
                 textMap.equipment_subtitle ||
@@ -2209,6 +2226,7 @@ router.post(
       const {
         images = [],
         features = [],
+        featureItems,
         title = "",
         subtitle = "",
       } = req.body;
@@ -2220,6 +2238,10 @@ router.post(
       const validFeatures = Array.isArray(features)
         ? features.filter((feat) => typeof feat === "string" && feat.trim())
         : [];
+      const validFeatureItems = normalizeEquipmentFeatureItems(
+        featureItems,
+        validFeatures,
+      );
 
       const cleanTitle =
         typeof title === "string" && title.trim()
@@ -2242,7 +2264,9 @@ router.post(
           create: {
             id: 1,
             images: validImages,
-            features: validFeatures,
+            features: validFeatureItems
+              .map((item) => item.title)
+              .filter(Boolean),
             isActive: true,
           },
         }),
@@ -2264,12 +2288,22 @@ router.post(
             section: "about",
           },
         }),
+        prisma.siteContent.upsert({
+          where: { key: "equipment_feature_items" },
+          update: { value: JSON.stringify(validFeatureItems) },
+          create: {
+            key: "equipment_feature_items",
+            value: JSON.stringify(validFeatureItems),
+            section: "about",
+          },
+        }),
       ]);
 
       res.json({
         ...equipment,
         title: cleanTitle,
         subtitle: cleanSubtitle,
+        featureItems: validFeatureItems,
       });
     } catch (err) {
       console.error(err);
@@ -2284,8 +2318,17 @@ router.put(
   requireAdmin,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { images, features, title, subtitle } = req.body;
+      const { images, features, featureItems, title, subtitle } = req.body;
       const id = Number(req.params.id) || 1;
+      const validFeatures = Array.isArray(features)
+        ? features.filter(
+            (feat: unknown) => typeof feat === "string" && feat.trim(),
+          )
+        : [];
+      const validFeatureItems =
+        featureItems !== undefined || validFeatures.length > 0
+          ? normalizeEquipmentFeatureItems(featureItems, validFeatures)
+          : undefined;
 
       const cleanTitle =
         typeof title === "string" && title.trim() ? title.trim() : undefined;
@@ -2299,7 +2342,13 @@ router.put(
           where: { id },
           data: {
             ...(images !== undefined ? { images } : {}),
-            ...(features !== undefined ? { features } : {}),
+            ...(validFeatureItems !== undefined
+              ? {
+                  features: validFeatureItems
+                    .map((item) => item.title)
+                    .filter(Boolean),
+                }
+              : {}),
             updatedAt: new Date(),
           },
         }),
@@ -2333,12 +2382,29 @@ router.put(
         );
       }
 
+      if (validFeatureItems !== undefined) {
+        txOps.push(
+          prisma.siteContent.upsert({
+            where: { key: "equipment_feature_items" },
+            update: { value: JSON.stringify(validFeatureItems) },
+            create: {
+              key: "equipment_feature_items",
+              value: JSON.stringify(validFeatureItems),
+              section: "about",
+            },
+          }),
+        );
+      }
+
       const [equipment] = await prisma.$transaction(txOps);
 
       res.json({
         ...equipment,
         ...(cleanTitle !== undefined ? { title: cleanTitle } : {}),
         ...(cleanSubtitle !== undefined ? { subtitle: cleanSubtitle } : {}),
+        ...(validFeatureItems !== undefined
+          ? { featureItems: validFeatureItems }
+          : {}),
       });
     } catch (err) {
       console.error(err);

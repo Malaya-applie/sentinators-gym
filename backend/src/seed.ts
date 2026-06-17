@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { DEFAULT_EQUIPMENT_FEATURE_ITEMS } from "./lib/equipmentFeatureItems";
 
 const prisma = new PrismaClient();
 
@@ -900,6 +901,15 @@ async function main() {
         key: "shop_hero_title",
         value: "LOREM IPSUM\nLOREM IPSUM LOREM",
         section: "shop",
+      },
+    }),
+    prisma.siteContent.upsert({
+      where: { key: "equipment_feature_items" },
+      update: {},
+      create: {
+        key: "equipment_feature_items",
+        value: JSON.stringify(DEFAULT_EQUIPMENT_FEATURE_ITEMS),
+        section: "about",
       },
     }),
     prisma.siteContent.upsert({

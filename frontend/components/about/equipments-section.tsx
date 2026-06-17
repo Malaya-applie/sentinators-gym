@@ -1,5 +1,9 @@
 import Image from "next/image";
 import { getEquipment, getImageUrl } from "@/lib/content";
+import {
+  DEFAULT_EQUIPMENT_FEATURE_ITEMS,
+  normalizeEquipmentFeatureItems,
+} from "@/lib/equipment-feature-defaults";
 
 const GRAD = "linear-gradient(180deg, #733EA6 0%, #49225B 100%)";
 
@@ -39,7 +43,10 @@ export async function EquipmentsSection() {
     .filter((img) => img)
     .map((img) => getImageUrl(img))
     .slice(0, 4);
-  const features = equipment?.features || [];
+  const featureItems = normalizeEquipmentFeatureItems(
+    equipment?.featureItems,
+    equipment?.features || [],
+  );
 
   // Fallback images if empty
   const displayImages =
@@ -52,16 +59,8 @@ export async function EquipmentsSection() {
           "/equipment-4.png",
         ];
 
-  // Fallback features if empty
   const displayFeatures =
-    features.length > 0
-      ? features
-      : [
-          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-          "Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit.",
-        ];
+    featureItems.length > 0 ? featureItems : DEFAULT_EQUIPMENT_FEATURE_ITEMS;
 
   return (
     <section className="mt-10 bg-transparent">
@@ -75,21 +74,34 @@ export async function EquipmentsSection() {
 
         <div className="flex flex-col-reverse md:flex-row items-center gap-12">
           {/* Left – Feature cards */}
-          <div className="w-full md:w-[38%] shrink-0 mt-8 md:mt-0">
-            <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-4 md:gap-5">
-              {displayFeatures.map((feature, idx) => (
-                <li
-                  key={idx}
-                  className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3.5 text-[15px] leading-relaxed text-gray-100"
-                >
-                  <div
-                    className="absolute inset-y-0 left-0 w-1"
-                    style={{ background: GRAD }}
-                  />
-                  <div className="pl-3">{feature}</div>
-                </li>
-              ))}
-            </ul>
+          <div className="w-full md:w-[40%] shrink-0 mt-8 md:mt-0">
+            <div className="bg-transparent">
+              <ul>
+                {displayFeatures.map((feature, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-start gap-5 py-5 sm:py-6 border-b border-[#8d5cf6]/18 last:border-b-0"
+                  >
+                    <div className="relative mt-0.5 h-14 w-14 shrink-0">
+                      <Image
+                        src={getImageUrl(feature.icon) || feature.icon}
+                        alt={feature.title || `Feature icon ${idx + 1}`}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-xl sm:text-[1.85rem] leading-tight font-semibold text-white tracking-[-0.02em]">
+                        {feature.title}
+                      </h3>
+                      <p className="mt-1.5 text-sm sm:text-base leading-relaxed text-white/68">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {/* Right – Mobile slider + desktop staggered images */}

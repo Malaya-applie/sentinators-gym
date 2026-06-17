@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Upload, Trash2, Plus } from "lucide-react";
+import { Upload, Trash2, Plus, RotateCcw } from "lucide-react";
+import {
+  DEFAULT_EQUIPMENT_FEATURE_ITEMS,
+  type EquipmentFeatureItem,
+  normalizeEquipmentFeatureItems,
+} from "@/lib/equipment-feature-defaults";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const UPLOADS_BASE = BASE.replace("/api", "");
@@ -12,6 +17,7 @@ interface EquipmentData {
   subtitle: string;
   images: string[];
   features: string[];
+  featureItems: EquipmentFeatureItem[];
 }
 
 const EMPTY_EQUIPMENT: EquipmentData = {
@@ -20,6 +26,7 @@ const EMPTY_EQUIPMENT: EquipmentData = {
   subtitle: "Everything You Need For Serious Training Comfort And Result",
   images: [],
   features: [],
+  featureItems: DEFAULT_EQUIPMENT_FEATURE_ITEMS.map((item) => ({ ...item })),
 };
 
 function getToken() {
@@ -68,6 +75,10 @@ export function EquipmentAdminPanel() {
             : EMPTY_EQUIPMENT.subtitle,
         images: Array.isArray(data.images) ? data.images : [],
         features: Array.isArray(data.features) ? data.features : [],
+        featureItems: normalizeEquipmentFeatureItems(
+          data.featureItems,
+          Array.isArray(data.features) ? data.features : [],
+        ),
       });
     } catch (err) {
       setError("Failed to load equipment data. Please refresh and try again.");
@@ -90,6 +101,10 @@ export function EquipmentAdminPanel() {
           subtitle: next.subtitle,
           images: next.images.slice(0, 4),
           features: next.features.filter((f) => f.trim()),
+          featureItems: next.featureItems.filter(
+            (item) =>
+              item.title.trim() || item.description.trim() || item.icon.trim(),
+          ),
         }),
       });
       if (!res.ok) throw new Error("Failed to save equipment");
@@ -106,6 +121,10 @@ export function EquipmentAdminPanel() {
             : EMPTY_EQUIPMENT.subtitle,
         images: Array.isArray(data.images) ? data.images : [],
         features: Array.isArray(data.features) ? data.features : [],
+        featureItems: normalizeEquipmentFeatureItems(
+          data.featureItems,
+          Array.isArray(data.features) ? data.features : [],
+        ),
       };
       setEquipment(normalized);
       setSuccess(successText);
@@ -163,24 +182,111 @@ export function EquipmentAdminPanel() {
   }
 
   function updateFeature(index: number, value: string) {
-    const nextFeatures = [...equipment.features];
-    nextFeatures[index] = value;
-    setEquipment((prev) => ({ ...prev, features: nextFeatures }));
+    setEquipment((prev) => ({
+      ...prev,
+      featureItems: prev.featureItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, title: value } : item,
+      ),
+    }));
+  }
+
+  function updateFeatureDescription(index: number, value: string) {
+    setEquipment((prev) => ({
+      ...prev,
+      featureItems: prev.featureItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, description: value } : item,
+      ),
+    }));
+  }
+
+  function updateFeatureIcon(index: number, value: string) {
+    setEquipment((prev) => ({
+      ...prev,
+      featureItems: prev.featureItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, icon: value } : item,
+      ),
+    }));
   }
 
   function addFeature() {
-    setEquipment((prev) => ({ ...prev, features: [...prev.features, ""] }));
+    const fallback = DEFAULT_EQUIPMENT_FEATURE_ITEMS[
+      equipment.featureItems.length
+    ] || {
+      title: "",
+      description: "",
+      icon: DEFAULT_EQUIPMENT_FEATURE_ITEMS[0]?.icon || "",
+    };
+
+    setEquipment((prev) => ({
+      ...prev,
+      featureItems: [...prev.featureItems, { ...fallback }],
+    }));
   }
 
   function removeFeature(index: number) {
     setEquipment((prev) => ({
       ...prev,
-      features: prev.features.filter((_, i) => i !== index),
+      featureItems: prev.featureItems.filter((_, i) => i !== index),
     }));
   }
 
+  async function uploadAsset(file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+
+    const uploadRes = await fetch(`${BASE}/upload`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: fd,
+    });
+    if (!uploadRes.ok) throw new Error("Upload failed");
+
+    const uploadData = await uploadRes.json();
+    const uploadedUrl =
+      (uploadData.url as string | undefined) ||
+      (uploadData.path as string | undefined) ||
+      "";
+
+    if (!uploadedUrl) throw new Error("Upload response missing url/path");
+
+    return uploadedUrl;
+  }
+
+  async function handleFeatureIconUpload(index: number, file: File) {
+    setLoading(true);
+    setError("");
+    try {
+      const uploadedUrl = await uploadAsset(file);
+      const nextFeatureItems = equipment.featureItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, icon: uploadedUrl } : item,
+      );
+
+      await saveEquipment(
+        {
+          ...equipment,
+          featureItems: nextFeatureItems,
+          features: nextFeatureItems.map((item) => item.title),
+        },
+        "Feature icon uploaded successfully",
+      );
+    } catch (err) {
+      setLoading(false);
+      setError("Feature icon upload failed.");
+      console.error(err);
+    }
+  }
+
+  function resetFeatureIcon(index: number) {
+    const fallback = DEFAULT_EQUIPMENT_FEATURE_ITEMS[index]?.icon || "";
+    updateFeatureIcon(index, fallback);
+  }
+
   async function saveFeaturesOnly() {
-    await saveEquipment(equipment, "Features saved successfully");
+    const next = {
+      ...equipment,
+      features: equipment.featureItems.map((item) => item.title),
+    };
+    await saveEquipment(next, "Features saved successfully");
   }
 
   return (
@@ -188,7 +294,7 @@ export function EquipmentAdminPanel() {
       <div>
         <h2 className="text-white text-lg font-semibold">Equipment</h2>
         <p className="text-white/50 text-xs mt-1">
-          Manage heading, subheading, images, and feature bullet points.
+          Manage heading, subheading, images, and feature cards.
         </p>
       </div>
 
@@ -296,26 +402,86 @@ export function EquipmentAdminPanel() {
         </div>
 
         <div className="space-y-2">
-          {equipment.features.map((feature, idx) => (
-            <div key={idx} className="flex gap-2">
+          {equipment.featureItems.map((feature, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl border border-white/10 bg-[#171717] p-3 space-y-3"
+            >
+              <div className="flex items-start gap-3">
+                <div className="h-16 w-16 shrink-0 rounded-lg border border-white/10 bg-black/20 overflow-hidden grid place-items-center">
+                  {feature.icon ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={toImageUrl(feature.icon)}
+                      alt={`Feature icon ${idx + 1}`}
+                      className="h-full w-full object-contain p-2"
+                    />
+                  ) : (
+                    <span className="text-[10px] text-white/40 px-2 text-center">
+                      No icon
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="text"
+                    value={feature.icon}
+                    onChange={(e) => updateFeatureIcon(idx, e.target.value)}
+                    placeholder="/equipment-icons/protein-bar.png"
+                    className="w-full rounded border border-white/10 bg-[#1b1b1b] text-white text-xs px-3 py-2 outline-none focus:border-red-600"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex items-center gap-2 rounded bg-red-700 hover:bg-red-600 text-white text-xs font-medium px-3 py-2 cursor-pointer">
+                      <Upload size={14} /> Upload Icon
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={loading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleFeatureIconUpload(idx, file);
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => resetFeatureIcon(idx)}
+                      className="inline-flex items-center gap-2 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 text-xs px-3 py-2"
+                    >
+                      <RotateCcw size={13} /> Reset To Default
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeFeature(idx)}
+                      className="inline-flex items-center gap-2 rounded bg-red-700 hover:bg-red-600 text-white text-xs px-3 py-2"
+                    >
+                      <Trash2 size={13} /> Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <input
                 type="text"
-                value={feature}
+                value={feature.title}
                 onChange={(e) => updateFeature(idx, e.target.value)}
-                placeholder={`Feature ${idx + 1}`}
-                className="flex-1 rounded border border-white/10 bg-[#1b1b1b] text-white text-sm px-3 py-2 outline-none focus:border-red-600"
+                placeholder={`Feature title ${idx + 1}`}
+                className="w-full rounded border border-white/10 bg-[#1b1b1b] text-white text-sm px-3 py-2 outline-none focus:border-red-600"
               />
-              <button
-                type="button"
-                onClick={() => removeFeature(idx)}
-                className="rounded bg-red-700 hover:bg-red-600 text-white text-xs px-3"
-              >
-                Remove
-              </button>
+
+              <textarea
+                value={feature.description}
+                onChange={(e) => updateFeatureDescription(idx, e.target.value)}
+                placeholder={`Feature description ${idx + 1}`}
+                rows={3}
+                className="w-full rounded border border-white/10 bg-[#1b1b1b] text-white text-sm px-3 py-2 outline-none focus:border-red-600 resize-y"
+              />
             </div>
           ))}
 
-          {equipment.features.length === 0 ? (
+          {equipment.featureItems.length === 0 ? (
             <p className="text-white/40 text-xs">
               No points yet. Click Add to create your first feature point.
             </p>

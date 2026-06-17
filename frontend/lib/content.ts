@@ -6,6 +6,8 @@
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const MEDIA_BASE = API.replace(/\/api$/, "");
 
+import type { EquipmentFeatureItem } from "@/lib/equipment-feature-defaults";
+
 /** Convert a stored path like "/uploads/xxx.jpg" to a full URL */
 export function getImageUrl(path: string | null | undefined): string {
   if (!path) return "";
@@ -126,6 +128,7 @@ export interface Equipment {
   subtitle: string;
   images: string[];
   features: string[];
+  featureItems: EquipmentFeatureItem[];
   order: number;
   isActive: boolean;
   createdAt: Date;
@@ -257,6 +260,7 @@ export async function getEquipment(): Promise<Equipment> {
       subtitle: "Everything You Need For Serious Training Comfort And Result",
       images: [],
       features: [],
+      featureItems: [],
       order: 0,
       isActive: true,
       createdAt: new Date(),
