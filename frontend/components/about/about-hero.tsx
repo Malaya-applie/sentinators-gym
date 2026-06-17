@@ -17,8 +17,8 @@ export async function AboutHero() {
           className="object-cover object-top opacity-60"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/95" />
-        <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black to-transparent" />
+        {/* <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/95" /> */}
+        {/* <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black to-transparent" /> */}
       </div>
 
       <div className="relative z-10 w-full flex flex-col items-center justify-center text-center px-4">

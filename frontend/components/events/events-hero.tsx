@@ -18,9 +18,9 @@ export async function EventsHero() {
           priority
         />
         {/* Purple tint overlay matching site theme */}
-        <div className="absolute inset-0 bg-purple-950/40 mix-blend-multiply" />
+        {/* <div className="absolute inset-0 bg-purple-950/40 mix-blend-multiply" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/95" />
-        <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black to-transparent" /> */}
       </div>
 
       <div className="relative z-10 w-full flex items-center justify-center text-center px-4">

@@ -51,19 +51,19 @@ export function HeroSectionClient({
         <div className="absolute inset-0 bg-black/60 md:bg-black/30" />
         {/* Left-side fade: image blends into dark background (desktop only) */}
         <div
-          className="absolute inset-0 hidden md:block"
-          style={{
-            background:
-              "linear-gradient(to right, #08010a 0%, rgba(8,1,10,0.6) 20%, transparent 50%)",
-          }}
+        // className="absolute inset-0 hidden md:block"
+        // style={{
+        //   background:
+        //     "linear-gradient(to right, #08010a 0%, rgba(8,1,10,0.6) 20%, transparent 50%)",
+        // }}
         />
         {/* Top/bottom vignette matching the photo's natural darkening */}
         <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 25%, transparent 75%, rgba(0,0,0,0.65) 100%)",
-          }}
+          // className="absolute inset-0"
+          // style={{
+          //   background:
+          //     "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 25%, transparent 75%, rgba(0,0,0,0.65) 100%)",
+          // }}
         />
       </div>
 

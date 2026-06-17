@@ -18,8 +18,8 @@ export async function MembershipHero() {
           className="object-cover object-center opacity-60"
           priority
         />
-        <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-black/95" />
-        <div className="absolute bottom-0 left-0 right-0 h-60 bg-linear-to-t from-black to-transparent" />
+        {/* <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-black/95" />
+        <div className="absolute bottom-0 left-0 right-0 h-60 bg-linear-to-t from-black to-transparent" /> */}
       </div>
 
       <div className="relative z-10 w-full flex items-center justify-center text-center px-4">

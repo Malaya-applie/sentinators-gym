@@ -136,7 +136,7 @@ export async function EquipmentsSection() {
             </div>
 
             <div
-              className="hidden md:block relative"
+              className="hidden md:block relative mt-0 md:mt-6"
               style={{
                 height: `${DESKTOP_MEDIA_HEIGHT}px`,
                 minHeight: 220,
