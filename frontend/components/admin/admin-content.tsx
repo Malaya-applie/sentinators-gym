@@ -1725,6 +1725,11 @@ const FOOTER_DEFAULTS = {
   footer_menu_3_url: "/membership",
   footer_menu_4_label: "Shop",
   footer_menu_4_url: "/shop",
+  footer_timing_heading: "Öffnungszeiten",
+  footer_timing_mon_thu: "09:00–12:00 & 17:00–21:00",
+  footer_timing_fri: "09:00–12:00 & 17:00–20:00",
+  footer_timing_sat: "09:00–14:00",
+  footer_timing_key_card: "Mit Schlüsselkarte: 05:00–24:00",
   footer_address: "Lorem Ipsum St, 25/99034,",
   footer_phone: "+990 000 0000",
   footer_email: "info@fitness.com",
@@ -1831,6 +1836,18 @@ function FooterPanel() {
             {field(`footer_menu_${n}_url` as keyof FooterData, `Link ${n} URL`)}
           </div>
         ))}
+      </div>
+
+      {/* Timings */}
+      <div className="bg-[#111] border border-white/5 rounded-lg p-4 mb-4 space-y-3">
+        <p className="text-white/40 text-xs font-mono uppercase tracking-widest mb-1">
+          [Timings / Öffnungszeiten]
+        </p>
+        {field("footer_timing_heading", "Heading")}
+        {field("footer_timing_mon_thu", "Mo – Do")}
+        {field("footer_timing_fri", "Freitag")}
+        {field("footer_timing_sat", "Samstag")}
+        {field("footer_timing_key_card", "Mit Schlüsselkarte")}
       </div>
 
       {/* Contact */}

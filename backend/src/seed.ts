@@ -416,6 +416,32 @@ async function main() {
         { key: "footer_menu_3_url", value: "/membership", section: "footer" },
         { key: "footer_menu_4_label", value: "Shop", section: "footer" },
         { key: "footer_menu_4_url", value: "/shop", section: "footer" },
+        // Footer Timings
+        {
+          key: "footer_timing_heading",
+          value: "Öffnungszeiten",
+          section: "footer",
+        },
+        {
+          key: "footer_timing_mon_thu",
+          value: "09:00–12:00 & 17:00–21:00",
+          section: "footer",
+        },
+        {
+          key: "footer_timing_fri",
+          value: "09:00–12:00 & 17:00–20:00",
+          section: "footer",
+        },
+        {
+          key: "footer_timing_sat",
+          value: "09:00–14:00",
+          section: "footer",
+        },
+        {
+          key: "footer_timing_key_card",
+          value: "Mit Schlüsselkarte: 05:00–24:00",
+          section: "footer",
+        },
         {
           key: "footer_address",
           value: "Lorem Ipsum St, 25/99034,",
