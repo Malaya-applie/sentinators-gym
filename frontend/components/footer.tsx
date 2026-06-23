@@ -154,7 +154,7 @@ export async function Footer() {
 
           {/* Menu */}
           <div className="flex flex-col">
-            <h4 className="text-white font-semibold text-xl mb-8">Menu</h4>
+            <h4 className="text-white font-semibold text-xl mb-8">Menü</h4>
 
             <ul className="space-y-4">
               {menuLinks.map((link, index) => (
@@ -209,7 +209,7 @@ export async function Footer() {
 
           {/* Contact */}
           <div className="flex flex-col">
-            <h4 className="text-white font-semibold text-xl mb-8">Contact</h4>
+            <h4 className="text-white font-semibold text-xl mb-8">Kontakt</h4>
 
             <ul className="space-y-5 text-white/60 text-sm">
               <li>{t.footer_address || "Lorem Ipsum St, 25/99034"}</li>
