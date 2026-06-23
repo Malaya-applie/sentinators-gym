@@ -6,7 +6,7 @@ import {
 } from "@/lib/content";
 import { GallerySectionClient } from "@/components/gallery/gallery-section-client";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 8;
 
 const DEFAULT_CATEGORIES = [
   "All",

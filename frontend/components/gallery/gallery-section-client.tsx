@@ -11,7 +11,7 @@ import {
   getImageUrl,
 } from "@/lib/content";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 8;
 const ALL_CATEGORY = "__ALL__";
 const ALL_CATEGORY_LABEL = "All";
 
@@ -274,35 +274,55 @@ export function GallerySectionClient({
                 </div>
               )}
             </div>
-          </div>
 
-          {totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-3 text-white">
+            {totalPages > 1 && currentPage > 1 && (
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 rounded-full border border-white/40 hover:border-white disabled:opacity-40 disabled:cursor-not-allowed"
+                // className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 sm:-translate-x-5 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 border border-white/25 flex items-center justify-center text-white hover:bg-black/80 hover:border-white/50 transition-all outline-none focus:outline-none"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 xl:-translate-x-16 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 border border-white/25 flex items-center justify-center text-white hover:bg-black/80 hover:border-white/50 transition-all outline-none focus:outline-none"
+                aria-label="Previous page"
               >
-                Prev
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-5 h-5 sm:w-6 sm:h-6"
+                >
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
               </button>
+            )}
 
-              <span className="text-sm text-white/80 min-w-24 text-center">
-                Page {currentPage} / {totalPages}
-              </span>
-
+            {totalPages > 1 && currentPage < totalPages && (
               <button
                 type="button"
                 onClick={() =>
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 rounded-full border border-white/40 hover:border-white disabled:opacity-40 disabled:cursor-not-allowed"
+                // className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 sm:translate-x-5 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 border border-white/25 flex items-center justify-center text-white hover:bg-black/80 hover:border-white/50 transition-all outline-none focus:outline-none"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 xl:translate-x-16 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 border border-white/25 flex items-center justify-center text-white hover:bg-black/80 hover:border-white/50 transition-all outline-none focus:outline-none"
+                aria-label="Next page"
               >
-                Next
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-5 h-5 sm:w-6 sm:h-6"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
