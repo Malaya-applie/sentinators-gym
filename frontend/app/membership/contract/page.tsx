@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Eraser, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type PlanInfo = {
   id: number;
@@ -109,6 +110,7 @@ function ContractField({ label, value }: { label: string; value: string }) {
 
 export default function MembershipContractPage() {
   const router = useRouter();
+  const t = useTranslations("registration");
   const [state, setState] = useState<RegState | null>(null);
   const [contractMemberSig, setContractMemberSig] = useState("");
   const [guardianSig, setGuardianSig] = useState("");
@@ -336,7 +338,7 @@ export default function MembershipContractPage() {
       contractMemberSig || getSignatureDataUrl(contractCanvasRef.current);
 
     if (!latestContractSig) {
-      setError("Please draw your member signature to proceed.");
+      setError(t("contract.errors.memberSignatureRequired"));
       return;
     }
     setCapturing(true);
@@ -590,7 +592,7 @@ export default function MembershipContractPage() {
           onClick={cancelContract}
           className="mb-4 text-white/60 hover:text-white text-xs sm:text-sm flex items-center gap-2 transition-colors"
         >
-          ← Back to Registration
+          {`← ${t("contract.backToRegistration")}`}
         </button>
 
         {/* Contract Document */}
@@ -610,23 +612,29 @@ export default function MembershipContractPage() {
             </div>
             <div className="w-full sm:flex-1 text-left sm:text-center sm:min-w-37.5">
               <p className="text-sm font-black tracking-wide uppercase">
-                Fitness Membership Contract
+                {t("contract.title")}
               </p>
               <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
-                Membership Agreement
+                {t("contract.subtitle")}
               </p>
             </div>
             <div className="w-full sm:w-auto text-left sm:text-right text-xs space-y-1 sm:min-w-40">
               <div className="flex items-center justify-start sm:justify-end gap-2">
-                <span className="text-white/50">Contract Number:</span>
+                <span className="text-white/50">
+                  {t("contract.contractNumber")}:
+                </span>
                 <span className="font-mono font-bold">{contractNumber}</span>
               </div>
               <div className="flex items-center justify-start sm:justify-end gap-2">
-                <span className="text-white/50">Customer Number:</span>
+                <span className="text-white/50">
+                  {t("contract.customerNumber")}:
+                </span>
                 <span className="font-mono font-bold">{customerNumber}</span>
               </div>
               <div className="flex items-center justify-start sm:justify-end gap-2">
-                <span className="text-white/50">Date:</span>
+                <span className="text-white/50">
+                  {t("contract.dateLabel")}:
+                </span>
                 <span className="font-semibold">
                   {new Date().toLocaleDateString()}
                 </span>
@@ -640,24 +648,33 @@ export default function MembershipContractPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="border border-gray-300 rounded overflow-hidden">
                 <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  1. Member Details
+                  {`1. ${t("contract.sections.memberDetails")}`}
                 </div>
                 <div className="p-3 space-y-2">
                   <ContractField
-                    label="First Name / Surname"
+                    label={t("contract.fields.fullName")}
                     value={`${form.firstName} ${form.lastName}`.trim() || "-"}
                   />
                   <ContractField
-                    label="Date of Birth"
+                    label={t("fields.dateOfBirth")}
                     value={
                       form.dateOfBirth ? formatDate(form.dateOfBirth) : "-"
                     }
                   />
-                  <ContractField label="Address" value={form.address || "-"} />
-                  <ContractField label="Telephone" value={form.phone || "-"} />
-                  <ContractField label="E-Mail" value={form.email || "-"} />
                   <ContractField
-                    label="Emergency Contact"
+                    label={t("fields.address")}
+                    value={form.address || "-"}
+                  />
+                  <ContractField
+                    label={t("contract.fields.telephone")}
+                    value={form.phone || "-"}
+                  />
+                  <ContractField
+                    label={t("contract.fields.email")}
+                    value={form.email || "-"}
+                  />
+                  <ContractField
+                    label={t("fields.emergencyContact")}
                     value={form.emergencyContact || "-"}
                   />
                 </div>
@@ -665,7 +682,7 @@ export default function MembershipContractPage() {
 
               <div className="border border-gray-300 rounded overflow-hidden">
                 <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  2. Subscription Selection
+                  {`2. ${t("contract.sections.subscriptionSelection")}`}
                 </div>
                 <div className="p-3">
                   <div className="grid grid-cols-2 gap-y-2 mb-3">
@@ -686,7 +703,7 @@ export default function MembershipContractPage() {
                   </div>
                   <div className="space-y-2 mt-1">
                     <ContractField
-                      label="Start Date"
+                      label={t("fields.startDate")}
                       value={
                         membershipStartDate
                           ? formatDate(membershipStartDate)
@@ -694,7 +711,7 @@ export default function MembershipContractPage() {
                       }
                     />
                     <ContractField
-                      label="Valid until"
+                      label={t("contract.fields.validUntil")}
                       value={
                         membershipEndDate ? formatDate(membershipEndDate) : "-"
                       }
@@ -708,12 +725,14 @@ export default function MembershipContractPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="border border-gray-300 rounded overflow-hidden">
                 <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  3. Price Overview
+                  3. {t("plan.priceOverviewTitle")}
                 </div>
                 <div className="p-3 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-700">
-                      {selectedPlan ? planTitle(selectedPlan) : "Plan"}
+                      {selectedPlan
+                        ? planTitle(selectedPlan)
+                        : t("plan.selectPlan")}
                     </span>
                     <span className="font-semibold text-gray-900">
                       {selectedPlanPrice != null
@@ -731,7 +750,7 @@ export default function MembershipContractPage() {
                   ))}
                   <div className="flex justify-between">
                     <span className="text-gray-700">
-                      Registration Fee (one-time)
+                      {t("plan.registrationFeeOneTime")}
                     </span>
                     <span className="font-semibold text-gray-900">
                       {money(currency, registrationFee)}
@@ -744,7 +763,7 @@ export default function MembershipContractPage() {
                     </div>
                   )}
                   <div className="flex justify-between font-bold pt-2 border-t-2 border-gray-300 text-gray-900">
-                    <span>Total</span>
+                    <span>{t("plan.total")}</span>
                     <span>{money(currency, total)}</span>
                   </div>
                   <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-3">
@@ -766,8 +785,10 @@ export default function MembershipContractPage() {
                         />
                         <span>
                           {f === "YEARLY"
-                            ? "Yearly (Upfront)"
-                            : f.charAt(0) + f.slice(1).toLowerCase()}
+                            ? `${t("plan.yearly")} (${t("plan.upfront")})`
+                            : f === "MONTHLY"
+                              ? t("plan.monthly")
+                              : t("plan.quarterly")}
                         </span>
                       </label>
                     ))}
@@ -777,12 +798,12 @@ export default function MembershipContractPage() {
                     paymentFrequency !== "YEARLY" && (
                       <div className="flex justify-between font-semibold pt-1 text-red-700">
                         <span>
-                          Due per{" "}
+                          {t("plan.duePer")}{" "}
                           {paymentFrequency === "MONTHLY"
-                            ? "month"
+                            ? t("plan.paymentUnitMonth")
                             : paymentFrequency === "QUARTERLY"
-                              ? "quarter"
-                              : "year"}
+                              ? t("plan.paymentUnitQuarter")
+                              : t("plan.paymentUnitYear")}
                         </span>
                         <span>{money(currency, periodicAmount)}</span>
                       </div>
@@ -792,7 +813,7 @@ export default function MembershipContractPage() {
 
               <div className="border border-gray-300 rounded overflow-hidden">
                 <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  4. Membership Category
+                  {`4. ${t("contract.sections.membershipCategory")}`}
                 </div>
                 <div className="p-3 space-y-2 text-sm">
                   {planCategories.map((cat) => (
@@ -817,7 +838,7 @@ export default function MembershipContractPage() {
             {termsSections && termsSections.length > 0 && (
               <div className="border border-gray-300 rounded overflow-hidden">
                 <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  5. Membership Terms
+                  {`5. ${t("contract.sections.membershipTerms")}`}
                 </div>
                 <div className="p-3">
                   {termsSections.map(({ title, content }) => (
@@ -841,7 +862,7 @@ export default function MembershipContractPage() {
             {gymRulesSections && gymRulesSections.length > 0 && (
               <div className="border border-gray-300 rounded overflow-hidden">
                 <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  6. Gym Rules &amp; Health Responsibility
+                  {`6. ${t("contract.sections.gymRules")}`}
                 </div>
                 <div className="p-3">
                   {gymRulesSections.map(({ title, content }) => (
@@ -864,7 +885,7 @@ export default function MembershipContractPage() {
             {/* Section 7: Signatures */}
             <div className="border border-gray-300 rounded overflow-hidden">
               <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                7. Signatures
+                {`7. ${t("contract.sections.signatures")}`}
               </div>
               <div className="p-4 sm:p-5 space-y-6">
                 {/* Signature grid */}
@@ -872,14 +893,14 @@ export default function MembershipContractPage() {
                   {/* Place & Date */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                      Place / Date
+                      {t("contract.placeDate")}
                     </span>
                     <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-27.5">
                       <p className="text-base font-bold text-gray-900">
                         {new Date().toLocaleDateString()}
                       </p>
                       <p className="text-xs text-gray-400 mt-auto pt-3 border-t border-gray-300">
-                        Date of signing
+                        {t("contract.dateOfSigning")}
                       </p>
                     </div>
                   </div>
@@ -888,7 +909,7 @@ export default function MembershipContractPage() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                        Member Signature
+                        {t("contract.memberSignature")}
                         {contractMemberSig || canvasHasContent ? (
                           <span className="ml-1.5 text-green-600 font-bold">
                             ✓
@@ -906,7 +927,7 @@ export default function MembershipContractPage() {
                           }}
                           className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors print:hidden"
                         >
-                          <Eraser size={11} /> Re-sign
+                          <Eraser size={11} /> {t("contract.reSign")}
                         </button>
                       ) : (
                         <button
@@ -914,7 +935,7 @@ export default function MembershipContractPage() {
                           onClick={clearContractSig}
                           className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors print:hidden"
                         >
-                          <Eraser size={11} /> Clear
+                          <Eraser size={11} /> {t("clearSignature")}
                         </button>
                       )}
                     </div>
@@ -923,7 +944,7 @@ export default function MembershipContractPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={contractMemberSig}
-                          alt="Member signature"
+                          alt={t("contract.memberSignature")}
                           className="max-h-27.5 w-full object-contain p-1"
                         />
                       </div>
@@ -963,7 +984,7 @@ export default function MembershipContractPage() {
                               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                             </svg>
                             <p className="text-[11px] text-gray-300 font-medium tracking-wide">
-                              Draw your signature
+                              {t("errors.drawSignature")}
                             </p>
                           </div>
                         )}
@@ -975,21 +996,21 @@ export default function MembershipContractPage() {
                               onClick={clearContractSig}
                               className="pointer-events-auto px-2.5 py-1 rounded-md text-[11px] font-semibold text-gray-400 border border-gray-200 bg-white hover:bg-gray-50 hover:text-red-500 transition-colors"
                             >
-                              Clear
+                              {t("clearSignature")}
                             </button>
                             <button
                               type="button"
                               onClick={confirmContractSig}
                               className="pointer-events-auto px-3.5 py-1 rounded-md text-[11px] font-bold text-white bg-green-500 hover:bg-green-600 transition-colors shadow-sm"
                             >
-                              ✓ OK
+                              {`✓ ${t("contract.ok")}`}
                             </button>
                           </div>
                         )}
                         {/* Bottom hint when blank */}
                         {!canvasHasContent && (
                           <p className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-gray-300 pointer-events-none select-none">
-                            Sign above the line
+                            {t("contract.signAboveLine")}
                           </p>
                         )}
                       </div>
@@ -999,12 +1020,16 @@ export default function MembershipContractPage() {
                   {/* Gym Signature (3rd column — static placeholder) */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                      Gym Signature
+                      {t("contract.gymSignature")}
                     </span>
-                    <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 min-h-27.5 flex flex-col items-center justify-center gap-1.5">
-                      <p className="text-xs font-medium text-gray-400">
-                        To be signed by gym staff
-                      </p>
+                    <div className="rounded-lg border-2 border-gray-200 bg-gray-50 min-h-27.5 flex items-center justify-center overflow-hidden p-2">
+                      <Image
+                        src="/gym_sign.jpeg"
+                        alt={t("contract.gymSignature")}
+                        width={320}
+                        height={120}
+                        className="h-auto max-h-24 w-full object-contain"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1012,12 +1037,16 @@ export default function MembershipContractPage() {
                 {/* Gym Stamp */}
                 <div className="flex flex-col gap-2 sm:max-w-xs">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                    Gym Stamp
+                    {t("contract.gymStamp")}
                   </span>
-                  <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 h-22.5 flex items-center justify-center">
-                    <p className="text-xs font-medium text-gray-400">
-                      Official gym stamp
-                    </p>
+                  <div className="rounded-lg border-2 border-gray-200 bg-gray-50 h-22.5 flex items-center justify-center overflow-hidden p-2">
+                    <Image
+                      src="/gym_stamp.jpeg"
+                      alt={t("contract.gymStamp")}
+                      width={180}
+                      height={90}
+                      className="h-full w-full object-contain"
+                    />
                   </div>
                 </div>
 
@@ -1037,7 +1066,7 @@ export default function MembershipContractPage() {
                     onClick={cancelContract}
                     className="px-5 py-2.5 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-100 hover:border-gray-300 transition-colors w-full sm:w-auto"
                   >
-                    Cancel
+                    {t("contract.cancel")}
                   </button>
                   <button
                     type="button"
@@ -1048,7 +1077,9 @@ export default function MembershipContractPage() {
                     {capturing && (
                       <Loader2 size={15} className="animate-spin" />
                     )}
-                    {capturing ? "Generating PDF…" : "Accept & Sign Contract"}
+                    {capturing
+                      ? t("contract.generatingPdf")
+                      : t("contract.acceptSignContract")}
                   </button>
                 </div>
               </div>

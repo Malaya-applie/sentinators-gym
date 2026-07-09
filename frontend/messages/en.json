@@ -72,11 +72,17 @@
       "noPlansCategory": "No plans available in this category.",
       "pickStartDate": "Pick a start date",
       "paymentFrequency": "Payment Frequency",
+      "priceOverviewTitle": "Price Overview",
       "registrationFee": "Fixed registration fee",
+      "registrationFeeOneTime": "Registration Fee (one-time)",
       "duration": "Duration",
       "totalFullDuration": "Total (full duration)",
       "totalUpfront": "Upfront total",
       "total": "Total",
+      "duePer": "Due per",
+      "paymentUnitMonth": "month",
+      "paymentUnitQuarter": "quarter",
+      "paymentUnitYear": "year",
       "durationUnitSingular": "month",
       "durationUnitPlural": "months",
       "upfront": "Upfront",
@@ -112,7 +118,45 @@
     "submitting": "Submitting...",
     "back": "Back",
     "next": "Next",
-    "clearSignature": "Clear Signature"
+    "clearSignature": "Clear Signature",
+    "contract": {
+      "backToRegistration": "Back to Registration",
+      "title": "Fitness Membership Contract",
+      "subtitle": "Membership Agreement",
+      "contractNumber": "Contract Number",
+      "customerNumber": "Customer Number",
+      "dateLabel": "Date",
+      "placeDate": "Place / Date",
+      "dateOfSigning": "Date of signing",
+      "memberSignature": "Member Signature",
+      "gymSignature": "Gym Signature",
+      "gymStamp": "Gym Stamp",
+      "officialGymStamp": "Official gym stamp",
+      "toBeSignedByGym": "To be signed by gym staff",
+      "reSign": "Re-sign",
+      "ok": "OK",
+      "signAboveLine": "Sign above the line",
+      "cancel": "Cancel",
+      "acceptSignContract": "Accept & Sign Contract",
+      "generatingPdf": "Generating PDF…",
+      "sections": {
+        "memberDetails": "Member Details",
+        "subscriptionSelection": "Subscription Selection",
+        "membershipCategory": "Membership Category",
+        "membershipTerms": "Membership Terms",
+        "gymRules": "Gym Rules & Health Responsibility",
+        "signatures": "Signatures"
+      },
+      "fields": {
+        "fullName": "First Name / Surname",
+        "telephone": "Telephone",
+        "email": "E-Mail",
+        "validUntil": "Valid until"
+      },
+      "errors": {
+        "memberSignatureRequired": "Please draw your member signature to proceed."
+      }
+    }
   },
   "admin": {
     "title": "GYM Admin",

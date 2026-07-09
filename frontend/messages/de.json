@@ -72,11 +72,17 @@
       "noPlansCategory": "Keine Pläne in dieser Kategorie verfügbar.",
       "pickStartDate": "Startdatum auswählen",
       "paymentFrequency": "Zahlungsfrequenz",
+      "priceOverviewTitle": "Preisübersicht",
       "registrationFee": "Einmalige Registrierungsgebühr",
+      "registrationFeeOneTime": "Registrierungsgebühr (einmalig)",
       "duration": "Dauer",
       "totalFullDuration": "Gesamt (gesamte Laufzeit)",
       "totalUpfront": "Gesamtbetrag im Voraus",
       "total": "Gesamt",
+      "duePer": "Fällig pro",
+      "paymentUnitMonth": "Monat",
+      "paymentUnitQuarter": "Quartal",
+      "paymentUnitYear": "Jahr",
       "durationUnitSingular": "Monat",
       "durationUnitPlural": "Monate",
       "upfront": "Vollständig",
@@ -112,7 +118,45 @@
     "submitting": "Einreichen...",
     "back": "Zurück",
     "next": "Weiter",
-    "clearSignature": "Unterschrift löschen"
+    "clearSignature": "Unterschrift löschen",
+    "contract": {
+      "backToRegistration": "Zurück zur Registrierung",
+      "title": "Fitness-Mitgliedschaftsvertrag",
+      "subtitle": "Mitgliedschaftsvereinbarung",
+      "contractNumber": "Vertragsnummer",
+      "customerNumber": "Kundennummer",
+      "dateLabel": "Datum",
+      "placeDate": "Ort / Datum",
+      "dateOfSigning": "Datum der Unterzeichnung",
+      "memberSignature": "Unterschrift Mitglied",
+      "gymSignature": "Unterschrift Fitnessstudio",
+      "gymStamp": "Stempel Fitnessstudio",
+      "officialGymStamp": "Offizieller Fitnessstudio-Stempel",
+      "toBeSignedByGym": "Wird vom Fitnessstudio unterschrieben",
+      "reSign": "Neu unterschreiben",
+      "ok": "OK",
+      "signAboveLine": "Über der Linie unterschreiben",
+      "cancel": "Abbrechen",
+      "acceptSignContract": "Vertrag akzeptieren & unterschreiben",
+      "generatingPdf": "PDF wird erstellt…",
+      "sections": {
+        "memberDetails": "Mitgliedsdaten",
+        "subscriptionSelection": "Auswahl Mitgliedschaft",
+        "membershipCategory": "Mitgliedschaftskategorie",
+        "membershipTerms": "Vertragsbedingungen Mitgliedschaft",
+        "gymRules": "Hausordnung & Eigenverantwortung im Gym",
+        "signatures": "Unterschriften"
+      },
+      "fields": {
+        "fullName": "Vorname / Nachname",
+        "telephone": "Telefon",
+        "email": "E-Mail",
+        "validUntil": "Gültig bis"
+      },
+      "errors": {
+        "memberSignatureRequired": "Bitte zeichnen Sie Ihre Unterschrift, um fortzufahren."
+      }
+    }
   },
   "admin": {
     "title": "GYM Admin",
