@@ -570,17 +570,100 @@ export default function MembershipContractPage() {
       .join(", ");
 
   return (
-    <div className="min-h-screen bg-[#08010a] py-4 sm:py-6 px-3 sm:px-4">
+    <div
+      data-contract-page
+      className="min-h-screen bg-[#08010a] py-4 sm:py-6 px-3 sm:px-4"
+    >
       {/* Print-mode CSS: hide interactive elements and force colors when saving as PDF */}
       <style>{`
         @media print {
+          @page { size: A4; margin: 10mm; }
           [data-pdf-exclude] { display: none !important; }
+          [data-print-hide] { display: none !important; }
           body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .min-h-screen { min-height: unset !important; background: white !important; }
+          [data-contract-page] { padding: 0 !important; }
+          [data-contract-shell] { max-width: none !important; }
+          [data-contract-doc] { box-shadow: none !important; border-radius: 0 !important; }
+          [data-print-section] {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+          }
+          [data-print-avoid],
+          [data-print-compact-card] {
+            break-inside: avoid-page !important;
+            page-break-inside: avoid !important;
+          }
+          [data-print-section-title] {
+            break-after: avoid-page !important;
+            page-break-after: avoid !important;
+          }
+          [data-print-section-content] {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+          }
+          [data-print-page-start] {
+            break-before: page !important;
+            page-break-before: always !important;
+          }
+          [data-print-long-section] {
+            border: 0 !important;
+            border-radius: 0 !important;
+            overflow: visible !important;
+            background: white !important;
+          }
+          [data-print-long-section] [data-print-section-title] {
+            border: 1px solid #d1d5db !important;
+            border-radius: 0 !important;
+          }
+          [data-print-long-section] [data-print-section-content] {
+            padding: 6px 0 0 !important;
+          }
+          [data-print-terms-item] {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+          }
+          [data-print-terms-item] > p:first-child {
+            margin-bottom: 2px !important;
+            font-size: 13px !important;
+            line-height: 1.25 !important;
+          }
+          [data-print-terms-item] > p:last-child {
+            font-size: 12.5px !important;
+            line-height: 1.35 !important;
+          }
+          [data-contract-body] {
+            padding: 12px !important;
+            gap: 12px !important;
+          }
+          [data-contract-body] > div {
+            margin-top: 0 !important;
+          }
+          [data-contract-signatures] {
+            padding: 14px !important;
+            gap: 14px !important;
+          }
+          [data-contract-signature-grid] {
+            gap: 12px !important;
+          }
+          [data-contract-signature-box] {
+            min-height: 92px !important;
+          }
+          [data-contract-canvas-wrap] {
+            min-height: 120px !important;
+          }
+          [data-contract-canvas] {
+            height: 120px !important;
+          }
+          [data-contract-stamp] {
+            height: 76px !important;
+          }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         }
       `}</style>
-      <div className="max-w-3xl mx-auto">
+      <div data-contract-shell className="max-w-3xl mx-auto">
         {/* Logo */}
         <div className="flex justify-center mb-5 sm:mb-6">
           <Image
@@ -596,6 +679,7 @@ export default function MembershipContractPage() {
         <button
           type="button"
           onClick={cancelContract}
+          data-print-hide
           className="mb-4 text-white/60 hover:text-white text-xs sm:text-sm flex items-center gap-2 transition-colors"
         >
           {`← ${t("contract.backToRegistration")}`}
@@ -604,6 +688,7 @@ export default function MembershipContractPage() {
         {/* Contract Document */}
         <div
           ref={contractDocRef}
+          data-contract-doc
           className="bg-white rounded-lg overflow-hidden shadow-2xl"
         >
           {/* Header */}
@@ -649,11 +734,23 @@ export default function MembershipContractPage() {
           </div>
 
           {/* Body */}
-          <div className="p-3 sm:p-4 space-y-4 text-gray-900">
+          <div
+            data-contract-body
+            className="p-3 sm:p-4 space-y-4 text-gray-900"
+          >
             {/* Sections 1 & 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+            <div
+              data-print-section
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            >
+              <div
+                data-print-compact-card
+                className="border border-gray-300 rounded overflow-hidden"
+              >
+                <div
+                  data-print-section-title
+                  className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                >
                   {`1. ${t("contract.sections.memberDetails")}`}
                 </div>
                 <div className="p-3 space-y-2">
@@ -686,8 +783,14 @@ export default function MembershipContractPage() {
                 </div>
               </div>
 
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+              <div
+                data-print-compact-card
+                className="border border-gray-300 rounded overflow-hidden"
+              >
+                <div
+                  data-print-section-title
+                  className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                >
                   {`2. ${t("contract.sections.subscriptionSelection")}`}
                 </div>
                 <div className="p-3">
@@ -728,9 +831,18 @@ export default function MembershipContractPage() {
             </div>
 
             {/* Sections 3 & 4 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+            <div
+              data-print-section
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            >
+              <div
+                data-print-compact-card
+                className="border border-gray-300 rounded overflow-hidden"
+              >
+                <div
+                  data-print-section-title
+                  className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                >
                   3. {t("plan.priceOverviewTitle")}
                 </div>
                 <div className="p-3 space-y-2 text-sm">
@@ -817,8 +929,14 @@ export default function MembershipContractPage() {
                 </div>
               </div>
 
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+              <div
+                data-print-compact-card
+                className="border border-gray-300 rounded overflow-hidden"
+              >
+                <div
+                  data-print-section-title
+                  className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                >
                   {`4. ${t("contract.sections.membershipCategory")}`}
                 </div>
                 <div className="p-3 space-y-2 text-sm">
@@ -842,14 +960,23 @@ export default function MembershipContractPage() {
 
             {/* Section 5: Membership Terms */}
             {termsSections && termsSections.length > 0 && (
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+              <div
+                data-print-section
+                data-print-page-start
+                data-print-long-section
+                className="border border-gray-300 rounded overflow-hidden"
+              >
+                <div
+                  data-print-section-title
+                  className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                >
                   {`5. ${t("contract.sections.membershipTerms")}`}
                 </div>
-                <div className="p-3">
+                <div data-print-section-content className="p-3">
                   {termsSections.map(({ title, content }) => (
                     <div
                       key={title}
+                      data-print-terms-item
                       className="py-2 border-b border-gray-200 last:border-0"
                     >
                       <p className="font-bold text-sm text-gray-900 mb-0.5">
@@ -866,14 +993,23 @@ export default function MembershipContractPage() {
 
             {/* Section 6: Gym Rules & Health Responsibility */}
             {gymRulesSections && gymRulesSections.length > 0 && (
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+              <div
+                data-print-section
+                data-print-page-start
+                data-print-long-section
+                className="border border-gray-300 rounded overflow-hidden"
+              >
+                <div
+                  data-print-section-title
+                  className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                >
                   {`6. ${t("contract.sections.gymRules")}`}
                 </div>
-                <div className="p-3">
+                <div data-print-section-content className="p-3">
                   {gymRulesSections.map(({ title, content }) => (
                     <div
                       key={title}
+                      data-print-terms-item
                       className="py-2 border-b border-gray-200 last:border-0"
                     >
                       <p className="font-bold text-sm text-gray-900 mb-0.5">
@@ -889,19 +1025,32 @@ export default function MembershipContractPage() {
             )}
 
             {/* Section 7: Signatures */}
-            <div className="border border-gray-300 rounded overflow-hidden">
-              <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
+            <div
+              data-print-section
+              data-print-page-start
+              className="border border-gray-300 rounded overflow-hidden"
+            >
+              <div
+                data-print-section-title
+                className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+              >
                 {`7. ${t("contract.sections.signatures")}`}
               </div>
-              <div className="p-4 sm:p-5 space-y-6">
+              <div data-contract-signatures className="p-4 sm:p-5 space-y-6">
                 {/* Signature grid */}
-                <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
+                <div
+                  data-contract-signature-grid
+                  className="grid gap-5 grid-cols-1 sm:grid-cols-3"
+                >
                   {/* Place & Date */}
-                  <div className="flex flex-col gap-2">
+                  <div data-print-avoid className="flex flex-col gap-2">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                       {t("contract.placeDate")}
                     </span>
-                    <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-27.5">
+                    <div
+                      data-contract-signature-box
+                      className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-27.5"
+                    >
                       <p className="text-base font-bold text-gray-900">
                         {new Date().toLocaleDateString()}
                       </p>
@@ -912,7 +1061,7 @@ export default function MembershipContractPage() {
                   </div>
 
                   {/* Member Signature */}
-                  <div className="flex flex-col gap-2">
+                  <div data-print-avoid className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                         {t("contract.memberSignature")}
@@ -946,7 +1095,10 @@ export default function MembershipContractPage() {
                       )}
                     </div>
                     {contractMemberSig ? (
-                      <div className="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden min-h-27.5 flex items-center justify-center">
+                      <div
+                        data-contract-signature-box
+                        className="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden min-h-27.5 flex items-center justify-center"
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={contractMemberSig}
@@ -956,6 +1108,7 @@ export default function MembershipContractPage() {
                       </div>
                     ) : (
                       <div
+                        data-contract-canvas-wrap
                         className={`relative rounded-xl overflow-hidden min-h-40 transition-all border-2 ${
                           canvasHasContent
                             ? "border-green-400 shadow-[inset_0_2px_8px_rgba(0,0,0,0.06)]"
@@ -968,6 +1121,7 @@ export default function MembershipContractPage() {
                           onPointerMove={drawContractSig}
                           onPointerUp={() => endContractDraw()}
                           onPointerCancel={() => endContractDraw()}
+                          data-contract-canvas
                           className="h-37.5 sm:h-40 w-full touch-none cursor-crosshair"
                         />
                         {/* Baseline */}
@@ -1024,11 +1178,14 @@ export default function MembershipContractPage() {
                   </div>
 
                   {/* Gym Signature (3rd column — static placeholder) */}
-                  <div className="flex flex-col gap-2">
+                  <div data-print-avoid className="flex flex-col gap-2">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                       {t("contract.gymSignature")}
                     </span>
-                    <div className="rounded-lg border-2 border-gray-200 bg-gray-50 min-h-27.5 flex items-center justify-center overflow-hidden p-2">
+                    <div
+                      data-contract-signature-box
+                      className="rounded-lg border-2 border-gray-200 bg-gray-50 min-h-27.5 flex items-center justify-center overflow-hidden p-2"
+                    >
                       <Image
                         src="/gym_sign.jpeg"
                         alt={t("contract.gymSignature")}
@@ -1041,11 +1198,17 @@ export default function MembershipContractPage() {
                 </div>
 
                 {/* Gym Stamp */}
-                <div className="flex flex-col gap-2 sm:max-w-xs">
+                <div
+                  data-print-avoid
+                  className="flex flex-col gap-2 sm:max-w-xs"
+                >
                   <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                     {t("contract.gymStamp")}
                   </span>
-                  <div className="rounded-lg border-2 border-gray-200 bg-gray-50 h-22.5 flex items-center justify-center overflow-hidden p-2">
+                  <div
+                    data-contract-stamp
+                    className="rounded-lg border-2 border-gray-200 bg-gray-50 h-22.5 flex items-center justify-center overflow-hidden p-2"
+                  >
                     <Image
                       src="/gym_stamp.jpeg"
                       alt={t("contract.gymStamp")}
