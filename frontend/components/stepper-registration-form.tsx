@@ -1533,7 +1533,7 @@ export function StepperRegistrationForm({
             <div className="rounded-lg bg-white/5 p-5">
               <div className="mb-4 inline-flex flex-col gap-2">
                 <span className="bg-white/10 px-4 py-2 text-2xl">
-                  Client:{" "}
+                  Kunde:{" "}
                   {form.firstName ? `${form.firstName} ${form.lastName}` : "-"}
                 </span>
               </div>
@@ -1556,8 +1556,8 @@ export function StepperRegistrationForm({
                       className="underline text-red-400 hover:text-red-300 text-xs font-medium ml-1"
                     >
                       {agreementChecks[0]
-                        ? "(view contract)"
-                        : "View & Sign Contract →"}
+                        ? `(${t("viewContract")})`
+                        : t("viewSignContract")}
                     </button>
                     {agreementChecks[0] && (
                       <button
@@ -1565,7 +1565,7 @@ export function StepperRegistrationForm({
                         onClick={downloadContractPdf}
                         className="inline-flex items-center gap-1 ml-2 text-xs font-medium text-green-400 hover:text-green-300 underline transition-colors"
                       >
-                        ↓ Download PDF
+                        ↓ {t("downloadPdf")}
                       </button>
                     )}
                   </span>
@@ -1586,16 +1586,16 @@ export function StepperRegistrationForm({
                 {signatureDataUrl ? (
                   <div>
                     <Label className="text-white/70 mb-2 block">
-                      Your Signature{" "}
+                      {t("signatureLabel")}{" "}
                       <span className="text-green-400 text-xs">
-                        (signed via contract)
+                        ({t("signatureSubtext")})
                       </span>
                     </Label>
                     <div className="h-28 w-full rounded-md border border-white/10 bg-[#111] overflow-hidden flex items-center justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={signatureDataUrl}
-                        alt="Your signature"
+                        alt={t("signatureLabel")}
                         className="h-full w-full object-contain"
                         style={{ filter: "invert(1)" }}
                       />
@@ -1643,7 +1643,7 @@ export function StepperRegistrationForm({
             <DialogContent className="bg-[#0f0a14] border border-white/10 text-white w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-2xl max-h-[85dvh] sm:max-h-[75vh] flex flex-col p-0 overflow-hidden">
               <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 sm:pb-4 border-b border-white/10 shrink-0">
                 <DialogTitle className="text-lg font-bold text-white">
-                  Gym Rules &amp; Health Responsibility Policy
+                  {t("gymRulesModalTitle")}
                 </DialogTitle>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
@@ -1663,7 +1663,7 @@ export function StepperRegistrationForm({
                   onClick={() => setShowGymRulesModal(false)}
                   className="border-white/15 bg-transparent text-white hover:bg-white/10 w-full sm:w-auto"
                 >
-                  Close
+                  {t("close")}
                 </Button>
                 <Button
                   type="button"
@@ -1675,7 +1675,7 @@ export function StepperRegistrationForm({
                   }}
                   className="btn-gradient text-white w-full sm:flex-1"
                 >
-                  I Accept the Gym Rules &amp; Health Responsibility Policy
+                  {t("gymRulesAgreeButton")}
                 </Button>
               </div>
             </DialogContent>
@@ -1687,7 +1687,7 @@ export function StepperRegistrationForm({
             <DialogContent className="bg-[#0f0a14] border border-white/10 text-white w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-2xl max-h-[85dvh] sm:max-h-[75vh] flex flex-col p-0 overflow-hidden">
               <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 sm:pb-4 border-b border-white/10 shrink-0">
                 <DialogTitle className="text-lg font-bold text-white">
-                  Membership Terms &amp; Conditions
+                  {t("termsModalTitle")}
                 </DialogTitle>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 text-sm text-white/75 leading-relaxed">
@@ -1707,7 +1707,7 @@ export function StepperRegistrationForm({
                   onClick={() => setShowTermsModal(false)}
                   className="border-white/15 bg-transparent text-white hover:bg-white/10 w-full sm:w-auto"
                 >
-                  Close
+                  {t("close")}
                 </Button>
                 <Button
                   type="button"
@@ -1719,7 +1719,7 @@ export function StepperRegistrationForm({
                   }}
                   className="btn-gradient text-white w-full sm:flex-1"
                 >
-                  I Agree to the Terms &amp; Conditions
+                  {t("termsAgreeButton")}
                 </Button>
               </div>
             </DialogContent>
@@ -1757,7 +1757,7 @@ export function StepperRegistrationForm({
                         onClick={() => setShowTermsModal(true)}
                         className="underline text-red-400 hover:text-red-300 text-xs font-medium ml-1"
                       >
-                        {termChecks[0] ? "(view terms)" : "Read Terms →"}
+                        {termChecks[0] ? `(${t("viewTerms")})` : t("readTerms")}
                       </button>
                     </span>
                   </label>
@@ -1783,7 +1783,7 @@ export function StepperRegistrationForm({
                         onClick={() => setShowGymRulesModal(true)}
                         className="underline text-red-400 hover:text-red-300 text-xs font-medium ml-1"
                       >
-                        {termChecks[1] ? "(view rules)" : "Read Rules →"}
+                        {termChecks[1] ? `(${t("viewRules")})` : t("readRules")}
                       </button>
                     </span>
                   </label>
