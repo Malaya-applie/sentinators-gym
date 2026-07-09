@@ -563,6 +563,12 @@ export default function MembershipContractPage() {
     return selectedPlan.price;
   })();
 
+  const memberAddress =
+    form.address ||
+    [form.street, [form.postalCode, form.location].filter(Boolean).join(" ")]
+      .filter(Boolean)
+      .join(", ");
+
   return (
     <div className="min-h-screen bg-[#08010a] py-4 sm:py-6 px-3 sm:px-4">
       {/* Print-mode CSS: hide interactive elements and force colors when saving as PDF */}
@@ -663,7 +669,7 @@ export default function MembershipContractPage() {
                   />
                   <ContractField
                     label={t("fields.address")}
-                    value={form.address || "-"}
+                    value={memberAddress || "-"}
                   />
                   <ContractField
                     label={t("contract.fields.telephone")}
