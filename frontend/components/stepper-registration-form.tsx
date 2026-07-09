@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -1429,20 +1429,20 @@ export function StepperRegistrationForm({
                       value: "UPFRONT" as const,
                       label:
                         totalPlanMonths > 0 && totalPlanMonths < 12
-                          ? "Yearly (Upfront)"
-                          : "Yearly",
+                          ? `${t("plan.yearly")} (${t("plan.upfront")})`
+                          : t("plan.yearly"),
                       unit: "" as const,
                       minMonths: 1,
                     },
                     {
                       value: "MONTHLY" as const,
-                      label: "Monthly",
+                      label: t("plan.monthly"),
                       unit: "/mo" as const,
                       minMonths: 2,
                     },
                     {
                       value: "QUARTERLY" as const,
-                      label: "Quarterly",
+                      label: t("plan.quarterly"),
                       unit: "/qtr" as const,
                       minMonths: 12,
                     },
@@ -1925,15 +1925,18 @@ function TotalBox({
   totalPlanMonths?: number;
   periodicAmount?: number | null;
 }) {
+  const t = useTranslations("registration");
+  const locale = useLocale();
   const months = totalPlanMonths ?? 0;
+  const totalLabel = locale.startsWith("de") ? "Gesamt" : "Total";
 
   const freqLabel =
     paymentFrequency === "MONTHLY"
-      ? "Monthly"
+      ? t("plan.monthly")
       : paymentFrequency === "QUARTERLY"
-        ? "Quarterly"
+        ? t("plan.quarterly")
         : paymentFrequency === "YEARLY"
-          ? "Yearly"
+          ? t("plan.yearly")
           : null;
   const freqUnit =
     paymentFrequency === "MONTHLY"
@@ -1952,10 +1955,14 @@ function TotalBox({
   const freqPaymentsLabel = (() => {
     if (!hasFrequencyPremium || !paymentFrequency || months === 0) return null;
     if (paymentFrequency === "MONTHLY")
-      return `${months} monthly payment${months !== 1 ? "s" : ""}`;
+      return locale.startsWith("de")
+        ? `${months} Monatliche Zahlungen`
+        : `${months} monthly payment${months !== 1 ? "s" : ""}`;
     if (paymentFrequency === "QUARTERLY") {
       const q = Math.ceil(months / 3);
-      return `${q} quarterly payment${q !== 1 ? "s" : ""}`;
+      return locale.startsWith("de")
+        ? `${q} Vierteljährliche Zahlungen`
+        : `${q} quarterly payment${q !== 1 ? "s" : ""}`;
     }
     return null;
   })();
@@ -1982,7 +1989,7 @@ function TotalBox({
         </div>
       ))}
       <div className="mt-2 flex items-center justify-between gap-4 text-sm text-white/65">
-        <span>Fixed registration fee</span>
+        <span>{t("plan.registrationFee")}</span>
         <span>{money(currency, registrationFee)}</span>
       </div>
       {discountAmount > 0 && plan && (
@@ -1996,12 +2003,12 @@ function TotalBox({
         /* Frequency-adjusted pricing: show upfront (muted) + frequency total (highlighted) */
         <div className="mt-3 border-t border-white/10 pt-3 space-y-1.5">
           <div className="flex items-center justify-between gap-4 text-sm text-white/30 line-through">
-            <span>Upfront total</span>
+            <span>{t("plan.totalUpfront")}</span>
             <span>{money(currency, upfrontTotal)}</span>
           </div>
           <div className="flex items-center justify-between gap-4 text-base font-bold text-red-400">
             <span>
-              Total
+              {totalLabel}
               {freqPaymentsLabel && (
                 <span className="text-xs font-normal text-red-400/70 ml-1">
                   ({freqPaymentsLabel})
@@ -2013,23 +2020,26 @@ function TotalBox({
         </div>
       ) : (
         <div className="mt-3 flex items-center justify-between gap-4 border-t border-white/10 pt-3 text-base font-bold">
-          <span>Total (full duration)</span>
+          <span>{t("plan.totalFullDuration")}</span>
           <span>{money(currency, total)}</span>
         </div>
       )}
 
       {months > 0 && plan && (
         <div className="mt-1 flex items-center justify-between gap-4 text-xs text-white/35">
-          <span>Duration</span>
+          <span>{t("plan.duration")}</span>
           <span>
-            {months} month{months !== 1 ? "s" : ""}
+            {months}{" "}
+            {months === 1
+              ? t("plan.durationUnitSingular")
+              : t("plan.durationUnitPlural")}
           </span>
         </div>
       )}
       {periodAmount !== null && freqLabel && (
         <div className="mt-3 border-t border-white/10 pt-3">
           <p className="mb-1.5 text-[10px] text-white/35 uppercase tracking-wider font-medium">
-            You pay ({freqLabel})
+            {locale.startsWith("de") ? "Sie zahlen" : "You pay"} ({freqLabel})
           </p>
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-xl font-bold text-white">
