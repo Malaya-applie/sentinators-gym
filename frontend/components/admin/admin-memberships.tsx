@@ -966,7 +966,7 @@ function RenewModal({
                       data-contract-section-title
                       className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
                     >
-                      2. Abonnement Auswahl
+                      2. Auswahl Mitgliedschaft
                     </div>
                     <div className="p-3">
                       <div className="grid grid-cols-2 gap-y-2 mb-3">
@@ -993,7 +993,7 @@ function RenewModal({
                           value={startDate ? formatDate(startDate) : "-"}
                         />
                         <ContractField
-                          label="Gultig bis"
+                          label="Gueltig bis"
                           value={endDate ? formatDate(endDate) : "-"}
                         />
                       </div>
@@ -1008,7 +1008,7 @@ function RenewModal({
                       data-contract-section-title
                       className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
                     >
-                      3. Preisubersicht
+                      3. Preisuebersicht
                     </div>
                     <div className="p-3 space-y-2 text-sm">
                       <div className="flex justify-between">
@@ -1060,8 +1060,10 @@ function RenewModal({
                               />
                               <span>
                                 {f === "YEARLY"
-                                  ? "Jahrlich (Vorauszahlung)"
-                                  : f.charAt(0) + f.slice(1).toLowerCase()}
+                                  ? "Jaehrlich (Vollstaendig)"
+                                  : f === "MONTHLY"
+                                    ? "Monatlich"
+                                    : "Vierteljaehrlich"}
                               </span>
                             </label>
                           ),
@@ -1071,7 +1073,7 @@ function RenewModal({
                         frequency !== "UPFRONT" && (
                           <div className="flex justify-between font-semibold pt-1 text-red-700">
                             <span>
-                              Fallig pro{" "}
+                              Faellig pro{" "}
                               {frequency === "MONTHLY" ? "Monat" : "Quartal"}
                             </span>
                             <span>
@@ -1117,7 +1119,7 @@ function RenewModal({
                       data-contract-section-title
                       className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
                     >
-                      5. Mitgliedschaftsbedingungen
+                      5. Vertragsbedingungen Mitgliedschaft
                     </div>
                     <div className="p-3">
                       {termsSections.map(({ title, content }) => (
@@ -1144,7 +1146,7 @@ function RenewModal({
                       data-contract-section-title
                       className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
                     >
-                      6. Studioordnung &amp; Gesundheitsverantwortung
+                      6. Hausordnung &amp; Eigenverantwortung im Gym
                     </div>
                     <div className="p-3">
                       {gymRulesSections.map(({ title, content }) => (
@@ -1184,7 +1186,7 @@ function RenewModal({
                             {new Date().toLocaleDateString()}
                           </p>
                           <p className="text-xs text-gray-400 mt-auto pt-3 border-t border-gray-300">
-                            Unterzeichnungsdatum
+                            Datum der Unterzeichnung
                           </p>
                         </div>
                       </div>
@@ -1210,7 +1212,7 @@ function RenewModal({
                               }}
                               className="flex items-center gap-1 text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors"
                             >
-                              <Eraser size={11} /> Re-sign
+                              <Eraser size={11} /> Neu unterschreiben
                             </button>
                           ) : (
                             <button
@@ -1218,7 +1220,7 @@ function RenewModal({
                               onClick={clearContractSig}
                               className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors"
                             >
-                              <Eraser size={11} /> Clear
+                              <Eraser size={11} /> Unterschrift loeschen
                             </button>
                           )}
                         </div>
@@ -1267,7 +1269,7 @@ function RenewModal({
                                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                                 </svg>
                                 <p className="text-[11px] text-gray-300 font-medium tracking-wide">
-                                  Draw your signature
+                                  Bitte Unterschrift zeichnen
                                 </p>
                               </div>
                             )}
@@ -1279,7 +1281,7 @@ function RenewModal({
                                   onClick={clearContractSig}
                                   className="pointer-events-auto px-2.5 py-1 rounded-md text-[11px] font-semibold text-gray-400 border border-gray-200 bg-white hover:bg-gray-50 hover:text-red-500 transition-colors"
                                 >
-                                  Clear
+                                  Unterschrift loeschen
                                 </button>
                                 <button
                                   type="button"
@@ -1293,7 +1295,7 @@ function RenewModal({
                             {/* Bottom hint when blank */}
                             {!canvasHasContent && (
                               <p className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-gray-300 pointer-events-none select-none">
-                                Sign above the line
+                                Ueber der Linie unterschreiben
                               </p>
                             )}
                           </div>
@@ -1302,13 +1304,13 @@ function RenewModal({
                       {/* Gym Signature */}
                       <div className="flex flex-col gap-2">
                         <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                          Unterschrift Studio
+                          Unterschrift Fitnessstudio
                         </span>
                         <div className="rounded-lg border-2 border-gray-200 bg-gray-50 min-h-[110px] flex items-center justify-center overflow-hidden p-2">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src="/gym_sign.jpeg"
-                            alt="Unterschrift Studio"
+                            alt="Unterschrift Fitnessstudio"
                             className="h-auto max-h-24 w-full object-contain"
                           />
                         </div>
@@ -1317,13 +1319,13 @@ function RenewModal({
 
                     <div className="flex flex-col gap-2 sm:max-w-xs">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                        Studio Stempel
+                        Stempel Fitnessstudio
                       </span>
                       <div className="rounded-lg border-2 border-gray-200 bg-gray-50 min-h-[110px] flex items-center justify-center overflow-hidden p-2">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src="/gym_stamp.jpeg"
-                          alt="Studio Stempel"
+                          alt="Stempel Fitnessstudio"
                           className="h-auto max-h-24 w-full object-contain"
                         />
                       </div>
@@ -1347,7 +1349,7 @@ function RenewModal({
                         }}
                         className="px-5 py-2.5 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                       >
-                        ← Zuruck
+                        ← Zurueck
                       </button>
                       <button
                         type="button"
