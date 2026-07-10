@@ -954,6 +954,11 @@ export function StepperRegistrationForm({
           contractNumber,
           customerNumber,
           guardianSignatureDataUrl: guardianSig || undefined,
+          ...(contractPdfBase64?.startsWith("data:application/pdf")
+            ? { contractPdfBase64 }
+            : contractPdfBase64
+              ? { contractImageBase64: contractPdfBase64 }
+              : {}),
         },
       }),
     );

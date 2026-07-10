@@ -1,5 +1,10 @@
 import PDFDocument from "pdfkit";
 
+export interface AgreementSection {
+  title: string;
+  content: string;
+}
+
 export interface AgreementPdfData {
   contractNumber: string;
   customerNumber: string;
@@ -26,13 +31,17 @@ export interface AgreementPdfData {
   guardianSignatureDataUrl?: string;
   isMinor: boolean;
   submittedAt: string;
+  membershipTermsSections?: AgreementSection[];
+  gymRulesSections?: AgreementSection[];
+  gymSignatureImagePath?: string;
+  gymStampImagePath?: string;
 }
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "-";
   const d = new Date(dateStr + "T00:00:00");
   if (Number.isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("en-GB", {
+  return d.toLocaleDateString("de-CH", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -196,7 +205,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_WHITE)
       .fontSize(10)
       .font("Helvetica-Bold")
-      .text("FITNESS MEMBERSHIP CONTRACT", 0, 16, {
+      .text("FITNESS-MITGLIEDSVERTRAG", 0, 16, {
         align: "center",
         width: PAGE_W,
         lineBreak: false,
@@ -207,7 +216,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor("#ffffff60")
       .fontSize(6.5)
       .font("Helvetica")
-      .text("MEMBERSHIP AGREEMENT", 0, 30, {
+      .text("MITGLIEDERVEREINBARUNG", 0, 30, {
         align: "center",
         width: PAGE_W,
         lineBreak: false,
@@ -217,9 +226,9 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     // Right: contract info
     const rightX = PAGE_W - MARGIN - 140;
     const contractLines = [
-      { label: "Contract No.:", value: data.contractNumber },
-      { label: "Customer No.:", value: data.customerNumber },
-      { label: "Date:", value: data.submittedAt },
+      { label: "Vertrags-Nr.:", value: data.contractNumber },
+      { label: "Kunden-Nr.:", value: data.customerNumber },
+      { label: "Datum:", value: formatDate(data.submittedAt) },
     ];
     contractLines.forEach((line, i) => {
       const ly = 10 + i * 14;
@@ -247,14 +256,14 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     const COL2_X = MARGIN + COL_W + COL_GAP;
 
     // --- Section 1: Member Details ---
-    let s1BodyY = sectionBox(COL1_X, curY, COL_W, "1. Member Details");
+    let s1BodyY = sectionBox(COL1_X, curY, COL_W, "1. Mitgliedsdaten");
     const s1Fields: [string, string][] = [
-      ["First Name / Surname", data.memberName || "-"],
-      ["Date of Birth", data.dateOfBirth ? formatDate(data.dateOfBirth) : "-"],
-      ["Address", data.address || "-"],
-      ["Telephone", data.phone || "-"],
+      ["Name", data.memberName || "-"],
+      ["Geburtsdatum", data.dateOfBirth ? formatDate(data.dateOfBirth) : "-"],
+      ["Adresse", data.address || "-"],
+      ["Telefon", data.phone || "-"],
       ["E-Mail", data.email || "-"],
-      ["Emergency Contact", data.emergencyContact || "-"],
+      ["Notfallkontakt", data.emergencyContact || "-"],
     ];
     let s1Y = s1BodyY;
     s1Fields.forEach(([lbl, val]) => {
@@ -263,7 +272,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     const s1Height = s1Y - curY;
 
     // --- Section 2: Subscription Selection ---
-    let s2BodyY = sectionBox(COL2_X, curY, COL_W, "2. Subscription Selection");
+    let s2BodyY = sectionBox(COL2_X, curY, COL_W, "2. Auswahl Mitgliedschaft");
     let s2Y = s2BodyY + 4;
 
     // Plan name
@@ -295,30 +304,33 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .stroke()
       .restore();
 
-    s2Y = fieldRow(COL2_X, s2Y, COL_W, "Duration", data.planDuration || "-");
+    s2Y = fieldRow(COL2_X, s2Y, COL_W, "Dauer", data.planDuration || "-");
     s2Y = fieldRow(
       COL2_X,
       s2Y,
       COL_W,
-      "Start Date",
+      "Startdatum",
       data.startDate ? formatDate(data.startDate) : "-",
     );
     s2Y = fieldRow(
       COL2_X,
       s2Y,
       COL_W,
-      "Valid Until",
+      "Gueltig bis",
       data.endDate ? formatDate(data.endDate) : "-",
     );
     s2Y = fieldRow(
       COL2_X,
       s2Y,
       COL_W,
-      "Payment Freq.",
+      "Zahlweise",
       data.paymentFrequency === "UPFRONT"
-        ? "Yearly (Upfront)"
-        : data.paymentFrequency.charAt(0) +
-            data.paymentFrequency.slice(1).toLowerCase(),
+        ? "Jaehrlich (Vorauszahlung)"
+        : data.paymentFrequency === "MONTHLY"
+          ? "Monatlich"
+          : data.paymentFrequency === "QUARTERLY"
+            ? "Vierteljaehrlich"
+            : data.paymentFrequency,
     );
 
     // Additional plans
@@ -328,7 +340,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
         .fillColor(C_ROW_LABEL)
         .fontSize(7)
         .font("Helvetica")
-        .text("Add-on Plans:", COL2_X + 6, s2Y + 2, { lineBreak: false })
+        .text("Zusatzplaene:", COL2_X + 6, s2Y + 2, { lineBreak: false })
         .restore();
       s2Y += 12;
       data.additionalPlans.forEach((ap) => {
@@ -359,14 +371,14 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     curY += row1Height + 8;
 
     // --- Section 3: Price Overview ---
-    let s3BodyY = sectionBox(COL1_X, curY, COL_W, "3. Price Overview");
+    let s3BodyY = sectionBox(COL1_X, curY, COL_W, "3. Preisuebersicht");
     let s3Y = s3BodyY;
 
     s3Y = fieldRow(
       COL1_X,
       s3Y,
       COL_W,
-      data.planName || "Plan",
+      data.planName || "Tarif",
       money(data.currency, data.planPrice),
       120,
     );
@@ -386,7 +398,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       COL1_X,
       s3Y,
       COL_W,
-      "Registration Fee (one-time)",
+      "Anmeldegebuehr (einmalig)",
       money(data.currency, data.registrationFee),
       120,
     );
@@ -396,7 +408,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
         COL1_X,
         s3Y,
         COL_W,
-        data.discountLabel || "Discount",
+        data.discountLabel || "Rabatt",
         `- ${money(data.currency, data.discountAmount)}`,
         120,
       );
@@ -409,15 +421,15 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     ) {
       const freqWord =
         data.paymentFrequency === "MONTHLY"
-          ? "month"
+          ? "Monat"
           : data.paymentFrequency === "QUARTERLY"
-            ? "quarter"
-            : "year";
+            ? "Quartal"
+            : "Jahr";
       s3Y = fieldRow(
         COL1_X,
         s3Y,
         COL_W,
-        `Due per ${freqWord}`,
+        `Faellig pro ${freqWord}`,
         money(data.currency, data.periodicAmount),
         120,
       );
@@ -439,7 +451,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_DARK)
       .fontSize(7.5)
       .font("Helvetica-Bold")
-      .text("Total", COL1_X + 6, s3Y + 2, { width: 120, lineBreak: false })
+      .text("Gesamt", COL1_X + 6, s3Y + 2, { width: 120, lineBreak: false })
       .restore();
     doc
       .save()
@@ -459,14 +471,14 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_ROW_LABEL)
       .fontSize(6.5)
       .font("Helvetica")
-      .text("Payment Method:", COL1_X + 6, s3Y, { lineBreak: false })
+      .text("Zahlungsmethode:", COL1_X + 6, s3Y, { lineBreak: false })
       .restore();
     s3Y += 10;
 
     const freqOptions = [
-      { key: "UPFRONT", label: "Yearly (Upfront)" },
-      { key: "MONTHLY", label: "Monthly" },
-      { key: "QUARTERLY", label: "Quarterly" },
+      { key: "UPFRONT", label: "Jaehrlich (Vollstaendig)" },
+      { key: "MONTHLY", label: "Monatlich" },
+      { key: "QUARTERLY", label: "Vierteljaehrlich" },
     ];
     let freqX = COL1_X + 6;
     freqOptions.forEach(({ key, label }) => {
@@ -501,28 +513,33 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     const s3Height = s3Y - curY;
 
     // --- Section 4: Membership Category ---
-    let s4BodyY = sectionBox(COL2_X, curY, COL_W, "4. Membership Category");
+    let s4BodyY = sectionBox(
+      COL2_X,
+      curY,
+      COL_W,
+      "4. Mitgliedschaftskategorie",
+    );
     let s4Y = s4BodyY + 4;
 
     // Show plan category (derived from planDuration if not provided directly)
     const categoryLabel = data.planDuration?.toLowerCase().includes("month")
-      ? "Flexible Monthly Membership"
+      ? "Flexible Monatsmitgliedschaft"
       : data.planDuration?.toLowerCase().includes("year")
-        ? "Annual Membership"
-        : data.planName || "Standard Membership";
+        ? "Jahresmitgliedschaft"
+        : data.planName || "Standardmitgliedschaft";
 
     // Simple display: show the main plan category
     const catOptions = [
-      { label: "Standard Membership", match: "standard" },
-      { label: "Flexible Monthly Membership", match: "month" },
-      { label: "Annual Membership", match: "year" },
-      { label: "Student Membership", match: "student" },
-      { label: "Senior Membership", match: "senior" },
+      { label: "Standardmitgliedschaft", match: "standard" },
+      { label: "Flexible Monatsmitgliedschaft", match: "month|monat" },
+      { label: "Jahresmitgliedschaft", match: "year|jahr" },
+      { label: "Studentenmitgliedschaft", match: "student" },
+      { label: "Seniorenmitgliedschaft", match: "senior" },
     ];
     catOptions.forEach(({ label, match }) => {
       const checked =
-        data.planDuration?.toLowerCase().includes(match) ||
-        data.planName?.toLowerCase().includes(match);
+        new RegExp(match, "i").test(data.planDuration || "") ||
+        new RegExp(match, "i").test(data.planName || "");
       doc
         .save()
         .rect(COL2_X + 6, s4Y, 7, 7)
@@ -557,10 +574,15 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
         .fillColor(C_RED)
         .fontSize(6.5)
         .font("Helvetica-Bold")
-        .text("* Minor — Guardian signature required", COL2_X + 6, s4Y, {
-          width: COL_W - 12,
-          lineBreak: false,
-        })
+        .text(
+          "* Minderjaehrig - Unterschrift des Erziehungsberechtigten erforderlich",
+          COL2_X + 6,
+          s4Y,
+          {
+            width: COL_W - 12,
+            lineBreak: false,
+          },
+        )
         .restore();
       s4Y += 10;
     }
@@ -571,7 +593,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     strokeRect(COL1_X, curY, COL_W, row2Height, C_BORDER, 0.5);
     strokeRect(COL2_X, curY, COL_W, row2Height, C_BORDER, 0.5);
 
-    // ── SECTION 5: Contract Conditions (full width) ──────────
+    // ── SECTION 5: Mitgliedschaftsbedingungen (full width) ───
     curY += row2Height + 8;
 
     // If not enough space, add new page
@@ -584,40 +606,48 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       MARGIN,
       curY,
       CONTENT_W,
-      "5. Contract Conditions",
+      "5. Vertragsbedingungen Mitgliedschaft",
     );
     let condY = condBodyY + 2;
 
-    const conditions = [
+    const fallbackConditions = [
       {
-        title: "Term",
-        text: "The selected membership begins on the start date and runs for the agreed term. An automatic extension occurs only if no timely cancellation is made.",
+        title: "Laufzeit",
+        text: "Die ausgewaehlte Mitgliedschaft beginnt am Startdatum und gilt fuer die vereinbarte Laufzeit. Eine automatische Verlaengerung erfolgt nur bei fehlender fristgerechter Kuendigung.",
       },
       {
-        title: "Notice Period",
-        text: "Cancellation must be declared in writing and must be received at least 4 weeks before the end of the respective term.",
+        title: "Kuendigungsfrist",
+        text: "Eine Kuendigung muss schriftlich erfolgen und spaetestens 4 Wochen vor Ablauf der jeweiligen Laufzeit beim Studio eingehen.",
       },
       {
-        title: "Payment Obligation",
-        text: "The membership fee is to be paid in advance according to the chosen payment method and due date. In case of late payment, we reserve the right to charge reminder fees and suspend the membership.",
+        title: "Zahlungsverpflichtung",
+        text: "Der Mitgliedsbeitrag ist gemaess der gewaehlten Zahlungsweise im Voraus faellig. Bei Zahlungsverzug behalten wir uns Mahngebuehren und eine Sperrung der Mitgliedschaft vor.",
       },
       {
-        title: "House Rules",
-        text: "The membership is subject to the house rules of the gym. These are posted in the studio and can be viewed on our website. With your signature, you acknowledge these rules.",
+        title: "Hausordnung",
+        text: "Die Mitgliedschaft unterliegt der Hausordnung des Studios. Diese haengt im Studio aus und ist auf der Website einsehbar. Mit Ihrer Unterschrift erkennen Sie diese an.",
       },
       {
-        title: "Liability",
-        text: "The gym is not liable for items brought in. Use of the equipment is at your own risk. Parents are liable for their children.",
+        title: "Haftung",
+        text: "Das Studio haftet nicht fuer eingebrachte Gegenstaende. Die Nutzung der Geraete erfolgt auf eigene Gefahr. Fuer Minderjaehrige haften die Erziehungsberechtigten.",
       },
       {
-        title: "Data Protection",
-        text: "Your data will be used exclusively for contract processing and member support. Further information can be found in our privacy policy.",
+        title: "Datenschutz",
+        text: "Ihre Daten werden ausschliesslich zur Vertragsabwicklung und Mitgliederbetreuung verwendet. Weitere Informationen finden Sie in unserer Datenschutzerklaerung.",
       },
       {
-        title: "Health Responsibility",
-        text: "With your signature, you confirm that you are healthy enough to participate in training. In case of doubt, we recommend a medical clarification.",
+        title: "Gesundheitsverantwortung",
+        text: "Mit Ihrer Unterschrift bestaetigen Sie, dass Sie gesundheitlich in der Lage sind zu trainieren. Bei Unsicherheiten empfehlen wir eine aerztliche Abklaerung.",
       },
     ];
+
+    const conditions =
+      data.membershipTermsSections && data.membershipTermsSections.length > 0
+        ? data.membershipTermsSections.map((s) => ({
+            title: s.title,
+            text: s.content,
+          }))
+        : fallbackConditions;
 
     conditions.forEach(({ title, text }, idx) => {
       // Check if there's space; if not, start a new page and draw a continuation header
@@ -630,7 +660,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
           MARGIN,
           curY,
           CONTENT_W,
-          "5. Contract Conditions (continued)",
+          "5. Vertragsbedingungen Mitgliedschaft (Fortsetzung)",
         );
         condY = newBodyY + 2;
       }
@@ -676,16 +706,106 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
     strokeRect(MARGIN, curY, CONTENT_W, condY - curY, C_BORDER, 0.5);
     curY = condY + 8;
 
-    // ── SECTION 6: Signatures (full width) ───────────────────
+    // ── SECTION 6: Studioordnung & Gesundheitsverantwortung ──
+    if (curY > PAGE_H - 120) {
+      doc.addPage();
+      curY = MARGIN;
+    }
+
+    const rulesBodyY = sectionBox(
+      MARGIN,
+      curY,
+      CONTENT_W,
+      "6. Hausordnung & Eigenverantwortung im Gym",
+    );
+    let rulesY = rulesBodyY + 2;
+
+    const fallbackRules = [
+      {
+        title: "Allgemeines Verhalten",
+        text: "Alle Mitglieder behandeln Mitarbeitende, andere Mitglieder und Geraete jederzeit respektvoll.",
+      },
+      {
+        title: "Gesundheitsverantwortung",
+        text: "Mitglieder sind waehrend der Nutzung des Studios selbst fuer Gesundheit und Sicherheit verantwortlich.",
+      },
+      {
+        title: "Haftungsausschluss",
+        text: "Das Studio und seine Mitarbeitenden haften nicht fuer Verletzungen, Erkrankungen, Unfaelle oder den Verlust persoenlicher Gegenstaende.",
+      },
+    ];
+
+    const rules =
+      data.gymRulesSections && data.gymRulesSections.length > 0
+        ? data.gymRulesSections.map((s) => ({
+            title: s.title,
+            text: s.content,
+          }))
+        : fallbackRules;
+
+    rules.forEach(({ title, text }, idx) => {
+      if (rulesY > PAGE_H - 60) {
+        strokeRect(MARGIN, curY, CONTENT_W, rulesY - curY, C_BORDER, 0.5);
+        doc.addPage();
+        curY = MARGIN;
+        const newBodyY = sectionBox(
+          MARGIN,
+          curY,
+          CONTENT_W,
+          "6. Hausordnung & Eigenverantwortung im Gym (Fortsetzung)",
+        );
+        rulesY = newBodyY + 2;
+      }
+
+      doc
+        .save()
+        .fillColor(C_DARK)
+        .fontSize(7.5)
+        .font("Helvetica-Bold")
+        .text(title, MARGIN + 6, rulesY + 2, {
+          width: CONTENT_W - 12,
+          lineBreak: false,
+        })
+        .restore();
+      rulesY += 12;
+
+      const textH = doc.heightOfString(text, { width: CONTENT_W - 20 });
+      doc
+        .save()
+        .fillColor(C_GRAY)
+        .fontSize(7)
+        .font("Helvetica")
+        .text(text, MARGIN + 10, rulesY, { width: CONTENT_W - 20 })
+        .restore();
+      rulesY += textH + 6;
+
+      if (idx < rules.length - 1) {
+        doc
+          .save()
+          .moveTo(MARGIN + 4, rulesY)
+          .lineTo(MARGIN + CONTENT_W - 4, rulesY)
+          .lineWidth(0.3)
+          .strokeColor("#e5e7eb")
+          .stroke()
+          .restore();
+        rulesY += 3;
+      }
+    });
+
+    rulesY += 4;
+    strokeRect(MARGIN, curY, CONTENT_W, rulesY - curY, C_BORDER, 0.5);
+    curY = rulesY + 8;
+
+    // ── SECTION 7: Unterschriften (full width) ───────────────
     if (curY > PAGE_H - 140) {
       doc.addPage();
       curY = MARGIN;
     }
 
-    const sigBodyY = sectionBox(MARGIN, curY, CONTENT_W, "6. Signatures");
+    const sigBodyY = sectionBox(MARGIN, curY, CONTENT_W, "7. Unterschriften");
     let sigY = sigBodyY + 8;
 
-    // Three equal columns: Place/Date | Member Sig | Gym Sig
+    // Three equal columns: Ort/Datum | Mitglied | Studio
     const SIG_COL_W = (CONTENT_W - COL_GAP * 2) / 3;
     const SIG_H = 70;
 
@@ -701,7 +821,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_GRAY)
       .fontSize(6.5)
       .font("Helvetica-Bold")
-      .text("PLACE / DATE", sigCol1 + 4, labelY, {
+      .text("ORT / DATUM", sigCol1 + 4, labelY, {
         width: SIG_COL_W,
         lineBreak: false,
       })
@@ -711,7 +831,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_GRAY)
       .fontSize(6.5)
       .font("Helvetica-Bold")
-      .text("MEMBER SIGNATURE", sigCol2 + 4, labelY, {
+      .text("UNTERSCHRIFT MITGLIED", sigCol2 + 4, labelY, {
         width: SIG_COL_W,
         lineBreak: false,
       })
@@ -721,7 +841,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_GRAY)
       .fontSize(6.5)
       .font("Helvetica-Bold")
-      .text("GYM SIGNATURE", sigCol3 + 4, labelY, {
+      .text("UNTERSCHRIFT FITNESSSTUDIO", sigCol3 + 4, labelY, {
         width: SIG_COL_W,
         lineBreak: false,
       })
@@ -739,7 +859,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_DARK)
       .fontSize(9)
       .font("Helvetica-Bold")
-      .text(data.submittedAt, sigCol1 + 6, sigY + 10, {
+      .text(formatDate(data.submittedAt), sigCol1 + 6, sigY + 10, {
         width: SIG_COL_W - 12,
         lineBreak: false,
       })
@@ -757,7 +877,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_GRAY)
       .fontSize(6)
       .font("Helvetica")
-      .text("Date of signing", sigCol1 + 6, sigY + SIG_H - 9, {
+      .text("Unterschriftsdatum", sigCol1 + 6, sigY + SIG_H - 9, {
         width: SIG_COL_W - 12,
         lineBreak: false,
       })
@@ -784,11 +904,16 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
           .fillColor(C_GRAY)
           .fontSize(6.5)
           .font("Helvetica")
-          .text("[Signed electronically]", sigCol2 + 6, sigY + SIG_H / 2 - 5, {
-            width: SIG_COL_W - 12,
-            align: "center",
-            lineBreak: false,
-          })
+          .text(
+            "[Elektronisch unterschrieben]",
+            sigCol2 + 6,
+            sigY + SIG_H / 2 - 5,
+            {
+              width: SIG_COL_W - 12,
+              align: "center",
+              lineBreak: false,
+            },
+          )
           .restore();
       }
     }
@@ -805,25 +930,98 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fillColor(C_GRAY)
       .fontSize(6)
       .font("Helvetica")
-      .text(data.memberName + " — Member", sigCol2 + 6, sigY + SIG_H - 9, {
+      .text(data.memberName + " - Mitglied", sigCol2 + 6, sigY + SIG_H - 9, {
         width: SIG_COL_W - 12,
         lineBreak: false,
       })
       .restore();
 
-    // Col 3: gym stamp placeholder
+    // Col 3: gym signature image or placeholder
+    if (data.gymSignatureImagePath) {
+      try {
+        doc.image(data.gymSignatureImagePath, sigCol3 + 6, sigY + 6, {
+          width: SIG_COL_W - 12,
+          height: SIG_H - 20,
+        });
+      } catch {
+        doc
+          .save()
+          .fillColor(C_GRAY)
+          .fontSize(7)
+          .font("Helvetica")
+          .text(
+            "Wird vom Fitnessstudio unterschrieben",
+            sigCol3 + 6,
+            sigY + SIG_H / 2 - 5,
+            {
+              width: SIG_COL_W - 12,
+              align: "center",
+            },
+          )
+          .restore();
+      }
+    } else {
+      doc
+        .save()
+        .fillColor(C_GRAY)
+        .fontSize(7)
+        .font("Helvetica")
+        .text(
+          "Wird vom Fitnessstudio unterschrieben",
+          sigCol3 + 6,
+          sigY + SIG_H / 2 - 5,
+          {
+            width: SIG_COL_W - 12,
+            align: "center",
+          },
+        )
+        .restore();
+    }
+
+    sigY += SIG_H + 6;
+
+    // Gym stamp row
     doc
       .save()
       .fillColor(C_GRAY)
-      .fontSize(7)
-      .font("Helvetica")
-      .text("To be signed by gym staff", sigCol3 + 6, sigY + SIG_H / 2 - 5, {
-        width: SIG_COL_W - 12,
-        align: "center",
+      .fontSize(6.5)
+      .font("Helvetica-Bold")
+      .text("STEMPEL FITNESSSTUDIO", MARGIN + 4, sigY, {
+        width: CONTENT_W,
+        lineBreak: false,
       })
       .restore();
+    sigY += 10;
 
-    sigY += SIG_H + 6;
+    const stampW = Math.min(180, CONTENT_W);
+    const stampH = 70;
+    strokeRect(MARGIN, sigY, stampW, stampH, C_BORDER, 0.5);
+    if (data.gymStampImagePath) {
+      try {
+        doc.image(data.gymStampImagePath, MARGIN + 6, sigY + 6, {
+          width: stampW - 12,
+          height: stampH - 12,
+        });
+      } catch {
+        doc
+          .save()
+          .fillColor(C_GRAY)
+          .fontSize(6.5)
+          .font("Helvetica")
+          .text(
+            "Offizieller Fitnessstudio-Stempel",
+            MARGIN + 6,
+            sigY + stampH / 2 - 4,
+            {
+              width: stampW - 12,
+              align: "center",
+              lineBreak: false,
+            },
+          )
+          .restore();
+      }
+    }
+    sigY += stampH + 6;
 
     // Guardian signature (for minors)
     if (data.isMinor && data.guardianSignatureDataUrl) {
@@ -833,7 +1031,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
         .fillColor(C_GRAY)
         .fontSize(6.5)
         .font("Helvetica-Bold")
-        .text("GUARDIAN / PARENT SIGNATURE", MARGIN + 4, sigY, {
+        .text("UNTERSCHRIFT ERZIEHUNGSBERECHTIGTE", MARGIN + 4, sigY, {
           lineBreak: false,
         })
         .restore();
@@ -858,7 +1056,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
           .fontSize(6.5)
           .font("Helvetica")
           .text(
-            "[Guardian signed electronically]",
+            "[Elektronisch von Erziehungsberechtigten unterschrieben]",
             MARGIN + 6,
             sigY + SIG_H / 2 - 5,
             {
@@ -883,9 +1081,14 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
         .fillColor(C_GRAY)
         .fontSize(6)
         .font("Helvetica")
-        .text("Guardian / Parent Signature", MARGIN + 6, sigY + SIG_H - 9, {
-          lineBreak: false,
-        })
+        .text(
+          "Unterschrift Erziehungsberechtigte",
+          MARGIN + 6,
+          sigY + SIG_H - 9,
+          {
+            lineBreak: false,
+          },
+        )
         .restore();
 
       sigY += SIG_H + 6;
@@ -906,7 +1109,7 @@ export function generateAgreementPdf(data: AgreementPdfData): Promise<Buffer> {
       .fontSize(6.5)
       .font("Helvetica")
       .text(
-        "This document is generated electronically and constitutes a binding membership agreement. Please retain this copy for your records.",
+        "Dieses Dokument wurde elektronisch erstellt und stellt eine verbindliche Mitgliedsvereinbarung dar. Bitte bewahren Sie diese Kopie fuer Ihre Unterlagen auf.",
         MARGIN,
         curY,
         { align: "center", width: CONTENT_W },

@@ -1,9 +1,14 @@
 import { Router, Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, AuthRequest } from "../middleware/auth";
-import { generateAgreementPdf } from "../lib/generateAgreementPdf";
+import {
+  generateAgreementPdf,
+  AgreementPdfData,
+} from "../lib/generateAgreementPdf";
 import {
   normalizeEquipmentFeatureItems,
   parseEquipmentFeatureItems,
@@ -36,6 +41,167 @@ function parseFeatures(features: string | string[]): string[] {
       .map((f) => f.trim())
       .filter(Boolean);
   return [];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function parseNumberish(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+type AgreementSection = { title: string; content: string };
+
+function parseAgreementSections(
+  raw: unknown,
+  fallback: AgreementSection[],
+): AgreementSection[] {
+  if (typeof raw !== "string" || raw.trim().length === 0) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return fallback;
+    return parsed
+      .filter(
+        (s): s is AgreementSection =>
+          s &&
+          typeof s === "object" &&
+          typeof (s as Record<string, unknown>).title === "string" &&
+          typeof (s as Record<string, unknown>).content === "string",
+      )
+      .map((s) => ({ title: s.title, content: s.content }));
+  } catch {
+    return fallback;
+  }
+}
+
+function resolveFrontendPublicAsset(fileName: string): string | undefined {
+  const candidates = [
+    path.resolve(process.cwd(), "../frontend/public", fileName),
+    path.resolve(process.cwd(), "frontend/public", fileName),
+    path.resolve(__dirname, "../../../frontend/public", fileName),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return undefined;
+}
+
+function resolveContractAddress(
+  registrationDetails: Record<string, unknown>,
+  fallbackAddress: string | null | undefined,
+): string {
+  const directAddress =
+    typeof registrationDetails.address === "string"
+      ? registrationDetails.address.trim()
+      : "";
+  if (directAddress) return directAddress;
+
+  const street =
+    typeof registrationDetails.street === "string"
+      ? registrationDetails.street.trim()
+      : "";
+  const postalCode =
+    typeof registrationDetails.postalCode === "string"
+      ? registrationDetails.postalCode.trim()
+      : "";
+  const location =
+    typeof registrationDetails.location === "string"
+      ? registrationDetails.location.trim()
+      : "";
+
+  const composed = [street, [postalCode, location].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ")
+    .trim();
+  if (composed) return composed;
+
+  return (fallbackAddress ?? "").trim();
+}
+
+async function buildPdfBufferFromStoredContract(
+  registrationDetails: Record<string, unknown>,
+): Promise<Buffer | null> {
+  const contractPdfBase64 = registrationDetails.contractPdfBase64;
+  if (
+    typeof contractPdfBase64 === "string" &&
+    contractPdfBase64.trim().length > 0
+  ) {
+    const base64Data = contractPdfBase64.replace(
+      /^data:application\/pdf;base64,/,
+      "",
+    );
+    const buffer = Buffer.from(base64Data, "base64");
+    if (buffer.length > 0) return buffer;
+  }
+
+  const contractImageBase64 = registrationDetails.contractImageBase64;
+  if (
+    typeof contractImageBase64 === "string" &&
+    contractImageBase64.trim().length > 0
+  ) {
+    const base64Data = contractImageBase64.replace(
+      /^data:image\/(?:jpeg|jpg);base64,/,
+      "",
+    );
+    const imgBuffer = Buffer.from(base64Data, "base64");
+    if (imgBuffer.length === 0) return null;
+
+    const getJpegDims = (buf: Buffer): { w: number; h: number } => {
+      let i = 2;
+      while (i < buf.length - 8) {
+        if (buf[i] !== 0xff) break;
+        const marker = buf[i + 1];
+        if (marker === 0xc0 || marker === 0xc2) {
+          return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+        }
+        i += 2 + buf.readUInt16BE(i + 2);
+      }
+      return { w: 1240, h: 1754 };
+    };
+
+    const { w: imgW, h: imgH } = getJpegDims(imgBuffer);
+
+    return await new Promise<Buffer>((resolve, reject) => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const PDFDocument = require("pdfkit") as typeof import("pdfkit");
+      const pageW = 595.28;
+      const pageH = 841.89;
+      const doc = new PDFDocument({ autoFirstPage: false, margin: 0 });
+      const chunks: Buffer[] = [];
+      doc.on("data", (c: Buffer) => chunks.push(c));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      const scaledFullH = (imgH / imgW) * pageW;
+      if (scaledFullH <= pageH) {
+        doc.addPage({ size: [pageW, pageH] });
+        doc.image(imgBuffer, 0, 0, { width: pageW });
+      } else {
+        const pxPerPage = (pageH / pageW) * imgW;
+        let yPx = 0;
+        while (yPx < imgH) {
+          doc.addPage({ size: [pageW, pageH] });
+          const yPt = -(yPx / imgW) * pageW;
+          doc.image(imgBuffer, 0, yPt, { width: pageW });
+          yPx += pxPerPage;
+        }
+      }
+      doc.end();
+    });
+  }
+
+  return null;
 }
 
 // GET /api/admin/content/membership-plans
@@ -510,12 +676,16 @@ router.get(
         });
       }
 
-      const enriched = purchases.map((p) => ({
-        ...p,
-        additionalPlans: p.additionalPlanIds
-          .map((id) => additionalPlansMap[id])
-          .filter(Boolean),
-      }));
+      const enriched = purchases.map((p) => {
+        const details = asRecord(p.registrationDetails);
+        return {
+          ...p,
+          address: resolveContractAddress(details, p.address),
+          additionalPlans: p.additionalPlanIds
+            .map((id) => additionalPlansMap[id])
+            .filter(Boolean),
+        };
+      });
 
       res.json({ purchases: enriched });
     } catch (err) {
@@ -707,6 +877,174 @@ router.post(
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to renew membership" });
+    }
+  },
+);
+
+// ─── GET /api/admin/memberships/:id/contract/download ─────────────
+router.get(
+  "/memberships/:id/contract/download",
+  requireAdmin,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const membershipId = Number(req.params.id);
+      if (isNaN(membershipId)) {
+        res.status(400).json({ error: "Invalid membership id" });
+        return;
+      }
+
+      const membership = await prisma.membershipPurchase.findUnique({
+        where: { id: membershipId },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              dateOfBirth: true,
+            },
+          },
+          plan: true,
+        },
+      });
+
+      if (!membership) {
+        res.status(404).json({ error: "Membership not found" });
+        return;
+      }
+
+      const registrationDetails = asRecord(membership.registrationDetails);
+      const contractNumberFromDetails =
+        typeof registrationDetails.contractNumber === "string" &&
+        registrationDetails.contractNumber.trim().length > 0
+          ? registrationDetails.contractNumber.trim()
+          : null;
+
+      const storedPdf =
+        await buildPdfBufferFromStoredContract(registrationDetails);
+      if (storedPdf) {
+        const filename = contractNumberFromDetails
+          ? `contract-${contractNumberFromDetails}.pdf`
+          : `contract-membership-${membershipId}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+        res.send(storedPdf);
+        return;
+      }
+
+      const additionalPlanIds = membership.additionalPlanIds
+        .map((id) => Number(id))
+        .filter(Boolean);
+      const additionalPlans =
+        additionalPlanIds.length > 0
+          ? await prisma.membershipPlan.findMany({
+              where: { id: { in: additionalPlanIds } },
+              select: { name: true, duration: true, price: true },
+            })
+          : [];
+
+      const contractNumber =
+        contractNumberFromDetails ??
+        `CNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const customerNumber =
+        typeof registrationDetails.customerNumber === "string" &&
+        registrationDetails.customerNumber.trim().length > 0
+          ? registrationDetails.customerNumber.trim()
+          : `CUS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      const periodicAmount = parseNumberish(registrationDetails.periodicAmount);
+      const isMinor = registrationDetails.isMinor === true;
+      const guardianSignatureDataUrl =
+        typeof registrationDetails.guardianSignatureDataUrl === "string"
+          ? registrationDetails.guardianSignatureDataUrl
+          : undefined;
+      const [membershipTermsRow, gymRulesRow] = await Promise.all([
+        prisma.siteContent.findUnique({
+          where: { key: "membership_terms_sections" },
+          select: { value: true },
+        }),
+        prisma.siteContent.findUnique({
+          where: { key: "gym_rules_sections" },
+          select: { value: true },
+        }),
+      ]);
+
+      const membershipTermsSections = parseAgreementSections(
+        registrationDetails.membership_terms_sections,
+        parseAgreementSections(membershipTermsRow?.value, []),
+      );
+      const gymRulesSections = parseAgreementSections(
+        registrationDetails.gym_rules_sections,
+        parseAgreementSections(gymRulesRow?.value, []),
+      );
+      const gymSignatureImagePath = resolveFrontendPublicAsset("gym_sign.jpeg");
+      const gymStampImagePath = resolveFrontendPublicAsset("gym_stamp.jpeg");
+
+      const pdfData: AgreementPdfData = {
+        contractNumber,
+        customerNumber,
+        memberName:
+          `${membership.user.firstName} ${membership.user.lastName}`.trim(),
+        email: membership.user.email || "",
+        phone: membership.user.phone || "",
+        dateOfBirth: membership.user.dateOfBirth
+          ? membership.user.dateOfBirth.toISOString().split("T")[0]
+          : "",
+        address: resolveContractAddress(
+          registrationDetails,
+          membership.address,
+        ),
+        emergencyContact: membership.emergencyContact ?? "",
+        planName: membership.plan.name,
+        planDuration: membership.plan.duration,
+        planPrice: membership.plan.price,
+        currency: membership.plan.currency,
+        additionalPlans: additionalPlans.map((p) => ({
+          name: p.name,
+          duration: p.duration,
+          price: p.price,
+        })),
+        registrationFee: membership.registrationFee ?? 0,
+        discountAmount: parseNumberish(registrationDetails.discountAmount) ?? 0,
+        discountLabel:
+          typeof registrationDetails.discountLabel === "string"
+            ? registrationDetails.discountLabel
+            : "Rabatt",
+        total: membership.totalAmount ?? 0,
+        startDate: membership.startDate
+          ? new Date(membership.startDate).toISOString().split("T")[0]
+          : "",
+        endDate: membership.endDate
+          ? new Date(membership.endDate).toISOString().split("T")[0]
+          : "",
+        paymentFrequency: membership.paymentFrequency ?? "UPFRONT",
+        periodicAmount,
+        signatureDataUrl: membership.signatureDataUrl || "",
+        guardianSignatureDataUrl,
+        isMinor,
+        submittedAt: membership.createdAt
+          ? new Date(membership.createdAt).toISOString()
+          : new Date().toISOString(),
+        membershipTermsSections,
+        gymRulesSections,
+        gymSignatureImagePath,
+        gymStampImagePath,
+      };
+
+      const pdfBuffer = await generateAgreementPdf(pdfData);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="contract-${contractNumber}.pdf"`,
+      );
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to generate contract" });
     }
   },
 );
@@ -1967,7 +2305,14 @@ router.get(
         return;
       }
 
-      const latestMembership = memberships[0];
+      const latestMembership =
+        memberships.find((m) => {
+          const details = asRecord(m.registrationDetails);
+          return (
+            typeof details.contractPdfBase64 === "string" ||
+            typeof details.contractImageBase64 === "string"
+          );
+        }) ?? memberships[0];
 
       // Fetch additional plans for this membership
       const additionalPlanIds = latestMembership.additionalPlanIds
@@ -2000,18 +2345,40 @@ router.get(
         );
       }
 
-      // Prepare data for PDF generation
-      const registrationDetails =
-        (latestMembership.registrationDetails as {
-          contractNumber?: string;
-          customerNumber?: string;
-        }) || {};
+      // Prefer the exact PDF captured from the stepper contract page when available.
+      const registrationDetails = asRecord(
+        latestMembership.registrationDetails,
+      );
+      const contractNumberFromDetails =
+        typeof registrationDetails.contractNumber === "string" &&
+        registrationDetails.contractNumber.trim().length > 0
+          ? registrationDetails.contractNumber.trim()
+          : null;
+
+      const storedPdf =
+        await buildPdfBufferFromStoredContract(registrationDetails);
+      if (storedPdf) {
+        const filename = contractNumberFromDetails
+          ? `contract-${contractNumberFromDetails}.pdf`
+          : `contract-${userId}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+        res.send(storedPdf);
+        return;
+      }
+
+      // Fallback for older records that don't have a captured contract PDF.
       const contractNumber =
-        registrationDetails.contractNumber ??
+        contractNumberFromDetails ??
         `CNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       const customerNumber =
-        registrationDetails.customerNumber ??
-        `CUS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        typeof registrationDetails.customerNumber === "string" &&
+        registrationDetails.customerNumber.trim().length > 0
+          ? registrationDetails.customerNumber.trim()
+          : `CUS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const memberName = `${user.firstName} ${user.lastName}`.trim();
       const email = user.email || "";
@@ -2019,17 +2386,23 @@ router.get(
       const dateOfBirth = user.dateOfBirth
         ? user.dateOfBirth.toISOString().split("T")[0]
         : "";
-      // Address and emergencyContact are stored in the membership
-      const address = latestMembership.address ?? "";
+      // Resolve address exactly like stepper contract display: direct address first, then street+postal/location
+      const address = resolveContractAddress(
+        registrationDetails,
+        latestMembership.address,
+      );
       const emergencyContact = latestMembership.emergencyContact ?? "";
       const planName = latestMembership.plan.name;
       const planDuration = latestMembership.plan.duration;
       const planPrice = latestMembership.plan.price;
       const currency = latestMembership.plan.currency;
       const registrationFee = latestMembership.registrationFee ?? 0;
-      // discountAmount and discountLabel are not stored; we can set to 0 and empty string
-      const discountAmount = 0;
-      const discountLabel = "";
+      const discountAmount =
+        parseNumberish(registrationDetails.discountAmount) ?? 0;
+      const discountLabel =
+        typeof registrationDetails.discountLabel === "string"
+          ? registrationDetails.discountLabel
+          : "Rabatt";
       const total = latestMembership.totalAmount ?? 0;
       const startDate = latestMembership.startDate
         ? new Date(latestMembership.startDate).toISOString().split("T")[0]
@@ -2038,16 +2411,39 @@ router.get(
         ? new Date(latestMembership.endDate).toISOString().split("T")[0]
         : "";
       const paymentFrequency = latestMembership.paymentFrequency ?? "MONTHLY";
-      // periodicAmount is not stored; we can calculate from total and paymentFrequency? Not needed for now, set to null
-      const periodicAmount = null;
+      const periodicAmount = parseNumberish(registrationDetails.periodicAmount);
       const signatureDataUrl = latestMembership.signatureDataUrl ?? "";
-      const isMinor = false; // we don't have this field, assume false
-      const guardianSignatureDataUrl = undefined;
+      const isMinor = registrationDetails.isMinor === true;
+      const guardianSignatureDataUrl =
+        typeof registrationDetails.guardianSignatureDataUrl === "string"
+          ? registrationDetails.guardianSignatureDataUrl
+          : undefined;
       const submittedAt = latestMembership.createdAt
         ? new Date(latestMembership.createdAt).toISOString()
         : new Date().toISOString();
+      const [membershipTermsRow, gymRulesRow] = await Promise.all([
+        prisma.siteContent.findUnique({
+          where: { key: "membership_terms_sections" },
+          select: { value: true },
+        }),
+        prisma.siteContent.findUnique({
+          where: { key: "gym_rules_sections" },
+          select: { value: true },
+        }),
+      ]);
 
-      const pdfData = {
+      const membershipTermsSections = parseAgreementSections(
+        registrationDetails.membership_terms_sections,
+        parseAgreementSections(membershipTermsRow?.value, []),
+      );
+      const gymRulesSections = parseAgreementSections(
+        registrationDetails.gym_rules_sections,
+        parseAgreementSections(gymRulesRow?.value, []),
+      );
+      const gymSignatureImagePath = resolveFrontendPublicAsset("gym_sign.jpeg");
+      const gymStampImagePath = resolveFrontendPublicAsset("gym_stamp.jpeg");
+
+      const pdfData: AgreementPdfData = {
         contractNumber,
         customerNumber,
         memberName,
@@ -2073,6 +2469,10 @@ router.get(
         guardianSignatureDataUrl,
         isMinor,
         submittedAt,
+        membershipTermsSections,
+        gymRulesSections,
+        gymSignatureImagePath,
+        gymStampImagePath,
       };
 
       const pdfBuffer = await generateAgreementPdf(pdfData);

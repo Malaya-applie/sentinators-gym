@@ -167,6 +167,32 @@ function parseSections(
   return fallback;
 }
 
+function getResolvedMembershipAddress(membership: AdminMembership): string {
+  const details =
+    membership.registrationDetails &&
+    typeof membership.registrationDetails === "object"
+      ? (membership.registrationDetails as Record<string, unknown>)
+      : {};
+
+  const directAddress =
+    typeof details.address === "string" ? details.address.trim() : "";
+  if (directAddress) return directAddress;
+
+  const street =
+    typeof details.street === "string" ? details.street.trim() : "";
+  const postalCode =
+    typeof details.postalCode === "string" ? details.postalCode.trim() : "";
+  const location =
+    typeof details.location === "string" ? details.location.trim() : "";
+  const composed = [street, [postalCode, location].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ")
+    .trim();
+  if (composed) return composed;
+
+  return (membership.address || "").trim();
+}
+
 const DEFAULT_MEMBERSHIP_TERMS: TermsSection[] = [
   {
     title: "1. Membership Agreement",
@@ -316,6 +342,7 @@ function RenewModal({
   );
 
   // Contract signature canvas (dark ink on white — matches web contract page)
+  const contractDocRef = useRef<HTMLDivElement | null>(null);
   const contractCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const contractDrawingRef = useRef(false);
   const contractLastPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -636,6 +663,147 @@ function RenewModal({
       return;
     }
     setError("");
+
+    let contractPdfBase64: string | undefined;
+    try {
+      if (contractDocRef.current) {
+        const { default: html2canvas } = await import("html2canvas");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const jsPDFModule = (await import("jspdf")) as any;
+        const jsPDF = jsPDFModule.jsPDF ?? jsPDFModule.default;
+
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = 1;
+        tempCanvas.height = 1;
+        const colorCtx = tempCanvas.getContext("2d");
+        function toSafeColor(val: string): string {
+          if (!colorCtx) return "#000000";
+          colorCtx.clearRect(0, 0, 1, 1);
+          try {
+            colorCtx.fillStyle = val;
+            return colorCtx.fillStyle;
+          } catch {
+            return "#000000";
+          }
+        }
+
+        const el = contractDocRef.current;
+        const fullWidth = el.scrollWidth;
+        const fullHeight = el.scrollHeight;
+
+        const fullCanvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: fullWidth,
+          height: fullHeight,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: fullWidth,
+          windowHeight: fullHeight,
+          onclone: (_clonedDoc, clonedEl) => {
+            clonedEl
+              .querySelectorAll<HTMLElement>("[data-pdf-exclude]")
+              .forEach((node) => (node.style.display = "none"));
+            clonedEl.style.overflow = "visible";
+            clonedEl.style.height = "auto";
+
+            // Enforce stepper palette in PDF output to avoid browser/theme color shifts.
+            clonedEl
+              .querySelectorAll<HTMLElement>("[data-contract-main-header]")
+              .forEach((node) => {
+                node.style.backgroundColor = "#100a0a";
+                node.style.color = "#ffffff";
+              });
+            clonedEl
+              .querySelectorAll<HTMLElement>("[data-contract-section-title]")
+              .forEach((node) => {
+                node.style.backgroundColor = "#1a0a0a";
+                node.style.color = "#ffffff";
+              });
+            const colorProps = [
+              "color",
+              "background-color",
+              "border-top-color",
+              "border-right-color",
+              "border-bottom-color",
+              "border-left-color",
+              "outline-color",
+            ];
+            const all = [
+              clonedEl,
+              ...Array.from(clonedEl.querySelectorAll<HTMLElement>("*")),
+            ];
+            all.forEach((node) => {
+              const cs = window.getComputedStyle(node);
+              colorProps.forEach((prop) => {
+                const val = cs.getPropertyValue(prop);
+                if (val && (val.includes("oklch") || val.includes("lab("))) {
+                  node.style.setProperty(prop, toSafeColor(val), "important");
+                }
+              });
+            });
+          },
+        });
+
+        const A4_WIDTH_PT = 595.28;
+        const A4_HEIGHT_PT = 841.89;
+        const pixelsPerPageH = Math.ceil(
+          (A4_HEIGHT_PT / A4_WIDTH_PT) * fullCanvas.width,
+        );
+
+        const pdf = new jsPDF({
+          format: "a4",
+          unit: "pt",
+          orientation: "portrait",
+        });
+
+        let yStart = 0;
+        let pageNum = 0;
+        while (yStart < fullCanvas.height) {
+          if (pageNum > 0) pdf.addPage();
+          const sliceH = Math.min(pixelsPerPageH, fullCanvas.height - yStart);
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = fullCanvas.width;
+          pageCanvas.height = pixelsPerPageH;
+          const ctx = pageCanvas.getContext("2d");
+          if (!ctx) break;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            fullCanvas,
+            0,
+            yStart,
+            fullCanvas.width,
+            sliceH,
+            0,
+            0,
+            fullCanvas.width,
+            sliceH,
+          );
+
+          pdf.addImage(
+            pageCanvas.toDataURL("image/jpeg", 0.85),
+            "JPEG",
+            0,
+            0,
+            A4_WIDTH_PT,
+            A4_HEIGHT_PT,
+          );
+          yStart += pixelsPerPageH;
+          pageNum++;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        contractPdfBase64 =
+          (pdf as any).output("datauristring") ||
+          (pdf as any).output("datauri");
+      }
+    } catch {
+      // Keep renew flow non-blocking even if PDF capture fails.
+    }
+
     try {
       await dispatch(
         renewMembership({
@@ -651,6 +819,9 @@ function RenewModal({
           registrationDetails: {
             contractNumber,
             customerNumber,
+            ...(contractPdfBase64?.startsWith("data:application/pdf")
+              ? { contractPdfBase64 }
+              : {}),
           },
         }),
       ).unwrap();
@@ -670,8 +841,8 @@ function RenewModal({
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/8 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-green-500/15 flex items-center justify-center">
-              <RefreshCw size={15} className="text-green-400" />
+            <div className="w-8 h-8 rounded-xl bg-red-500/15 flex items-center justify-center">
+              <RefreshCw size={15} className="text-red-400" />
             </div>
             <div>
               <h3 className="text-white font-semibold text-sm leading-tight">
@@ -710,9 +881,15 @@ function RenewModal({
               <ArrowLeft size={14} /> Back to Plan Selection
             </button>
 
-            <div className="bg-white rounded-lg overflow-hidden shadow-md text-gray-900 max-w-2xl mx-auto">
+            <div
+              ref={contractDocRef}
+              className="bg-white rounded-lg overflow-hidden shadow-md text-gray-900 max-w-2xl mx-auto"
+            >
               {/* Contract Header */}
-              <div className="bg-[#100a0a] text-white px-5 py-4 flex flex-wrap items-start gap-3">
+              <div
+                data-contract-main-header
+                className="bg-[#100a0a] text-white px-5 py-4 flex flex-wrap items-start gap-3"
+              >
                 <div className="flex-1 min-w-[130px]">
                   <p className="text-base font-black tracking-widest text-red-500">
                     SENTINATORS
@@ -723,27 +900,27 @@ function RenewModal({
                 </div>
                 <div className="flex-1 text-center min-w-[150px]">
                   <p className="text-sm font-black tracking-wide uppercase">
-                    Fitness Membership Contract
+                    Fitness-Mitgliedschaftsvertrag
                   </p>
                   <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
-                    Membership Agreement
+                    Mitgliedschaftsvereinbarung
                   </p>
                 </div>
                 <div className="text-right text-xs space-y-1 min-w-[160px]">
                   <div className="flex items-center justify-end gap-2">
-                    <span className="text-white/50">Contract Number:</span>
+                    <span className="text-white/50">Vertragsnummer:</span>
                     <span className="font-mono font-bold">
                       {contractNumber}
                     </span>
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <span className="text-white/50">Customer Number:</span>
+                    <span className="text-white/50">Kundennummer:</span>
                     <span className="font-mono font-bold">
                       {customerNumber}
                     </span>
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <span className="text-white/50">Date:</span>
+                    <span className="text-white/50">Datum:</span>
                     <span className="font-semibold">
                       {new Date().toLocaleDateString()}
                     </span>
@@ -756,34 +933,40 @@ function RenewModal({
                 {/* Sections 1 & 2 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="border border-gray-300 rounded overflow-hidden">
-                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                      1. Member Details
+                    <div
+                      data-contract-section-title
+                      className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                    >
+                      1. Mitgliedsdaten
                     </div>
                     <div className="p-3 space-y-2">
                       <ContractField
-                        label="First Name / Surname"
+                        label="Vorname / Nachname"
                         value={
                           `${membership.user.firstName} ${membership.user.lastName}`.trim() ||
                           "-"
                         }
                       />
                       <ContractField
-                        label="Address"
-                        value={membership.address || "-"}
+                        label="Adresse"
+                        value={getResolvedMembershipAddress(membership) || "-"}
                       />
                       <ContractField
                         label="E-Mail"
                         value={membership.user.email || "-"}
                       />
                       <ContractField
-                        label="Emergency Contact"
+                        label="Notfallkontakt"
                         value={membership.emergencyContact || "-"}
                       />
                     </div>
                   </div>
                   <div className="border border-gray-300 rounded overflow-hidden">
-                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                      2. Subscription Selection
+                    <div
+                      data-contract-section-title
+                      className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                    >
+                      2. Abonnement Auswahl
                     </div>
                     <div className="p-3">
                       <div className="grid grid-cols-2 gap-y-2 mb-3">
@@ -806,11 +989,11 @@ function RenewModal({
                       </div>
                       <div className="space-y-2 mt-1">
                         <ContractField
-                          label="Start Date"
+                          label="Startdatum"
                           value={startDate ? formatDate(startDate) : "-"}
                         />
                         <ContractField
-                          label="Valid until"
+                          label="Gultig bis"
                           value={endDate ? formatDate(endDate) : "-"}
                         />
                       </div>
@@ -821,8 +1004,11 @@ function RenewModal({
                 {/* Sections 3 & 4 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="border border-gray-300 rounded overflow-hidden">
-                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                      3. Price Overview
+                    <div
+                      data-contract-section-title
+                      className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                    >
+                      3. Preisubersicht
                     </div>
                     <div className="p-3 space-y-2 text-sm">
                       <div className="flex justify-between">
@@ -846,7 +1032,7 @@ function RenewModal({
                         </div>
                       ))}
                       <div className="flex justify-between font-bold pt-2 border-t-2 border-gray-300 text-gray-900">
-                        <span>Total</span>
+                        <span>Gesamt</span>
                         <span>
                           {money(
                             selectedPlan?.currency ?? "",
@@ -874,7 +1060,7 @@ function RenewModal({
                               />
                               <span>
                                 {f === "YEARLY"
-                                  ? "Yearly (Upfront)"
+                                  ? "Jahrlich (Vorauszahlung)"
                                   : f.charAt(0) + f.slice(1).toLowerCase()}
                               </span>
                             </label>
@@ -885,8 +1071,8 @@ function RenewModal({
                         frequency !== "UPFRONT" && (
                           <div className="flex justify-between font-semibold pt-1 text-red-700">
                             <span>
-                              Due per{" "}
-                              {frequency === "MONTHLY" ? "month" : "quarter"}
+                              Fallig pro{" "}
+                              {frequency === "MONTHLY" ? "Monat" : "Quartal"}
                             </span>
                             <span>
                               {money(
@@ -899,8 +1085,11 @@ function RenewModal({
                     </div>
                   </div>
                   <div className="border border-gray-300 rounded overflow-hidden">
-                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                      4. Membership Category
+                    <div
+                      data-contract-section-title
+                      className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                    >
+                      4. Mitgliedschaftskategorie
                     </div>
                     <div className="p-3 space-y-2 text-sm">
                       {planCategories.map((cat) => (
@@ -924,8 +1113,11 @@ function RenewModal({
                 {/* Section 5: Membership Terms */}
                 {termsSections.length > 0 && (
                   <div className="border border-gray-300 rounded overflow-hidden">
-                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                      5. Membership Terms
+                    <div
+                      data-contract-section-title
+                      className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                    >
+                      5. Mitgliedschaftsbedingungen
                     </div>
                     <div className="p-3">
                       {termsSections.map(({ title, content }) => (
@@ -948,8 +1140,11 @@ function RenewModal({
                 {/* Section 6: Gym Rules & Health Responsibility */}
                 {gymRulesSections.length > 0 && (
                   <div className="border border-gray-300 rounded overflow-hidden">
-                    <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                      6. Gym Rules &amp; Health Responsibility
+                    <div
+                      data-contract-section-title
+                      className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                    >
+                      6. Studioordnung &amp; Gesundheitsverantwortung
                     </div>
                     <div className="p-3">
                       {gymRulesSections.map(({ title, content }) => (
@@ -971,22 +1166,25 @@ function RenewModal({
 
                 {/* Section 7: Signatures */}
                 <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    7. Signatures
+                  <div
+                    data-contract-section-title
+                    className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider"
+                  >
+                    7. Unterschriften
                   </div>
                   <div className="p-5 space-y-5">
                     <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
                       {/* Place & Date */}
                       <div className="flex flex-col gap-2">
                         <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                          Place / Date
+                          Ort / Datum
                         </span>
                         <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-[110px]">
                           <p className="text-base font-bold text-gray-900">
                             {new Date().toLocaleDateString()}
                           </p>
                           <p className="text-xs text-gray-400 mt-auto pt-3 border-t border-gray-300">
-                            Date of signing
+                            Unterzeichnungsdatum
                           </p>
                         </div>
                       </div>
@@ -994,7 +1192,7 @@ function RenewModal({
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                            Member Signature
+                            Unterschrift Mitglied
                             {contractSig || canvasHasContent ? (
                               <span className="ml-1.5 text-green-600 font-bold">
                                 ✓
@@ -1104,13 +1302,30 @@ function RenewModal({
                       {/* Gym Signature */}
                       <div className="flex flex-col gap-2">
                         <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                          Gym Signature
+                          Unterschrift Studio
                         </span>
-                        <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 min-h-[110px] flex flex-col items-center justify-center">
-                          <p className="text-xs font-medium text-gray-400">
-                            To be signed by gym staff
-                          </p>
+                        <div className="rounded-lg border-2 border-gray-200 bg-gray-50 min-h-[110px] flex items-center justify-center overflow-hidden p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/gym_sign.jpeg"
+                            alt="Unterschrift Studio"
+                            className="h-auto max-h-24 w-full object-contain"
+                          />
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:max-w-xs">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                        Studio Stempel
+                      </span>
+                      <div className="rounded-lg border-2 border-gray-200 bg-gray-50 min-h-[110px] flex items-center justify-center overflow-hidden p-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/gym_stamp.jpeg"
+                          alt="Studio Stempel"
+                          className="h-auto max-h-24 w-full object-contain"
+                        />
                       </div>
                     </div>
 
@@ -1120,7 +1335,10 @@ function RenewModal({
                       </div>
                     )}
 
-                    <div className="flex gap-3 justify-between items-center pt-2 border-t border-gray-100">
+                    <div
+                      data-pdf-exclude
+                      className="flex gap-3 justify-between items-center pt-2 border-t border-gray-100"
+                    >
                       <button
                         type="button"
                         onClick={() => {
@@ -1129,7 +1347,7 @@ function RenewModal({
                         }}
                         className="px-5 py-2.5 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
                       >
-                        ← Back
+                        ← Zuruck
                       </button>
                       <button
                         type="button"
@@ -1140,10 +1358,10 @@ function RenewModal({
                         {actionLoading ? (
                           <>
                             <RefreshCw size={15} className="animate-spin" />{" "}
-                            Processing…
+                            Verarbeite...
                           </>
                         ) : (
-                          "Accept & Renew Membership"
+                          "Akzeptieren & Mitgliedschaft erneuern"
                         )}
                       </button>
                     </div>
@@ -1489,46 +1707,55 @@ function ContractViewModal({
   onClose: () => void;
   autoDownload?: boolean;
 }) {
-  const contractDocRef = useRef<HTMLDivElement | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const autoDownloadFiredRef = useRef(false);
-  const [termsSections, setTermsSections] = useState<TermsSection[]>(
-    DEFAULT_MEMBERSHIP_TERMS,
-  );
-  const [gymRulesSections, setGymRulesSections] =
-    useState<TermsSection[]>(DEFAULT_GYM_RULES);
 
   useEffect(() => {
-    adminApi()
-      .get("/content/text/registration")
-      .then((res) => {
-        const reg = res.data as {
-          membership_terms_sections?: string;
-          gym_rules_sections?: string;
-        };
-        setTermsSections(
-          parseSections(
-            reg.membership_terms_sections,
-            DEFAULT_MEMBERSHIP_TERMS,
-          ),
-        );
-        setGymRulesSections(
-          parseSections(reg.gym_rules_sections, DEFAULT_GYM_RULES),
-        );
-      })
-      .catch(() => {});
-  }, []);
+    let disposed = false;
+    setLoadingPdf(true);
+    setPdfUrl(null);
+    setPdfBlob(null);
 
-  // Auto-trigger PDF download after contract document has had time to render
+    adminApi()
+      .get(`/admin/memberships/${membership.id}/contract/download`, {
+        responseType: "blob",
+      })
+      .then((res) => {
+        if (disposed) return;
+        const blob = new Blob([res.data], { type: "application/pdf" });
+        const url = window.URL.createObjectURL(blob);
+        setPdfBlob(blob);
+        setPdfUrl(url);
+      })
+      .catch((err) => {
+        console.error("Failed to load contract PDF:", err);
+      })
+      .finally(() => {
+        if (!disposed) setLoadingPdf(false);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [membership.id]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) window.URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
+  // Auto-trigger download when opened via the Download action.
   useEffect(() => {
     if (!autoDownload || autoDownloadFiredRef.current) return;
+    if (!pdfBlob) return;
     autoDownloadFiredRef.current = true;
-    const timer = setTimeout(() => {
-      downloadPdf();
-    }, 800);
-    return () => clearTimeout(timer);
+    downloadPdf();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoDownload]);
+  }, [autoDownload, pdfBlob]);
 
   const contractNumber = membership.registrationDetails?.contractNumber
     ? String(membership.registrationDetails.contractNumber)
@@ -1537,184 +1764,21 @@ function ContractViewModal({
     ? String(membership.registrationDetails.customerNumber)
     : `MBR-${membership.user.id}`;
 
-  const signedDate = membership.createdAt
-    ? new Date(membership.createdAt).toLocaleDateString()
-    : new Date().toLocaleDateString();
-
-  const mainPlan = membership.plan;
-  const additionalPlans = membership.additionalPlans ?? [];
-  const additionalTotal = additionalPlans.reduce((s, p) => s + p.price, 0);
-  const totalMonths =
-    parseDurationToMonths(mainPlan.duration) +
-    additionalPlans.reduce((s, p) => s + parseDurationToMonths(p.duration), 0);
-
-  const periodInfo = getAdminPerPeriodInfo(
-    membership.totalAmount,
-    membership.registrationFee,
-    totalMonths,
-    membership.paymentFrequency,
-  );
-
-  function downloadPdf() {
+  async function downloadPdf() {
+    if (!pdfBlob) return;
     setIsDownloading(true);
     try {
-      const cur = mainPlan.currency;
-      const money = (amount: number) =>
-        `${cur} ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-      const freq = membership.paymentFrequency?.toUpperCase() ?? "";
-      const totalAmount =
-        membership.totalAmount ??
-        mainPlan.price +
-          additionalPlans.reduce((s, p) => s + p.price, 0) +
-          (membership.registrationFee ?? 0);
-
-      const field = (label: string, value: string) =>
-        `<div style="display:flex;gap:8px;font-size:13px;margin-bottom:6px;">
-           <span style="color:#6b7280;white-space:nowrap;">${label}:</span>
-           <span style="font-weight:600;color:#111827;word-break:break-word;">${value}</span>
-         </div>`;
-
-      const sectionHead = (text: string) =>
-        `<div class="sec-head">${text}</div>`;
-
-      const additionalRows = additionalPlans
-        .map(
-          (ap) =>
-            `<tr><td style="padding:3px 0;color:#4b5563;">+ ${ap.name || ap.duration}</td><td style="padding:3px 0;text-align:right;font-weight:600;color:#111827;">${money(ap.price)}</td></tr>`,
-        )
-        .join("");
-
-      const additionalChecks = additionalPlans
-        .map(
-          (ap) =>
-            `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#111827;margin-bottom:4px;"><input type="checkbox" checked readonly style="accent-color:#b91c1c;width:12px;height:12px;" /><span>+ ${ap.name || ap.duration}</span></label>`,
-        )
-        .join("");
-
-      const freqChecks = (["YEARLY", "MONTHLY", "QUARTERLY"] as const)
-        .map((f) => {
-          const checked =
-            f === "YEARLY"
-              ? freq === "YEARLY" || freq === "UPFRONT"
-              : freq === f;
-          return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#111827;"><input type="checkbox" ${checked ? "checked" : ""} readonly style="accent-color:#b91c1c;width:12px;height:12px;" /><span>${f === "YEARLY" ? "Yearly (Upfront)" : f.charAt(0) + f.slice(1).toLowerCase()}</span></label>`;
-        })
-        .join("");
-
-      const perPeriodHtml = periodInfo
-        ? `<div style="display:flex;justify-content:space-between;font-weight:600;color:#b91c1c;padding-top:4px;font-size:13px;"><span>Due per ${periodInfo.label === "Monthly" ? "month" : periodInfo.label === "Quarterly" ? "quarter" : "year"}</span><span>${money(periodInfo.perPeriod)}</span></div>`
-        : "";
-
-      const sigHtml = membership.signatureDataUrl
-        ? `<img src="${membership.signatureDataUrl}" alt="Member signature" style="max-height:100px;width:100%;object-fit:contain;padding:4px;" />`
-        : `<p style="font-size:12px;color:#9ca3af;margin:0;">No signature captured</p>`;
-
-      const catLabel = mainPlan.category
-        ? mainPlan.category.charAt(0) + mainPlan.category.slice(1).toLowerCase()
-        : "-";
-
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Contract ${contractNumber}</title>
-<style>
-@media print { @page { margin:12mm; size:A4; } body { margin:0; } }
-*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
-.wrap{max-width:780px;margin:0 auto;padding:0;}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-.sec{border:1px solid #d1d5db;border-radius:4px;overflow:hidden;}
-.sec-head{background:#1a0a0a !important;color:#fff !important;padding:8px 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
-.contract-header{background:#100a0a !important;color:#fff !important;padding:16px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;}
-.sig-date-box{border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb !important;padding:12px 16px;display:flex;flex-direction:column;justify-content:space-between;min-height:100px;}
-.sig-member-box{border:2px solid #bbf7d0;border-radius:8px;background:#f0fdf4 !important;overflow:hidden;min-height:100px;display:flex;align-items:center;justify-content:center;}
-.sig-gym-box{border:2px dashed #e5e7eb;border-radius:8px;background:#f9fafb !important;min-height:100px;display:flex;align-items:center;justify-content:center;}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <!-- header -->
-  <div class="contract-header">
-    <div style="flex:1;min-width:110px;"><p style="font-size:15px;font-weight:900;letter-spacing:.1em;color:#ef4444;margin:0;">SENTINATORS</p><p style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin:2px 0 0;">Keep Pumping Gym</p></div>
-    <div style="flex:1;text-align:center;min-width:130px;"><p style="font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;margin:0;">Fitness Membership Contract</p><p style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin:2px 0 0;">Membership Agreement</p></div>
-    <div style="text-align:right;font-size:11px;min-width:140px;">
-      <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:3px;"><span style="color:rgba(255,255,255,.5);">Contract Number:</span><span style="font-family:monospace;font-weight:700;">${contractNumber}</span></div>
-      <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:3px;"><span style="color:rgba(255,255,255,.5);">Customer Number:</span><span style="font-family:monospace;font-weight:700;">${customerNumber}</span></div>
-      <div style="display:flex;justify-content:flex-end;gap:6px;"><span style="color:rgba(255,255,255,.5);">Date:</span><span style="font-weight:600;">${signedDate}</span></div>
-    </div>
-  </div>
-
-  <!-- body -->
-  <div style="padding:14px;display:flex;flex-direction:column;gap:14px;">
-    <div class="grid2">
-      <div class="sec">${sectionHead("1. Member Details")}<div style="padding:12px;">${field("First Name / Surname", `${membership.user.firstName} ${membership.user.lastName}`.trim() || "-")}${field("Address", membership.address || "-")}${field("E-Mail", membership.user.email || "-")}${field("Emergency Contact", membership.emergencyContact || "-")}</div></div>
-      <div class="sec">${sectionHead("2. Subscription Selection")}<div style="padding:12px;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#111827;margin-bottom:4px;"><input type="checkbox" checked readonly style="accent-color:#b91c1c;width:12px;height:12px;" /><span>${mainPlan.name || mainPlan.duration}</span></label>
-        ${additionalChecks}
-        <div style="margin-top:10px;">${field("Start Date", membership.startDate ? formatDate(membership.startDate.slice(0, 10)) : "-")}${field("Valid until", membership.endDate ? formatDate(membership.endDate.slice(0, 10)) : "-")}</div>
-      </div></div>
-    </div>
-
-    <div class="grid2">
-      <div class="sec">${sectionHead("3. Price Overview")}<div style="padding:12px;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <tr><td style="padding:3px 0;color:#4b5563;">${mainPlan.name || mainPlan.duration}</td><td style="padding:3px 0;text-align:right;font-weight:600;color:#111827;">${money(mainPlan.price)}</td></tr>
-          ${additionalRows}
-          <tr><td style="padding:3px 0;color:#4b5563;">Registration Fee (one-time)</td><td style="padding:3px 0;text-align:right;font-weight:600;color:#111827;">${money(membership.registrationFee ?? 0)}</td></tr>
-          <tr><td colspan="2"><div style="border-top:2px solid #d1d5db;margin:6px 0;"></div></td></tr>
-          <tr><td style="font-weight:700;color:#111827;padding:3px 0;">Total</td><td style="font-weight:700;color:#111827;padding:3px 0;text-align:right;">${money(totalAmount)}</td></tr>
-        </table>
-        <div style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px;display:flex;flex-wrap:wrap;gap:10px;">${freqChecks}</div>
-        ${perPeriodHtml}
-      </div></div>
-      <div class="sec">${sectionHead("4. Membership Category")}<div style="padding:12px;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#111827;"><input type="checkbox" checked readonly style="accent-color:#b91c1c;width:12px;height:12px;" /><span>${catLabel}</span></label>
-      </div></div>
-    </div>
-
-    ${termsSections.length > 0 ? `<div class="sec">${sectionHead("5. Membership Terms")}<div style="padding:12px;">${termsSections.map(({ title, content }) => `<div style="padding:8px 0;border-bottom:1px solid #e5e7eb;"><p style="font-weight:700;font-size:13px;color:#111827;margin:0 0 2px;">${title}</p><p style="font-size:13px;color:#374151;line-height:1.5;margin:0;">${content}</p></div>`).join("")}</div></div>` : ""}
-
-    ${gymRulesSections.length > 0 ? `<div class="sec">${sectionHead("6. Gym Rules &amp; Health Responsibility")}<div style="padding:12px;">${gymRulesSections.map(({ title, content }) => `<div style="padding:8px 0;border-bottom:1px solid #e5e7eb;"><p style="font-weight:700;font-size:13px;color:#111827;margin:0 0 2px;">${title}</p><p style="font-size:13px;color:#374151;line-height:1.5;margin:0;">${content}</p></div>`).join("")}</div></div>` : ""}
-
-    <div class="sec">${sectionHead("7. Signatures")}<div style="padding:20px;">
-      <div class="grid3">
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;">Place / Date</span>
-          <div class="sig-date-box">
-            <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">${signedDate}</p>
-            <p style="font-size:11px;color:#9ca3af;margin:0;padding-top:10px;border-top:1px solid #d1d5db;">Date of signing</p>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;">Member Signature</span>
-          <div class="sig-member-box">${sigHtml}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;">Gym Signature</span>
-          <div class="sig-gym-box"><p style="font-size:12px;font-weight:500;color:#9ca3af;margin:0;">To be signed by gym staff</p></div>
-        </div>
-      </div>
-    </div></div>
-  </div>
-</div>
-<script>window.onload=function(){window.print();setTimeout(function(){window.close();},1200);};</script>
-</body>
-</html>`;
-
-      const win = window.open("", "_blank", "width=900,height=700");
-      if (!win) {
-        alert(
-          "Popup blocked — please allow popups for this page and try again.",
-        );
-        return;
-      }
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `contract-${contractNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (e) {
-      console.error("PDF generation error:", e);
+      console.error("PDF download error:", e);
+      alert("Failed to download contract PDF");
     } finally {
       setIsDownloading(false);
     }
@@ -1729,8 +1793,8 @@ body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/8 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/15 flex items-center justify-center">
-              <FileText size={15} className="text-blue-400" />
+            <div className="w-8 h-8 rounded-xl bg-red-500/15 flex items-center justify-center">
+              <FileText size={15} className="text-red-400" />
             </div>
             <div>
               <h3 className="text-white font-semibold text-sm leading-tight">
@@ -1746,15 +1810,15 @@ body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
           <div className="flex items-center gap-2">
             <button
               onClick={downloadPdf}
-              disabled={isDownloading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/25 text-xs font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isDownloading || !pdfBlob}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/25 text-xs font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isDownloading ? (
                 <RefreshCw size={13} className="animate-spin" />
               ) : (
                 <Download size={13} />
               )}
-              {isDownloading ? "Generating…" : "Download PDF"}
+              {isDownloading ? "Downloading…" : "Download PDF"}
             </button>
             <button
               onClick={onClose}
@@ -1765,356 +1829,23 @@ body{font-family:system-ui,sans-serif;background:#fff;color:#111827;margin:0;}
           </div>
         </div>
 
-        {/* Contract document */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-4">
-          <div
-            ref={contractDocRef}
-            className="bg-white rounded-lg overflow-hidden shadow-md text-gray-900 max-w-2xl mx-auto"
-          >
-            {/* Contract Header */}
-            <div className="bg-[#100a0a] text-white px-5 py-4 flex flex-wrap items-start gap-3">
-              <div className="flex-1 min-w-[130px]">
-                <p className="text-base font-black tracking-widest text-red-500">
-                  SENTINATORS
-                </p>
-                <p className="text-[10px] text-white/50 uppercase tracking-widest">
-                  Keep Pumping Gym
-                </p>
-              </div>
-              <div className="flex-1 text-center min-w-[150px]">
-                <p className="text-sm font-black tracking-wide uppercase">
-                  Fitness Membership Contract
-                </p>
-                <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
-                  Membership Agreement
-                </p>
-              </div>
-              <div className="text-right text-xs space-y-1 min-w-[160px]">
-                <div className="flex items-center justify-end gap-2">
-                  <span className="text-white/50">Contract Number:</span>
-                  <span className="font-mono font-bold">{contractNumber}</span>
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <span className="text-white/50">Customer Number:</span>
-                  <span className="font-mono font-bold">{customerNumber}</span>
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <span className="text-white/50">Date:</span>
-                  <span className="font-semibold">{signedDate}</span>
-                </div>
-              </div>
+        <div className="flex-1 overflow-hidden bg-gray-900 p-3 sm:p-4">
+          {loadingPdf ? (
+            <div className="h-full w-full rounded-lg border border-white/10 bg-black/40 flex items-center justify-center text-white/50 text-sm">
+              <RefreshCw size={14} className="mr-2 animate-spin" /> Loading
+              contract PDF...
             </div>
-
-            {/* Contract Body */}
-            <div className="p-4 space-y-4">
-              {/* Sections 1 & 2 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    1. Member Details
-                  </div>
-                  <div className="p-3 space-y-2">
-                    <ContractField
-                      label="First Name / Surname"
-                      value={
-                        `${membership.user.firstName} ${membership.user.lastName}`.trim() ||
-                        "-"
-                      }
-                    />
-                    <ContractField
-                      label="Address"
-                      value={membership.address || "-"}
-                    />
-                    <ContractField
-                      label="E-Mail"
-                      value={membership.user.email || "-"}
-                    />
-                    <ContractField
-                      label="Emergency Contact"
-                      value={membership.emergencyContact || "-"}
-                    />
-                  </div>
-                </div>
-                <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    2. Subscription Selection
-                  </div>
-                  <div className="p-3">
-                    <div className="space-y-1.5 mb-3">
-                      <label className="flex items-center gap-1.5 cursor-default text-sm text-gray-900">
-                        <input
-                          type="checkbox"
-                          readOnly
-                          checked
-                          className="accent-red-700 w-3 h-3"
-                        />
-                        <span>{planTitle(mainPlan)}</span>
-                      </label>
-                      {additionalPlans.map((ap) => (
-                        <label
-                          key={ap.id}
-                          className="flex items-center gap-1.5 cursor-default text-sm text-gray-900"
-                        >
-                          <input
-                            type="checkbox"
-                            readOnly
-                            checked
-                            className="accent-red-700 w-3 h-3"
-                          />
-                          <span>+ {planTitle(ap)}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="space-y-2 mt-1">
-                      <ContractField
-                        label="Start Date"
-                        value={
-                          membership.startDate
-                            ? formatDate(membership.startDate.slice(0, 10))
-                            : "-"
-                        }
-                      />
-                      <ContractField
-                        label="Valid until"
-                        value={
-                          membership.endDate
-                            ? formatDate(membership.endDate.slice(0, 10))
-                            : "-"
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sections 3 & 4 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    3. Price Overview
-                  </div>
-                  <div className="p-3 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-700">
-                        {planTitle(mainPlan)}
-                      </span>
-                      <span className="font-semibold text-gray-900">
-                        {money(mainPlan.currency, mainPlan.price)}
-                      </span>
-                    </div>
-                    {additionalPlans.map((ap) => (
-                      <div key={ap.id} className="flex justify-between">
-                        <span className="text-gray-700">+ {planTitle(ap)}</span>
-                        <span className="font-semibold text-gray-900">
-                          {money(ap.currency, ap.price)}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between">
-                      <span className="text-gray-700">
-                        Registration Fee (one-time)
-                      </span>
-                      <span className="font-semibold text-gray-900">
-                        {money(
-                          mainPlan.currency,
-                          membership.registrationFee ?? 0,
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between font-bold pt-2 border-t-2 border-gray-300 text-gray-900">
-                      <span>Total</span>
-                      <span>
-                        {money(
-                          mainPlan.currency,
-                          membership.totalAmount ??
-                            mainPlan.price +
-                              additionalTotal +
-                              (membership.registrationFee ?? 0),
-                        )}
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-3">
-                      {(["YEARLY", "MONTHLY", "QUARTERLY"] as const).map(
-                        (f) => (
-                          <label
-                            key={f}
-                            className="flex items-center gap-1.5 cursor-default text-gray-900"
-                          >
-                            <input
-                              type="checkbox"
-                              readOnly
-                              checked={
-                                f === "YEARLY"
-                                  ? membership.paymentFrequency?.toUpperCase() ===
-                                      "YEARLY" ||
-                                    membership.paymentFrequency?.toUpperCase() ===
-                                      "UPFRONT"
-                                  : membership.paymentFrequency?.toUpperCase() ===
-                                    f
-                              }
-                              className="accent-red-700 w-3 h-3"
-                            />
-                            <span>
-                              {f === "YEARLY"
-                                ? "Yearly (Upfront)"
-                                : f.charAt(0) + f.slice(1).toLowerCase()}
-                            </span>
-                          </label>
-                        ),
-                      )}
-                    </div>
-                    {periodInfo && (
-                      <div className="flex justify-between font-semibold pt-1 text-red-700">
-                        <span>
-                          Due per{" "}
-                          {periodInfo.label === "Monthly"
-                            ? "month"
-                            : periodInfo.label === "Quarterly"
-                              ? "quarter"
-                              : "year"}
-                        </span>
-                        <span>
-                          {money(mainPlan.currency, periodInfo.perPeriod)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    4. Membership Category
-                  </div>
-                  <div className="p-3 space-y-2 text-sm">
-                    <label className="flex items-center gap-1.5 cursor-default text-gray-900">
-                      <input
-                        type="checkbox"
-                        readOnly
-                        checked
-                        className="accent-red-700 w-3 h-3"
-                      />
-                      <span className="capitalize">
-                        {mainPlan.category.charAt(0) +
-                          mainPlan.category.slice(1).toLowerCase()}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 5: Membership Terms */}
-              {termsSections.length > 0 && (
-                <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    5. Membership Terms
-                  </div>
-                  <div className="p-3">
-                    {termsSections.map(({ title, content }) => (
-                      <div
-                        key={title}
-                        className="py-2 border-b border-gray-200 last:border-0"
-                      >
-                        <p className="font-bold text-sm text-gray-900 mb-0.5">
-                          {title}
-                        </p>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {content}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Section 6: Gym Rules & Health Responsibility */}
-              {gymRulesSections.length > 0 && (
-                <div className="border border-gray-300 rounded overflow-hidden">
-                  <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                    6. Gym Rules &amp; Health Responsibility
-                  </div>
-                  <div className="p-3">
-                    {gymRulesSections.map(({ title, content }) => (
-                      <div
-                        key={title}
-                        className="py-2 border-b border-gray-200 last:border-0"
-                      >
-                        <p className="font-bold text-sm text-gray-900 mb-0.5">
-                          {title}
-                        </p>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {content}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Section 7: Signatures */}
-              <div className="border border-gray-300 rounded overflow-hidden">
-                <div className="bg-[#1a0a0a] text-white px-3 py-2 text-sm font-bold uppercase tracking-wider">
-                  7. Signatures
-                </div>
-                <div className="p-5 space-y-5">
-                  <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
-                    {/* Place & Date */}
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                        Place / Date
-                      </span>
-                      <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-col justify-between min-h-[110px]">
-                        <p className="text-base font-bold text-gray-900">
-                          {signedDate}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-auto pt-3 border-t border-gray-300">
-                          Date of signing
-                        </p>
-                      </div>
-                    </div>
-                    {/* Member Signature */}
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                        Member Signature
-                        {membership.signatureDataUrl ? (
-                          <span className="ml-1.5 text-green-600 font-bold">
-                            ✓
-                          </span>
-                        ) : (
-                          <span className="ml-1 text-red-500"> – Missing</span>
-                        )}
-                      </span>
-                      {membership.signatureDataUrl ? (
-                        <div className="rounded-lg border-2 border-green-200 bg-green-50 overflow-hidden min-h-[110px] flex items-center justify-center">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={membership.signatureDataUrl}
-                            alt="Member signature"
-                            className="max-h-[110px] w-full object-contain p-1"
-                          />
-                        </div>
-                      ) : (
-                        <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 min-h-[110px] flex items-center justify-center">
-                          <p className="text-xs text-gray-400">
-                            No signature captured
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    {/* Gym Signature */}
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                        Gym Signature
-                      </span>
-                      <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 min-h-[110px] flex flex-col items-center justify-center">
-                        <p className="text-xs font-medium text-gray-400">
-                          To be signed by gym staff
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          ) : pdfUrl ? (
+            <iframe
+              title={`Contract ${contractNumber}`}
+              src={pdfUrl}
+              className="h-full w-full rounded-lg border border-white/10 bg-white"
+            />
+          ) : (
+            <div className="h-full w-full rounded-lg border border-red-500/30 bg-red-950/20 flex items-center justify-center text-red-300 text-sm px-4 text-center">
+              Contract PDF load nahi hua. Please Download PDF button try karein.
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -2619,8 +2350,10 @@ export function AdminMemberships() {
                   {m.emergencyContact && (
                     <span>Emergency: {m.emergencyContact}</span>
                   )}
-                  {m.address && (
-                    <span className="md:col-span-2">Address: {m.address}</span>
+                  {getResolvedMembershipAddress(m) && (
+                    <span className="md:col-span-2">
+                      Address: {getResolvedMembershipAddress(m)}
+                    </span>
                   )}
                   <span>
                     Agreement: {m.acceptedAgreement ? "Accepted" : "Pending"}
