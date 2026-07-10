@@ -59,11 +59,11 @@ export function HeroSectionClient({
         />
         {/* Top/bottom vignette matching the photo's natural darkening */}
         <div
-          // className="absolute inset-0"
-          // style={{
-          //   background:
-          //     "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 25%, transparent 75%, rgba(0,0,0,0.65) 100%)",
-          // }}
+        // className="absolute inset-0"
+        // style={{
+        //   background:
+        //     "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 25%, transparent 75%, rgba(0,0,0,0.65) 100%)",
+        // }}
         />
       </div>
 
@@ -79,7 +79,7 @@ export function HeroSectionClient({
       {/* Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 pt-24 pb-8 sm:pt-28 sm:pb-0 md:pt-0 md:pb-0">
         <div className="max-w-lg">
-          <h1 className="text-[2.75rem] sm:text-[6rem] lg:text-[7.5rem] font-black text-white leading-none tracking-tight mb-3 sm:mb-6 uppercase">
+          <h1 className="text-[1.1rem] sm:text-[6rem] lg:text-[5rem] font-black text-white leading-none tracking-tight mb-3 sm:mb-6 uppercase">
             {titleLines.map((line, i) => (
               <span key={i}>
                 {line}
@@ -87,10 +87,10 @@ export function HeroSectionClient({
               </span>
             ))}
           </h1>
-          <p className="text-white/75 text-sm leading-snug mb-2 sm:mb-4 text-justify">
+          <p className="text-white/75 text-sm text-[0.7rem] sm:text-[0.9rem] lg:text-[1rem] leading-snug mb-2 sm:mb-4 text-justify">
             {text.hero_subtitle1 || fallback.hero_subtitle1}
           </p>
-          <p className="text-white/75 text-sm leading-snug mb-4 sm:mb-8 text-justify">
+          <p className="text-white/75 text-sm text-[0.7rem] sm:text-[0.9rem] lg:text-[1rem] leading-snug mb-4 sm:mb-8 text-justify">
             {text.hero_subtitle2 || fallback.hero_subtitle2}
           </p>
           <Button

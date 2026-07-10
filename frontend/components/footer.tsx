@@ -5,6 +5,13 @@ import { getSiteText } from "@/lib/content";
 export async function Footer() {
   const t = await getSiteText("footer");
 
+  const phoneNumber = t.footer_phone || "+990 000 0000";
+  const emailAddress = t.footer_email || "info@fitness.com";
+
+  // Keep leading + and digits for a valid tel: URL across formatted inputs.
+  const phoneHref = `tel:${phoneNumber.replace(/[^\d+]/g, "")}`;
+  const emailHref = `mailto:${emailAddress.trim()}`;
+
   const menuLinks = [
     {
       label: t.footer_menu_1_label || "Home",
@@ -214,9 +221,23 @@ export async function Footer() {
             <ul className="space-y-5 text-white/60 text-sm">
               <li>{t.footer_address || "Lorem Ipsum St, 25/99034"}</li>
 
-              <li>{t.footer_phone || "+990 000 0000"}</li>
+              <li>
+                <a
+                  href={phoneHref}
+                  className="hover:text-white transition-colors"
+                >
+                  {phoneNumber}
+                </a>
+              </li>
 
-              <li>{t.footer_email || "info@fitness.com"}</li>
+              <li>
+                <a
+                  href={emailHref}
+                  className="hover:text-white transition-colors"
+                >
+                  {emailAddress}
+                </a>
+              </li>
             </ul>
           </div>
         </div>
