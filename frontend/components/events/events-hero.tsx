@@ -5,9 +5,10 @@ export async function EventsHero() {
   const text = await getSiteText("events_page");
   const bgImage =
     getImageUrl(text.events_hero_image) || "/event-hero-image.jpg";
+  const heading = text.events_hero_title || "EVENT";
 
   return (
-    <section className="relative min-h-[100vh] flex items-center justify-center">
+    <section className="relative min-h-screen flex items-center justify-center">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -25,7 +26,7 @@ export async function EventsHero() {
 
       <div className="relative z-10 w-full flex items-center justify-center text-center px-4">
         <h1 className="text-6xl sm:text-7xl md:text-8xl font-extrabold text-white tracking-widest">
-          EVENT
+          {heading}
         </h1>
       </div>
     </section>

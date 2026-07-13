@@ -519,6 +519,11 @@ const REQUIRED_TEXT_ROWS: Array<Pick<TextRow, "key" | "section" | "value">> = [
     value: "/event-hero-image.jpg",
   },
   {
+    key: "events_hero_title",
+    section: "events_page",
+    value: "EVENT",
+  },
+  {
     key: "events_schedule_title",
     section: "events_page",
     value: "FOLLOW EVENT SCHEDULE",
