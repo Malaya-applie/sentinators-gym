@@ -132,74 +132,90 @@ export function EventScheduleSection() {
                 return (
                   <div
                     key={event.id}
-                    className="rounded-xl border border-white/10 flex flex-col sm:flex-row items-center gap-6 px-6 py-5"
+                    className="rounded-xl border border-white/10 px-4 py-4 sm:px-6 sm:py-5"
                     style={{ background: "#0300044D" }}
                   >
-                    {/* Title + Description */}
-                    <div className="w-full sm:w-48 shrink-0">
-                      <h3 className="text-white text-xl font-semibold mb-1">
-                        {event.title}
-                      </h3>
-                      {event.description && (
-                        <p className="text-white/60 text-sm leading-relaxed line-clamp-2">
-                          {event.description}
-                        </p>
-                      )}
-                    </div>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+                      {/* Title + Description */}
+                      <div className="w-full min-w-0 sm:w-52 lg:w-60 shrink-0">
+                        <h3 className="text-white text-xl font-semibold mb-1 wrap-break-word line-clamp-3">
+                          {event.title}
+                        </h3>
+                        {event.description && (
+                          <p className="text-white/60 text-sm leading-relaxed wrap-break-word line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
+                      </div>
 
-                    {/* Image */}
-                    <div className="w-full sm:w-40 h-28 rounded-xl overflow-hidden shrink-0 relative bg-black/30">
-                      <Image
-                        src={eventImageSrc(event.image)}
-                        alt={event.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-
-                    {/* Spacer */}
-                    <div className="flex-1" />
-
-                    {/* Meta */}
-                    <ul className="text-white/70 text-sm space-y-1.5 shrink-0 min-w-35">
-                      <li className="flex items-center gap-2">
-                        <Clock size={13} className="text-purple-400 shrink-0" />
-                        {event.time ? `${event.time}, ` : ""}
-                        {formatDate(event.date)}
-                      </li>
-                      {event.location && (
-                        <li className="flex items-center gap-2">
-                          <MapPin
-                            size={13}
-                            className="text-purple-400 shrink-0"
+                      {/* Image */}
+                      <div className="w-full sm:w-40 lg:w-52 shrink-0">
+                        <div className="relative h-28 lg:h-32 w-full rounded-xl overflow-hidden bg-black/30">
+                          <Image
+                            src={eventImageSrc(event.image)}
+                            alt={event.title}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 160px, 208px"
+                            className="object-cover object-center"
                           />
-                          {event.location}
-                        </li>
-                      )}
-                      <li className="flex items-center gap-2">
-                        <Users size={13} className="text-purple-400 shrink-0" />
-                        {event._count.bookings} booked
-                        {event.capacity !== null && ` / ${event.capacity}`}
-                      </li>
-                    </ul>
+                        </div>
+                      </div>
 
-                    {/* Button */}
-                    {isBooked ? (
-                      <Link
-                        href={`/events/${event.id}`}
-                        className="flex items-center gap-1.5 text-green-400 text-sm font-semibold shrink-0 hover:text-green-300 transition-colors"
-                      >
-                        <CheckCircle2 size={16} />
-                        Booked
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`/events/${event.id}`}
-                        className={`btn-gradient text-white font-semibold px-6 py-2.5 rounded-lg text-sm shrink-0 transition-opacity ${isFull ? "opacity-50 pointer-events-none" : "hover:opacity-90"}`}
-                      >
-                        {isFull ? "Full" : "Join Now"}
-                      </Link>
-                    )}
+                      {/* Meta */}
+                      <ul className="text-white/70 text-sm space-y-2 min-w-0 sm:flex-1">
+                        <li className="flex items-start gap-2">
+                          <Clock
+                            size={13}
+                            className="text-purple-400 shrink-0 mt-1"
+                          />
+                          <span className="wrap-break-word">
+                            {event.time ? `${event.time}, ` : ""}
+                            {formatDate(event.date)}
+                          </span>
+                        </li>
+                        {event.location && (
+                          <li className="flex items-start gap-2">
+                            <MapPin
+                              size={13}
+                              className="text-purple-400 shrink-0 mt-1"
+                            />
+                            <span className="wrap-break-word">
+                              {event.location}
+                            </span>
+                          </li>
+                        )}
+                        <li className="flex items-start gap-2">
+                          <Users
+                            size={13}
+                            className="text-purple-400 shrink-0 mt-1"
+                          />
+                          <span className="wrap-break-word">
+                            {event._count.bookings} booked
+                            {event.capacity !== null && ` / ${event.capacity}`}
+                          </span>
+                        </li>
+                      </ul>
+
+                      {/* Button */}
+                      <div className="w-full sm:w-auto sm:shrink-0 sm:ml-auto">
+                        {isBooked ? (
+                          <Link
+                            href={`/events/${event.id}`}
+                            className="inline-flex w-full justify-center sm:w-auto items-center gap-1.5 text-green-400 text-sm font-semibold hover:text-green-300 transition-colors"
+                          >
+                            <CheckCircle2 size={16} />
+                            Booked
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/events/${event.id}`}
+                            className={`inline-flex w-full justify-center sm:w-auto btn-gradient text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-opacity ${isFull ? "opacity-50 pointer-events-none" : "hover:opacity-90"}`}
+                          >
+                            {isFull ? "Full" : "Join Now"}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
