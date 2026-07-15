@@ -115,6 +115,20 @@ export interface EventHighlight {
   order: number;
 }
 
+export interface PublicEvent {
+  id: number;
+  title: string;
+  description?: string | null;
+  image?: string | null;
+  date: string;
+  time?: string | null;
+  location?: string | null;
+  capacity?: number | null;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface TrainingZone {
   id: number;
   image?: string | null;
@@ -244,6 +258,11 @@ export async function getEventHighlights(): Promise<EventHighlight[]> {
   return (
     (await fetchJson<EventHighlight[]>(`${API}/content/event-highlights`)) ?? []
   );
+}
+
+export async function getPublicEvents(): Promise<PublicEvent[]> {
+  const response = await fetchJson<{ events: PublicEvent[] }>(`${API}/events`);
+  return response?.events ?? [];
 }
 
 export async function getTrainingZones(): Promise<TrainingZone[]> {

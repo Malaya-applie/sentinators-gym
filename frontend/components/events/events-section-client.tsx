@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 import { EventHighlight, SiteText, getImageUrl } from "@/lib/content";
 
@@ -16,6 +17,17 @@ type SlideItem = {
   title: string;
   description: string;
 };
+
+type EventWithDate = EventHighlight & {
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+function getEventTimeValue(item: EventWithDate): number {
+  const parsedDate = Date.parse(item.updatedAt || item.createdAt || "");
+  if (!Number.isNaN(parsedDate)) return parsedDate;
+  return typeof item.id === "number" ? item.id : 0;
+}
 
 function toEmbedUrl(url: string): string {
   if (!url) return "";
@@ -48,6 +60,7 @@ function toEmbedUrl(url: string): string {
 }
 
 export function EventsSectionClient({ highlights, text }: Props) {
+  const router = useRouter();
   const [showMainVideo, setShowMainVideo] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -61,25 +74,24 @@ export function EventsSectionClient({ highlights, text }: Props) {
     [highlights],
   );
 
-  const slides = useMemo<SlideItem[]>(() => {
-    if (secondary.length > 0) {
-      return secondary
-        .filter((item) => Boolean(item.image))
-        .map((item) => ({
-          id: item.id,
-          image: getImageUrl(item.image),
-          title: item.title,
-          description: item.description ?? "",
-        }));
-    }
+  const latestHighlights = useMemo(() => {
+    return [...highlights]
+      .sort(
+        (a, b) =>
+          getEventTimeValue(b as EventWithDate) -
+          getEventTimeValue(a as EventWithDate),
+      )
+      .slice(0, 4);
+  }, [highlights]);
 
-    return [1, 2, 3, 4].map((item) => ({
-      id: item,
-      image: "",
-      title: `Event ${item}`,
-      description: "Lorem ipsum dolor sit",
+  const slides = useMemo<SlideItem[]>(() => {
+    return latestHighlights.map((item) => ({
+      id: item.id,
+      image: getImageUrl(item.image),
+      title: item.title || "Upcoming Event",
+      description: item.description ?? "Details coming soon",
     }));
-  }, [secondary]);
+  }, [latestHighlights]);
 
   const activeSlide =
     lightboxIndex !== null && slides[lightboxIndex]
@@ -135,7 +147,7 @@ export function EventsSectionClient({ highlights, text }: Props) {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mt-12">
-            <div className="md:col-span-1 md:row-span-2">
+            {/* <div className="md:col-span-1 md:row-span-2">
               <div className="relative h-85 sm:h-105 md:h-full md:min-h-130 rounded-xl overflow-hidden bg-[#1a0a12]/80 backdrop-blur-sm group">
                 {mainEvent?.image && (
                   <Image
@@ -209,53 +221,35 @@ export function EventsSectionClient({ highlights, text }: Props) {
                   </div>
                 )}
               </div>
-            </div>
+            </div> */}
 
-            <div className="md:col-span-2 grid grid-cols-2 gap-6">
-              {secondary.length > 0
-                ? secondary.map((item) => {
-                    const index = slides.findIndex(
-                      (slide) => slide.id === item.id,
-                    );
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => index >= 0 && setLightboxIndex(index)}
-                        className="relative aspect-video rounded-xl overflow-hidden bg-[#1a0a12]/80 backdrop-blur-sm group text-left"
-                      >
-                        {item.image && (
-                          <Image
-                            src={getImageUrl(item.image)}
-                            alt={item.title}
-                            fill
-                            className="object-cover"
-                          />
-                        )}
-                        <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent z-10" />
-                        <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
-                          <p className="text-white/70 text-xs">
-                            {item.description}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })
-                : [1, 2, 3, 4].map((item, index) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setLightboxIndex(index)}
-                      className="relative aspect-video rounded-xl overflow-hidden bg-[#1a0a12]/80 backdrop-blur-sm group text-left"
-                    >
-                      <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent z-10" />
-                      <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
-                        <p className="text-white/70 text-xs">
-                          Lorem ipsum dolor sit
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+            <div className="md:col-span-3 grid grid-cols-2 gap-6">
+              {slides.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    if (typeof item.id === "number") {
+                      router.push(`/events/${item.id}`);
+                    }
+                  }}
+                  className="relative aspect-video rounded-xl overflow-hidden bg-[#1a0a12]/80 backdrop-blur-sm group text-left cursor-pointer"
+                >
+                  {item.image && (
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                    />
+                  )}
+
+                  {/* <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent z-10" />
+                  <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
+                    <p className="text-white/70 text-xs">{item.description}</p>
+                  </div> */}
+                </button>
+              ))}
             </div>
           </div>
         </div>
