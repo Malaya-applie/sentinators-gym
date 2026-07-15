@@ -183,7 +183,7 @@ export function EventDetailSection({ eventId }: Props) {
           className="absolute top-8 left-6 sm:left-10 z-10 flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
         >
           <ArrowLeft size={16} />
-          All Events
+          Alle Events
         </button>
 
         <div className="relative z-10 w-full max-w-5xl mx-auto px-6 sm:px-8 lg:px-12">
