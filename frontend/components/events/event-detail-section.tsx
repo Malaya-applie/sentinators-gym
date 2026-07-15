@@ -192,21 +192,21 @@ export function EventDetailSection({ eventId }: Props) {
           </h1>
 
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-5 tracking-wide">
-            EVENT OVERVIEW
+            Eventübersicht
           </h2>
           <div className="space-y-2.5 text-white text-sm sm:text-base">
             {event?.time && (
               <p className="flex items-center gap-2">
                 <Clock size={15} className="text-purple-400 shrink-0" />
                 <span>
-                  <span className="font-bold">Time:</span> {event.time}
+                  <span className="font-bold">Uhrzeit:</span> {event.time}
                 </span>
               </p>
             )}
             <p className="flex items-center gap-2">
               <CalendarDays size={15} className="text-purple-400 shrink-0" />
               <span>
-                <span className="font-bold">Date:</span>{" "}
+                <span className="font-bold">Datum:</span>{" "}
                 {formatDate(event!.date)}
               </span>
             </p>
@@ -214,16 +214,16 @@ export function EventDetailSection({ eventId }: Props) {
               <p className="flex items-center gap-2">
                 <MapPin size={15} className="text-purple-400 shrink-0" />
                 <span>
-                  <span className="font-bold">Location:</span> {event.location}
+                  <span className="font-bold">Ort:</span> {event.location}
                 </span>
               </p>
             )}
             <p className="flex items-center gap-2">
               <Users size={15} className="text-purple-400 shrink-0" />
               <span>
-                <span className="font-bold">Seats:</span>{" "}
-                {event!._count.bookings} booked
-                {event?.capacity != null && ` / ${event.capacity} total`}
+                <span className="font-bold">Plätze:</span>{" "}
+                {event!._count.bookings} Gebucht
+                {event?.capacity != null && ` / ${event.capacity} Gesamt`}
               </span>
             </p>
           </div>
@@ -253,7 +253,7 @@ export function EventDetailSection({ eventId }: Props) {
               style={{ background: "#0300044D" }}
             >
               <h3 className="text-2xl sm:text-3xl font-extrabold text-white mb-5 tracking-wide">
-                EVENT DESCRIPTION
+                Eventbeschreibung
               </h3>
               <p className="text-white/70 text-sm sm:text-base leading-relaxed">
                 {event.description}
@@ -311,7 +311,7 @@ export function EventDetailSection({ eventId }: Props) {
               style={{ background: "#0300044D" }}
             >
               <h3 className="text-3xl font-extrabold text-white tracking-wide">
-                {isBooked ? "YOU'RE BOOKED!" : "REGISTER NOW"}
+                {isBooked ? "Du bist angemeldet!" : "Jetzt anmelden"}
               </h3>
               <div
                 className="w-full h-px"
@@ -344,9 +344,9 @@ export function EventDetailSection({ eventId }: Props) {
                     {isFull
                       ? "Sorry, this event is fully booked."
                       : event?.capacity != null
-                        ? `Hurry! Only ${
+                        ? `Beeil dich! Nur ${
                             event.capacity - event._count.bookings
-                          } seats left.`
+                          } Plätze verfügbar.`
                         : "Secure your spot today."}
                   </p>
                   <Button
@@ -357,8 +357,8 @@ export function EventDetailSection({ eventId }: Props) {
                     {isLoadingThis
                       ? "Booking…"
                       : isFull
-                        ? "Fully Booked"
-                        : "Book My Spot"}
+                        ? "Ausgebucht"
+                        : "Meinen Platz sichern"}
                   </Button>
                 </>
               )}
