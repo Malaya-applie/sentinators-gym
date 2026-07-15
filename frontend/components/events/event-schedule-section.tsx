@@ -211,7 +211,7 @@ export function EventScheduleSection() {
                             href={`/events/${event.id}`}
                             className={`inline-flex w-full justify-center sm:w-auto btn-gradient text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-opacity ${isFull ? "opacity-50 pointer-events-none" : "hover:opacity-90"}`}
                           >
-                            {isFull ? "Full" : "Join Now"}
+                            {isFull ? "Ausgebucht" : "Jetzt anmelden"}
                           </Link>
                         )}
                       </div>
