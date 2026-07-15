@@ -323,6 +323,7 @@ export function StepperRegistrationForm({
   const [paymentFrequency, setPaymentFrequency] = useState<
     "MONTHLY" | "QUARTERLY" | "YEARLY" | "UPFRONT"
   >("UPFRONT");
+  const [includeRegistrationFee, setIncludeRegistrationFee] = useState(true);
   const [quarterlyFeePercent, setQuarterlyFeePercent] = useState<number>(5);
   const [monthlyFeePercent, setMonthlyFeePercent] = useState<number>(10);
   const [contractMemberSig, setContractMemberSig] = useState("");
@@ -364,6 +365,7 @@ export function StepperRegistrationForm({
         setMembershipStartDate(saved.membershipStartDate);
         setMembershipEndDate(saved.membershipEndDate);
         setPaymentFrequency(saved.paymentFrequency);
+        setIncludeRegistrationFee(saved.includeRegistrationFee ?? true);
         setStep(saved.step);
         setTermChecks(saved.termChecks);
 
@@ -557,8 +559,9 @@ export function StepperRegistrationForm({
     (sum, p) => sum + p.price,
     0,
   );
+  const appliedRegistrationFee = includeRegistrationFee ? registrationFee : 0;
   const subtotal =
-    (selectedPlan?.price ?? 0) + additionalTotal + registrationFee;
+    (selectedPlan?.price ?? 0) + additionalTotal + appliedRegistrationFee;
   const total = Math.max(0, subtotal - discountAmount);
 
   // Total duration in months: main plan + all additional plans combined
@@ -570,7 +573,7 @@ export function StepperRegistrationForm({
     );
 
   // Membership cost (excluding registration fee, after discount)
-  const membershipNetCost = Math.max(0, total - registrationFee);
+  const membershipNetCost = Math.max(0, total - appliedRegistrationFee);
 
   const roundTenth = (n: number) => Math.round(n * 10) / 10;
 
@@ -846,6 +849,7 @@ export function StepperRegistrationForm({
       membershipStartDate,
       membershipEndDate,
       paymentFrequency,
+      includeRegistrationFee,
       periodicAmount: calcPerPeriod(paymentFrequency),
       step,
       activePlanCategory,
@@ -855,7 +859,7 @@ export function StepperRegistrationForm({
       customerNumber,
       isMinor,
       currency,
-      registrationFee,
+      registrationFee: appliedRegistrationFee,
       discountAmount,
       discountLabel,
       total: frequencyAdjustedTotal,
@@ -940,7 +944,7 @@ export function StepperRegistrationForm({
       purchaseMembership({
         planId: selectedPlan.id,
         additionalPlanIds: selectedAdditionalPlanIds,
-        registrationFee,
+        registrationFee: appliedRegistrationFee,
         totalAmount: frequencyAdjustedTotal,
         signatureDataUrl,
         paymentFrequency,
@@ -984,7 +988,7 @@ export function StepperRegistrationForm({
             duration: p.duration,
             price: p.price,
           })),
-          registrationFee,
+          registrationFee: appliedRegistrationFee,
           discountAmount,
           discountLabel,
           total: frequencyAdjustedTotal,
@@ -1414,7 +1418,10 @@ export function StepperRegistrationForm({
                 currency={currency}
                 plan={selectedPlan}
                 additionalPlans={selectedAdditionalPlans}
-                registrationFee={registrationFee}
+                registrationFee={appliedRegistrationFee}
+                includeRegistrationFee={includeRegistrationFee}
+                onIncludeRegistrationFeeChange={setIncludeRegistrationFee}
+                showRegistrationFeeToggle
                 discountAmount={discountAmount}
                 discountLabel={discountLabel}
                 total={frequencyAdjustedTotal}
@@ -1630,7 +1637,10 @@ export function StepperRegistrationForm({
                 currency={currency}
                 plan={selectedPlan}
                 additionalPlans={selectedAdditionalPlans}
-                registrationFee={registrationFee}
+                registrationFee={appliedRegistrationFee}
+                includeRegistrationFee={includeRegistrationFee}
+                onIncludeRegistrationFeeChange={setIncludeRegistrationFee}
+                showRegistrationFeeToggle
                 discountAmount={discountAmount}
                 discountLabel={discountLabel}
                 total={frequencyAdjustedTotal}
@@ -1801,7 +1811,10 @@ export function StepperRegistrationForm({
                 currency={currency}
                 plan={selectedPlan}
                 additionalPlans={selectedAdditionalPlans}
-                registrationFee={registrationFee}
+                registrationFee={appliedRegistrationFee}
+                includeRegistrationFee={includeRegistrationFee}
+                onIncludeRegistrationFeeChange={setIncludeRegistrationFee}
+                showRegistrationFeeToggle
                 discountAmount={discountAmount}
                 discountLabel={discountLabel}
                 total={frequencyAdjustedTotal}
@@ -1910,6 +1923,9 @@ function TotalBox({
   plan,
   additionalPlans,
   registrationFee,
+  includeRegistrationFee = true,
+  onIncludeRegistrationFeeChange,
+  showRegistrationFeeToggle = false,
   discountAmount,
   discountLabel,
   total,
@@ -1922,6 +1938,9 @@ function TotalBox({
   plan: MembershipPlan | null;
   additionalPlans: MembershipPlan[];
   registrationFee: number;
+  includeRegistrationFee?: boolean;
+  onIncludeRegistrationFeeChange?: (checked: boolean) => void;
+  showRegistrationFeeToggle?: boolean;
   discountAmount: number;
   discountLabel: string;
   total: number;
@@ -1993,10 +2012,24 @@ function TotalBox({
           </span>
         </div>
       ))}
-      <div className="mt-2 flex items-center justify-between gap-4 text-sm text-white/65">
-        <span>{t("plan.registrationFee")}</span>
-        <span>{money(currency, registrationFee)}</span>
-      </div>
+      {showRegistrationFeeToggle && onIncludeRegistrationFeeChange && (
+        <label className="mt-3 flex cursor-pointer items-center gap-2.5 text-sm text-white/80">
+          <Checkbox
+            checked={includeRegistrationFee}
+            onCheckedChange={(value) =>
+              onIncludeRegistrationFeeChange(value === true)
+            }
+            className="border-white/30 data-[state=checked]:bg-red-700"
+          />
+          <span>{t("plan.registrationFee")}</span>
+        </label>
+      )}
+      {includeRegistrationFee && (
+        <div className="mt-2 flex items-center justify-between gap-4 text-sm text-white/65">
+          <span>{t("plan.registrationFee")}</span>
+          <span>{money(currency, registrationFee)}</span>
+        </div>
+      )}
       {discountAmount > 0 && plan && (
         <div className="mt-2 flex items-center justify-between gap-4 text-sm text-green-400">
           <span>{discountLabel}</span>
