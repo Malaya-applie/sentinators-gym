@@ -4,7 +4,40 @@
  */
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-const MEDIA_BASE = API.replace(/\/api$/, "");
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/$/, "");
+}
+
+function getServerOrigin(): string | null {
+  const explicitSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicitSiteUrl) return trimTrailingSlash(explicitSiteUrl);
+
+  const vercelHost =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  if (vercelHost) {
+    return trimTrailingSlash(
+      vercelHost.startsWith("http") ? vercelHost : `https://${vercelHost}`,
+    );
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return "http://localhost:3000";
+  }
+
+  return null;
+}
+
+function resolveApiBase(): string {
+  if (!API.startsWith("/")) return API;
+  if (typeof window !== "undefined") return API;
+
+  const serverOrigin = getServerOrigin();
+  return serverOrigin ? `${serverOrigin}${API}` : API;
+}
+
+const API_BASE = resolveApiBase();
+const MEDIA_BASE = API_BASE.replace(/\/api$/, "");
 
 import type { EquipmentFeatureItem } from "@/lib/equipment-feature-defaults";
 
@@ -181,30 +214,32 @@ async function fetchJson<T>(
 }
 
 export async function getAllContent(): Promise<AllContent | null> {
-  return fetchJson<AllContent>(`${API}/content/all`);
+  return fetchJson<AllContent>(`${API_BASE}/content/all`);
 }
 
 export async function getSiteText(section?: string): Promise<SiteText> {
   const url = section
-    ? `${API}/content/text/${section}`
-    : `${API}/content/text`;
+    ? `${API_BASE}/content/text/${section}`
+    : `${API_BASE}/content/text`;
   return (await fetchJson<SiteText>(url)) ?? {};
 }
 
 export async function getStats(): Promise<Stat[]> {
-  return (await fetchJson<Stat[]>(`${API}/content/stats`)) ?? [];
+  return (await fetchJson<Stat[]>(`${API_BASE}/content/stats`)) ?? [];
 }
 
 export async function getTrainers(): Promise<Trainer[]> {
-  return (await fetchJson<Trainer[]>(`${API}/content/trainers`)) ?? [];
+  return (await fetchJson<Trainer[]>(`${API_BASE}/content/trainers`)) ?? [];
 }
 
 export async function getTestimonials(): Promise<Testimonial[]> {
-  return (await fetchJson<Testimonial[]>(`${API}/content/testimonials`)) ?? [];
+  return (
+    (await fetchJson<Testimonial[]>(`${API_BASE}/content/testimonials`)) ?? []
+  );
 }
 
 export async function getBlogPosts(): Promise<BlogPost[]> {
-  return (await fetchJson<BlogPost[]>(`${API}/content/blog`)) ?? [];
+  return (await fetchJson<BlogPost[]>(`${API_BASE}/content/blog`)) ?? [];
 }
 
 export async function getGalleryImages(options?: {
@@ -221,8 +256,8 @@ export async function getGalleryImages(options?: {
 
   const query = params.toString();
   const url = query
-    ? `${API}/content/gallery?${query}`
-    : `${API}/content/gallery`;
+    ? `${API_BASE}/content/gallery?${query}`
+    : `${API_BASE}/content/gallery`;
 
   return (
     (await fetchJson<GalleryImagesResponse>(url)) ?? {
@@ -241,22 +276,29 @@ export async function getGalleryImages(options?: {
 
 export async function getGalleryCategories(): Promise<GalleryCategory[]> {
   return (
-    (await fetchJson<GalleryCategory[]>(`${API}/content/gallery-categories`)) ??
-    []
+    (await fetchJson<GalleryCategory[]>(
+      `${API_BASE}/content/gallery-categories`,
+    )) ?? []
   );
 }
 
 export async function getAchievements(): Promise<Achievement[]> {
-  return (await fetchJson<Achievement[]>(`${API}/content/achievements`)) ?? [];
+  return (
+    (await fetchJson<Achievement[]>(`${API_BASE}/content/achievements`)) ?? []
+  );
 }
 
 export async function getWhyFeatures(): Promise<WhyFeature[]> {
-  return (await fetchJson<WhyFeature[]>(`${API}/content/why-choose-us`)) ?? [];
+  return (
+    (await fetchJson<WhyFeature[]>(`${API_BASE}/content/why-choose-us`)) ?? []
+  );
 }
 
 export async function getEventHighlights(): Promise<EventHighlight[]> {
   return (
-    (await fetchJson<EventHighlight[]>(`${API}/content/event-highlights`)) ?? []
+    (await fetchJson<EventHighlight[]>(
+      `${API_BASE}/content/event-highlights`,
+    )) ?? []
   );
 }
 
