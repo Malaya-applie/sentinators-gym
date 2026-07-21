@@ -303,19 +303,22 @@ export async function getEventHighlights(): Promise<EventHighlight[]> {
 }
 
 export async function getPublicEvents(): Promise<PublicEvent[]> {
-  const response = await fetchJson<{ events: PublicEvent[] }>(`${API}/events`);
+  const response = await fetchJson<{ events: PublicEvent[] }>(
+    `${API_BASE}/events`,
+  );
   return response?.events ?? [];
 }
 
 export async function getTrainingZones(): Promise<TrainingZone[]> {
   return (
-    (await fetchJson<TrainingZone[]>(`${API}/content/training-zones`)) ?? []
+    (await fetchJson<TrainingZone[]>(`${API_BASE}/content/training-zones`)) ??
+    []
   );
 }
 
 export async function getEquipment(): Promise<Equipment> {
   return (
-    (await fetchJson<Equipment>(`${API}/content/equipment`)) ?? {
+    (await fetchJson<Equipment>(`${API_BASE}/content/equipment`)) ?? {
       id: 0,
       title: "EQUIPMENTS OVERVIEW",
       subtitle: "Everything You Need For Serious Training Comfort And Result",
